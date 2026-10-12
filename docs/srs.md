@@ -53,7 +53,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | STT | Mô tả |
 |---|---|
 | 1 | Hệ thống cho phép đăng nhập bằng username và password. |
-| 2 | Hệ thống kiểm tra thông tin đăng nhập và chỉ cấp token/session khi hợp lệ. | 
+| 2 | Hệ thống kiểm tra thông tin đăng nhập và chỉ cấp token khi hợp lệ. | 
 | 3 | Token chứa hoặc tham chiếu đến định danh và vai trò người dùng. | 
 | 4 | Client gửi token trong header của các request cần xác thực. | 
 | 5 | Hệ thống cung cấp chức năng đăng xuất. |
@@ -61,9 +61,9 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 ### 3.2. Tra cứu lớp học phần
 
-| STT | Mô tả | Ưu tiên |
+| STT | Mô tả |
 |---|---|
-| 1 | Trả về danh sách lớp học phần đang mở đăng ký. | 
+| 1 | Trả về danh sách lớp học phần đang mở đăng ký. |
 | 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. | 
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
 
@@ -77,7 +77,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 4 | Ngăn việc vượt sĩ số tối đa khi có nhiều yêu cầu đồng thời. | 
 | 5 | Sinh viên xem được danh sách học phần đã đăng ký thành công của mình. | 
 | 6 | Sinh viên có thể hủy đăng ký khi đáp ứng các điều kiện nghiệp vụ. | 
-| 7 | Cung cấp thời khóa biểu tổng hợp từ các lớp học phần đã đăng ký. | Trung bình |
+| 7 | Cung cấp thời khóa biểu tổng hợp từ các lớp học phần đã đăng ký. |
 | 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có. | 
 
 ### 3.4. Quản lý thông tin sinh viên
@@ -104,7 +104,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 1. Người dùng gửi username và password tới API đăng nhập.
 2. Hệ thống kiểm tra thông tin xác thực.
-3. Nếu hợp lệ, hệ thống tạo token/session gắn với định danh và vai trò người dùng.
+3. Nếu hợp lệ, hệ thống tạo JWT gắn với định danh và vai trò người dùng.
 4. Hệ thống trả token và thông tin cần thiết cho client.
 5. Client gửi token trong header của các request cần xác thực.
 
@@ -141,7 +141,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 5 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau đăng ký không được vượt mức tối đa của học kỳ. |
 | 6 | Giới hạn tín chỉ tối thiểu | Tổng số tín chỉ phải đạt mức tối thiểu, trừ trường hợp ngoại lệ được cho phép. |
 | 7 | Quyền sở hữu đăng ký | Sinh viên chỉ được xem/hủy đăng ký của chính mình, trừ quyền quản trị được cấp. |
-| 1 | Kiểm tra dữ liệu lớp | Dữ liệu tạo/cập nhật lớp phải hợp lệ và đáp ứng các ràng buộc dữ liệu. |
+| 8 | Kiểm tra dữ liệu lớp | Dữ liệu tạo/cập nhật lớp phải hợp lệ và đáp ứng các ràng buộc dữ liệu. |
 
 ## 5. Yêu cầu giao diện/API
 
@@ -205,7 +205,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 ### 7.2. Bảo mật và middleware
 
-- Hệ thống hỗ trợ JWT hoặc session; phương án cụ thể được xác định trong thiết kế.
+- Hệ thống sử dụng JWT cho xác thực; token chứa định danh và vai trò người dùng.
 - Authentication và authorization được áp dụng bằng middleware/filter/interceptor ở mức global hoặc route group.
 - Controller không lặp lại mã kiểm tra token/quyền trong từng endpoint.
 - Phải kiểm tra quyền ở cả cấp chức năng và phạm vi dữ liệu.
@@ -218,7 +218,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | Giao tiếp | RESTful API, JSON |
 | Tài liệu API | OpenAPI/Swagger |
 | Container | Cung cấp `Dockerfile` và `docker-compose.yml` để chạy ứng dụng cùng cơ sở dữ liệu bằng một lệnh. |
-| Cơ sở dữ liệu | Chưa xác định cụ thể; phải hỗ trợ transaction và ràng buộc toàn vẹn dữ liệu. |
+| Cơ sở dữ liệu | PostgreSQL; chi tiết lựa chọn tại ADR-02. |
 | Mã nguồn | Quản lý trên GitHub; commit rõ ràng, chia theo feature hoặc bug fix. |
 | Tài liệu dự án | `README.md` chứa kiến trúc, hướng dẫn setup/chạy Docker và thông tin cấu hình cần thiết. |
 

@@ -1,8 +1,4 @@
-# ADR-0001: Lựa chọn ngôn ngữ backend
-
-- Trạng thái: Đã chọn
-- Ngày: 07/10/2026
-- Ngôn ngữ: Go
+# ADR-0001: Lựa chọn ngôn ngữ backend - Go
 
 ## Bài toán cần giải quyết
 
