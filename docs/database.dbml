@@ -1,90 +1,108 @@
-// Hệ thống đăng ký học phần — schema MVP
-// Bám theo docs/database-design.md. DBML không hỗ trợ CHECK constraint,
-// nên các ràng buộc đó được ghi trong note của từng cột/bảng.
+// Schema MVP: 8 bảng, hai role student/admin; giảng viên là tên hiển thị trên lớp.
+// CHECK được ghi trong note để dễ paste trên dbdiagram, chi tiết xem database-design.md.
+// Không dùng delete trong cột hay khối refs; hành vi FK nằm trong Ref cấp ngoài.
 
 Project course_registration {
   database_type: 'PostgreSQL'
-  Note: 'Website đăng ký học phần — MVP. Chi tiết ràng buộc xem docs/database-design.md'
-}
-
-Enum user_role {
-  student
-  admin
-}
-
-Table semesters {
-  id bigserial [pk]
-  name text [not null, unique, note: 'ví dụ "HK1 2026-2027"']
-  registration_opens_at timestamptz [not null, note: 'quy tắc 2: cửa sổ đăng ký']
-  registration_closes_at timestamptz [not null, note: 'CHECK: closes > opens']
-  max_credits int [not null, note: 'CHECK: > 0 — quy tắc 5']
-  min_credits int [not null, note: 'CHECK: >= 0 — quy tắc 6']
+  Note: 'Schema MVP theo docs/srs.md và docs/database-design.md'
 }
 
 Table users {
-  id bigserial [pk]
+  id bigserial [pk, not null]
   username text [not null, unique]
-  password_hash text [not null, note: 'bcrypt/argon2, không plaintext']
-  role user_role [not null]
+  password_hash text [not null]
+  role text [not null, note: 'CHECK: student, admin; mỗi tài khoản một role']
+  full_name text [not null]
+  student_code text [unique, note: 'Student bắt buộc; admin phải NULL']
+  faculty text [note: 'Student bắt buộc']
+  major text [note: 'Student bắt buộc']
+  min_credits_exempt boolean [not null, default: false, note: 'Admin cấp ngoại lệ tối thiểu cho student; role khác phải false']
   created_at timestamptz [not null, default: `now()`]
 }
 
-Table students {
-  id bigserial [pk]
-  user_id bigint [not null, unique, ref: > users.id, note: 'ON DELETE CASCADE — quan hệ 1-1']
-  student_code text [not null, unique]
-  full_name text [not null]
-  faculty text [not null]
-  major text [not null]
+Table semesters {
+  id bigserial [pk, not null]
+  name text [not null, unique]
+  registration_opens_at timestamptz [not null]
+  registration_closes_at timestamptz [not null, note: 'CHECK: closes > opens']
+  min_credits int [not null, note: 'CHECK: >= 0 AND <= max_credits']
+  max_credits int [not null, note: 'CHECK: > 0']
 }
 
 Table courses {
-  id bigserial [pk]
-  code text [not null, unique, note: '"INT2211"']
+  id bigserial [pk, not null]
+  code text [not null, unique]
   name text [not null]
-  credits int [not null, note: 'CHECK: BETWEEN 1 AND 20']
-  faculty text [not null, note: 'dùng cho filter danh sách lớp']
+  credits int [not null, note: 'CHECK: > 0']
+  faculty text [not null]
+  major text [note: 'NULL cho học phần dùng chung; nhãn phục vụ bộ lọc']
 }
 
 Table course_prerequisites {
-  course_id bigint [pk, ref: > courses.id]
-  prerequisite_course_id bigint [pk, ref: > courses.id, note: 'CHECK: khác course_id']
-}
+  course_id bigint [not null]
+  prerequisite_course_id bigint [not null, note: 'CHECK: khác course_id']
 
-Table course_classes {
-  id bigserial [pk]
-  course_id bigint [not null, ref: > courses.id]
-  semester_id bigint [not null, ref: > semesters.id]
-  class_code text [not null, unique, note: '"INT2211-01"']
-  lecturer_name text [not null]
-  room text [note: 'cho phép trống khi chưa xếp phòng']
-  max_capacity int [not null, note: 'CHECK: > 0']
-  enrolled int [not null, default: 0, note: 'CHECK: BETWEEN 0 AND max_capacity — bộ đếm của cơ chế ADR-02']
-}
-
-Table class_schedules {
-  id bigserial [pk]
-  class_id bigint [not null, ref: > course_classes.id, note: 'ON DELETE CASCADE']
-  day_of_week smallint [not null, note: 'CHECK: BETWEEN 1 AND 7 — 1 = thứ Hai']
-  start_period smallint [not null, note: 'CHECK: BETWEEN 1 AND 12']
-  end_period smallint [not null, note: 'CHECK: end > start']
+  indexes {
+    (course_id, prerequisite_course_id) [pk]
+  }
 }
 
 Table course_results {
-  student_id bigint [pk, ref: > students.id]
-  course_id bigint [pk, ref: > courses.id]
-  passed boolean [not null, note: 'MVP chỉ cần đạt/chưa đạt — đầu vào cho check tiên quyết']
+  student_id bigint [not null, note: 'users.id có role student; kiểm tra role ở service/seed']
+  course_id bigint [not null]
+  passed boolean [not null]
+
+  indexes {
+    (student_id, course_id) [pk]
+  }
+}
+
+Table course_classes {
+  id bigserial [pk, not null]
+  course_id bigint [not null]
+  semester_id bigint [not null]
+  lecturer_name text [not null, note: 'Tên giảng viên do admin nhập; không tham chiếu tài khoản']
+  class_code text [not null]
+  max_capacity int [not null, note: 'CHECK: > 0']
+  enrolled int [not null, default: 0, note: 'CHECK: 0 <= enrolled AND enrolled <= max_capacity']
+
+  indexes {
+    (semester_id, class_code) [unique]
+    semester_id
+  }
+}
+
+Table class_schedules {
+  id bigserial [pk, not null]
+  class_id bigint [not null]
+  day_of_week smallint [not null, note: 'CHECK: 1..7; 1 = thứ Hai']
+  start_period smallint [not null, note: 'CHECK: > 0; đầu khoảng có tính']
+  end_period smallint [not null, note: 'CHECK: >= start_period; cuối khoảng có tính']
+  room text [not null]
+
+  indexes {
+    class_id
+  }
 }
 
 Table registrations {
-  id bigserial [pk]
-  student_id bigint [not null, ref: > students.id]
-  class_id bigint [not null, ref: > course_classes.id, note: 'ON DELETE RESTRICT — xóa lớp có người đăng ký phải bị chặn']
+  id bigserial [pk, not null]
+  student_id bigint [not null, note: 'users.id có role student; JWT xác định sinh viên, admin có thể thao tác cho sinh viên đích']
+  class_id bigint [not null]
   created_at timestamptz [not null, default: `now()`]
 
   indexes {
-    (student_id, class_id) [unique, note: 'chặn double-submit, đồng bộ với hủy đăng ký']
-    student_id [note: 'query đăng ký của sinh viên']
-    class_id [note: 'đếm theo lớp']
+    (student_id, class_id) [unique]
+    class_id
   }
 }
+
+Ref: course_prerequisites.course_id > courses.id [delete: no action]
+Ref: course_prerequisites.prerequisite_course_id > courses.id [delete: no action]
+Ref: course_results.student_id > users.id [delete: no action]
+Ref: course_results.course_id > courses.id [delete: no action]
+Ref: course_classes.course_id > courses.id [delete: no action]
+Ref: course_classes.semester_id > semesters.id [delete: no action]
+Ref: class_schedules.class_id > course_classes.id [delete: cascade]
+Ref: registrations.student_id > users.id [delete: no action]
+Ref: registrations.class_id > course_classes.id [delete: restrict]
