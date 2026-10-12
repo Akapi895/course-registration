@@ -1,0 +1,90 @@
+// Hệ thống đăng ký học phần — schema MVP
+// Bám theo docs/database-design.md. DBML không hỗ trợ CHECK constraint,
+// nên các ràng buộc đó được ghi trong note của từng cột/bảng.
+
+Project course_registration {
+  database_type: 'PostgreSQL'
+  Note: 'Website đăng ký học phần — MVP. Chi tiết ràng buộc xem docs/database-design.md'
+}
+
+Enum user_role {
+  student
+  admin
+}
+
+Table semesters {
+  id bigserial [pk]
+  name text [not null, unique, note: 'ví dụ "HK1 2026-2027"']
+  registration_opens_at timestamptz [not null, note: 'quy tắc 2: cửa sổ đăng ký']
+  registration_closes_at timestamptz [not null, note: 'CHECK: closes > opens']
+  max_credits int [not null, note: 'CHECK: > 0 — quy tắc 5']
+  min_credits int [not null, note: 'CHECK: >= 0 — quy tắc 6']
+}
+
+Table users {
+  id bigserial [pk]
+  username text [not null, unique]
+  password_hash text [not null, note: 'bcrypt/argon2, không plaintext']
+  role user_role [not null]
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table students {
+  id bigserial [pk]
+  user_id bigint [not null, unique, ref: > users.id, note: 'ON DELETE CASCADE — quan hệ 1-1']
+  student_code text [not null, unique]
+  full_name text [not null]
+  faculty text [not null]
+  major text [not null]
+}
+
+Table courses {
+  id bigserial [pk]
+  code text [not null, unique, note: '"INT2211"']
+  name text [not null]
+  credits int [not null, note: 'CHECK: BETWEEN 1 AND 20']
+  faculty text [not null, note: 'dùng cho filter danh sách lớp']
+}
+
+Table course_prerequisites {
+  course_id bigint [pk, ref: > courses.id]
+  prerequisite_course_id bigint [pk, ref: > courses.id, note: 'CHECK: khác course_id']
+}
+
+Table course_classes {
+  id bigserial [pk]
+  course_id bigint [not null, ref: > courses.id]
+  semester_id bigint [not null, ref: > semesters.id]
+  class_code text [not null, unique, note: '"INT2211-01"']
+  lecturer_name text [not null]
+  room text [note: 'cho phép trống khi chưa xếp phòng']
+  max_capacity int [not null, note: 'CHECK: > 0']
+  enrolled int [not null, default: 0, note: 'CHECK: BETWEEN 0 AND max_capacity — bộ đếm của cơ chế ADR-02']
+}
+
+Table class_schedules {
+  id bigserial [pk]
+  class_id bigint [not null, ref: > course_classes.id, note: 'ON DELETE CASCADE']
+  day_of_week smallint [not null, note: 'CHECK: BETWEEN 1 AND 7 — 1 = thứ Hai']
+  start_period smallint [not null, note: 'CHECK: BETWEEN 1 AND 12']
+  end_period smallint [not null, note: 'CHECK: end > start']
+}
+
+Table course_results {
+  student_id bigint [pk, ref: > students.id]
+  course_id bigint [pk, ref: > courses.id]
+  passed boolean [not null, note: 'MVP chỉ cần đạt/chưa đạt — đầu vào cho check tiên quyết']
+}
+
+Table registrations {
+  id bigserial [pk]
+  student_id bigint [not null, ref: > students.id]
+  class_id bigint [not null, ref: > course_classes.id, note: 'ON DELETE RESTRICT — xóa lớp có người đăng ký phải bị chặn']
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (student_id, class_id) [unique, note: 'chặn double-submit, đồng bộ với hủy đăng ký']
+    student_id [note: 'query đăng ký của sinh viên']
+    class_id [note: 'đếm theo lớp']
+  }
+}
