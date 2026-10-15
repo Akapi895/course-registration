@@ -1,6 +1,6 @@
-# Architecture Diagram
+# Sơ đồ kiến trúc
 
-## System Overview
+## Tổng quan hệ thống
 
 ```mermaid
 graph TB
@@ -12,7 +12,7 @@ graph TB
     SWAG[Swagger<br/>/swagger] -.-> API
 ```
 
-## Registration Flow
+## Luồng đăng ký
 
 ```mermaid
 graph LR
@@ -29,9 +29,9 @@ graph LR
     Commit --> OK((200 OK))
 ```
 
-## Component Details
+## Chi tiết thành phần
 
-| Component | Technology | Purpose |
+| Thành phần | Công nghệ | Mục đích |
 |-----------|-----------|---------|
 | Client | HTTP/JSON | Gọi API, gửi JWT trong header |
 | Backend | Go (Gin — đề xuất) | REST API server, phân tầng Controller/Service/Repository |

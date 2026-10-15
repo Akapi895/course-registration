@@ -1,4 +1,4 @@
-# ADR-0002: Lựa chọn cơ sở dữ liệu - PostgreSQL
+# ADR-02: Lựa chọn cơ sở dữ liệu - PostgreSQL
 
 ## Bài toán cần giải quyết
 

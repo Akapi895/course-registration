@@ -45,3 +45,6 @@ coverage/
 # Misc
 *.tmp
 .cache/
+
+CLAUDE.md
+AGENTS.md

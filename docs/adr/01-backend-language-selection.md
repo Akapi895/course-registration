@@ -1,4 +1,4 @@
-# ADR-0001: Lựa chọn ngôn ngữ backend - Go
+# ADR-01: Lựa chọn ngôn ngữ backend - Go
 
 ## Bài toán cần giải quyết
 

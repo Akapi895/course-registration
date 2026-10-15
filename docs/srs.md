@@ -1,4 +1,3 @@
-
 # TÀI LIỆU ĐẶC TẢ YÊU CẦU PHẦN MỀM (SRS)
 ## Hệ thống quản lý và đăng ký học phần
 
@@ -53,9 +52,9 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | STT | Mô tả |
 |---|---|
 | 1 | Hệ thống cho phép đăng nhập bằng username và password. |
-| 2 | Hệ thống kiểm tra thông tin đăng nhập và chỉ cấp token khi hợp lệ. | 
-| 3 | Token chứa hoặc tham chiếu đến định danh và vai trò người dùng. | 
-| 4 | Client gửi token trong header của các request cần xác thực. | 
+| 2 | Hệ thống kiểm tra thông tin đăng nhập và chỉ cấp token khi hợp lệ. |
+| 3 | Token chứa hoặc tham chiếu đến định danh và vai trò người dùng. |
+| 4 | Client gửi token trong header của các request cần xác thực. |
 | 5 | Hệ thống cung cấp chức năng đăng xuất. |
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại. |
 
@@ -64,38 +63,38 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | STT | Mô tả |
 |---|---|
 | 1 | Trả về danh sách lớp học phần đang mở đăng ký. |
-| 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. | 
+| 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. |
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
 
 ### 3.3. Đăng ký và hủy học phần
 
 | STT | Mô tả |
 |---|---|
-| 1 | Sinh viên đã xác thực có thể gửi yêu cầu đăng ký lớp học phần. | 
-| 2 | Hệ thống kiểm tra các quy tắc nghiệp vụ trước khi ghi nhận đăng ký. | 
-| 3 | Ghi nhận đăng ký và cập nhật sĩ số nhất quán trong giao dịch dữ liệu. | 
-| 4 | Ngăn việc vượt sĩ số tối đa khi có nhiều yêu cầu đồng thời. | 
-| 5 | Sinh viên xem được danh sách học phần đã đăng ký thành công của mình. | 
-| 6 | Sinh viên có thể hủy đăng ký khi đáp ứng các điều kiện nghiệp vụ. | 
+| 1 | Sinh viên đã xác thực có thể gửi yêu cầu đăng ký lớp học phần. |
+| 2 | Hệ thống kiểm tra các quy tắc nghiệp vụ trước khi ghi nhận đăng ký. |
+| 3 | Ghi nhận đăng ký và cập nhật sĩ số nhất quán trong giao dịch dữ liệu. |
+| 4 | Ngăn việc vượt sĩ số tối đa khi có nhiều yêu cầu đồng thời. |
+| 5 | Sinh viên xem được danh sách học phần đã đăng ký thành công của mình. |
+| 6 | Sinh viên có thể hủy đăng ký khi đáp ứng các điều kiện nghiệp vụ. |
 | 7 | Cung cấp thời khóa biểu tổng hợp từ các lớp học phần đã đăng ký. |
-| 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có. | 
+| 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có. |
 
 ### 3.4. Quản lý thông tin sinh viên
 
 | STT| Mô tả |
 |---|---|
-| 1 | Cho phép người dùng đủ quyền xem thông tin sinh viên theo mã định danh. | 
-| 2 | Cho phép Admin hoặc chính sinh viên cập nhật thông tin phù hợp với quyền được cấp. | 
-| 3 | Kiểm tra quyền truy cập dữ liệu để ngăn việc xem hoặc sửa trái phép. | 
+| 1 | Cho phép người dùng đủ quyền xem thông tin sinh viên theo mã định danh. |
+| 2 | Cho phép Admin hoặc chính sinh viên cập nhật thông tin phù hợp với quyền được cấp. |
+| 3 | Kiểm tra quyền truy cập dữ liệu để ngăn việc xem hoặc sửa trái phép. |
 
 ### 3.5. Quản trị lớp học phần
 
 | STT | Mô tả |
 |---|---|
-| 1 | Admin có thể tạo lớp học phần mới với dữ liệu hợp lệ. | 
-| 2 | Admin có thể cập nhật thông tin lớp học phần. | 
+| 1 | Admin có thể tạo lớp học phần mới với dữ liệu hợp lệ. |
+| 2 | Admin có thể cập nhật thông tin lớp học phần. |
 | 3 | Admin có thể xóa hoặc hủy lớp học phần theo chính sách đã thống nhất. |
-| 4 | Hệ thống kiểm tra dữ liệu đầu vào trước khi lưu. | 
+| 4 | Hệ thống kiểm tra dữ liệu đầu vào trước khi lưu. |
 | 5 | API quản trị từ chối request không đủ quyền. |
 
 ### 3.6. Luồng nghiệp vụ chính
@@ -178,7 +177,6 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 - Mỗi API cần xác định trường dữ liệu, kiểu dữ liệu, trường bắt buộc và quy tắc validation.
 - Cấu trúc response, mã lỗi và ví dụ request/response phải được mô tả trong OpenAPI/Swagger.
 
-
 ## 6. Yêu cầu phi chức năng
 
 | STT | Nhóm | Yêu cầu | Tiêu chí/ghi chú |
@@ -241,4 +239,3 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 9 | OpenAPI/Swagger hoạt động và mô tả các endpoint được triển khai. |
 | 10 | Ứng dụng và cơ sở dữ liệu khởi chạy được theo hướng dẫn Docker; README.md đầy đủ. |
 | 11 | Có báo cáo load test trên Kaggle CPU và đối chiếu kết quả với ngưỡng hiệu năng đã thống nhất. |
-
