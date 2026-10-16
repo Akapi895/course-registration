@@ -2,8 +2,9 @@
 ## Hệ thống quản lý và đăng ký học phần
 
 - **Dự án:** Hệ thống quản lý và đăng ký học phần
+- **Frontend:** React, TypeScript (Vite)
+- **Backend:** Go (Gin Framework)
 - **Kiến trúc API:** RESTful API
-- **Ngôn ngữ triển khai:** Go
 
 ## 1. Giới thiệu
 
@@ -18,7 +19,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 ### 1.3. Đối tượng sử dụng
 
 - Sinh viên.
-- Chuyên viên (Admin).
+- Quản trị viên (Quản trị viên).
 
 ## 2. Mô tả tổng quan
 
@@ -27,7 +28,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | Tác nhân | Mô tả | Chức năng chính |
 |---|---|---|
 | Sinh viên | Người dùng đăng ký học phần | Đăng nhập, tra cứu lớp, đăng ký/hủy học phần, xem thời khóa biểu |
-| Chuyên viên (Admin) | Người dùng quản trị hệ thống | Tra cứu, cập nhật thông tin sinh viên; quản lý lớp học phần; cấu hình thời gian đăng ký |
+| Quản trị viên | Người dùng quản trị hệ thống | Tra cứu, cập nhật thông tin sinh viên; quản lý lớp học phần; cấu hình thời gian đăng ký |
 
 ### 2.2. Ranh giới hệ thống
 
@@ -83,19 +84,19 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | STT| Mô tả |
 |---|---|
 | 1 | Cho phép người dùng đủ quyền xem thông tin sinh viên theo mã định danh. |
-| 2 | Cho phép admin hoặc chính sinh viên cập nhật thông tin phù hợp với quyền được cấp. |
+| 2 | Cho phép quản trị viên hoặc chính sinh viên cập nhật thông tin phù hợp với quyền được cấp. |
 | 3 | Kiểm tra quyền truy cập dữ liệu để ngăn việc xem hoặc sửa trái phép. |
 
 ### 3.5. Quản trị lớp học phần
 
 | STT | Mô tả |
 |---|---|
-| 1 | Admin có thể tạo lớp học phần mới với dữ liệu hợp lệ. |
-| 2 | Admin có thể cập nhật thông tin lớp học phần. |
-| 3 | Admin có thể xóa hoặc hủy lớp học phần theo chính sách đã thống nhất. |
+| 1 | Quản trị viên có thể tạo lớp học phần mới với dữ liệu hợp lệ. |
+| 2 | Quản trị viên có thể cập nhật thông tin lớp học phần. |
+| 3 | Quản trị viên có thể xóa hoặc hủy lớp học phần theo chính sách đã thống nhất. |
 | 4 | Hệ thống kiểm tra dữ liệu đầu vào trước khi lưu. |
 | 5 | Các API quản trị từ chối request không đủ quyền. |
-| 6 | Admin có thể cấu hình thời gian mở và đóng đăng ký học phần. |
+| 6 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
 
 ### 3.6. Luồng nghiệp vụ chính
 
@@ -124,8 +125,8 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 #### 3.6.4. Quản trị lớp học phần
 
-1. Admin đăng nhập và được xác thực quyền.
-2. Admin gửi request tạo mới, cập nhật hoặc xóa/hủy lớp học phần.
+1. Quản trị viên đăng nhập và được xác thực quyền.
+2. Quản trị viên gửi request tạo mới, cập nhật hoặc xóa/hủy lớp học phần.
 3. Hệ thống kiểm tra dữ liệu đầu vào và các ràng buộc liên quan.
 4. Hệ thống lưu thay đổi nếu hợp lệ và trả kết quả cho client.
 
@@ -134,14 +135,14 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | STT | Quy tắc | Mô tả |
 |---|---|---|
 | 1 | Giới hạn sĩ số | Không chấp nhận đăng ký nếu số lượng đã đăng ký đạt `max_capacity`. |
-| 2 | Thời gian đăng ký | Chỉ cho phép đăng ký/hủy trong khoảng thời gian do admin cấu hình. |
-| 3 | Không trùng lịch | Từ chối đăng ký nếu lịch học giao nhau với lớp đã đăng ký trong cùng học kỳ. |
-| 4 | Không đăng ký trùng | Sinh viên không được đăng ký nhiều lần cùng một lớp học phần trong cùng học kỳ. |
-| 5 | Điều kiện tiên quyết | Sinh viên phải đạt các môn tiên quyết theo quy định. |
-| 6 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau đăng ký không được vượt mức tối đa của học kỳ. |
-| 7 | Thời gian đăng ký hợp lệ | Thời gian mở đăng ký phải sớm hơn thời gian đóng đăng ký. |
-| 8 | Quyền sở hữu đăng ký | Sinh viên chỉ được xem/hủy đăng ký của chính mình, trừ quyền quản trị được cấp. |
-| 9 | Kiểm tra dữ liệu lớp | Dữ liệu tạo/cập nhật lớp phải hợp lệ và đáp ứng các ràng buộc dữ liệu. |
+| 2 | Thời gian đăng ký | Chỉ cho phép đăng ký/hủy trong khoảng thời gian do quản trị viên cấu hình. |
+| 3 | Không trùng lịch | Từ chối đăng ký lớp học phần có lịch học trùng với các lớp đã đăng ký trong cùng học kỳ. |
+| 4 | Không đăng ký trùng | Sinh viên chỉ được đăng ký một lần đối với cùng một lớp học phần trong mỗi học kỳ. |
+| 5 | Điều kiện tiên quyết | Sinh viên phải đáp ứng các yêu cầu về học phần tiên quyết trước khi đăng ký. |
+| 6 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau đăng ký không được vượt mức tối đa theo quy định. |
+| 7 | Thời gian đăng ký hợp lệ | Thời điểm mở đăng ký phải trước thời điểm đóng đăng ký. |
+| 8 | Quyền sở hữu đăng ký | Sinh viên chỉ được phép xem và hủy các đăng ký học phần của chính mình. |
+| 9 | Kiểm tra dữ liệu lớp | Thông tin lớp học phần khi tạo mới hoặc cập nhật phải đáp ứng các ràng buộc dữ liệu đã quy định. |
 
 ## 5. Yêu cầu giao diện và API
 
@@ -155,23 +156,45 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 ### 5.2. Danh sách endpoint
 
-| Nhóm | Phương thức | Endpoint | Mô tả | Quyền truy cập |
-|---|---|---|---|---|
-| Xác thực | POST | `/api/auth/login` | Đăng nhập, trả token | Công khai |
-| Xác thực | POST | `/api/auth/logout` | Đăng xuất | Đã xác thực |
-| Xác thực | GET | `/api/auth/me` | Lấy thông tin người dùng hiện tại | Đã xác thực |
-| Sinh viên | GET | `/api/students/{id}` | Xem chi tiết sinh viên | Theo quyền |
-| Sinh viên | PUT | `/api/students/{id}` | Cập nhật thông tin sinh viên | Admin hoặc chính sinh viên |
-| Lớp học phần | GET | `/api/classes` | Danh sách lớp đang mở | Công khai |
-| Lớp học phần | GET | `/api/classes/{id}` | Chi tiết lớp học phần | Công khai |
-| Đăng ký | POST | `/api/registrations` | Đăng ký học phần | Sinh viên |
-| Đăng ký | GET | `/api/registrations` | Danh sách đăng ký của sinh viên hiện tại | Sinh viên |
-| Đăng ký | DELETE | `/api/registrations/{id}` | Hủy đăng ký | Sinh viên sở hữu đăng ký |
-| Thời khóa biểu | GET | `/api/schedules` | Lấy thời khóa biểu | Sinh viên |
-| Quản trị lớp | POST | `/api/classes` | Tạo lớp học phần | Admin |
-| Quản trị lớp | PUT | `/api/classes/{id}` | Cập nhật lớp học phần | Admin |
-| Quản trị lớp | DELETE | `/api/classes/{id}` | Xóa/hủy lớp học phần | Admin |
-| Cấu hình đăng ký | PUT | `/api/registration-period` | Cấu hình thời gian mở và đóng đăng ký học phần | Admin |
+#### 5.2.1. Xác thực và người dùng
+
+| Phương thức | Endpoint | Mô tả | Quyền truy cập |
+|---|---|---|---|
+| POST | `/api/auth/login` | Đăng nhập hệ thống, trả về JWT | Công khai |
+| POST | `/api/auth/logout` | Đăng xuất hệ thống | Đã xác thực |
+| GET | `/api/auth/me` | Lấy thông tin người dùng hiện tại | Đã xác thực |
+
+#### 5.2.2. Quản lý sinh viên
+
+| Phương thức | Endpoint | Mô tả | Quyền truy cập |
+|---|---|---|---|
+| GET | `/api/students/{id}` | Xem thông tin chi tiết sinh viên | Quản trị viên hoặc sinh viên |
+| PUT | `/api/students/{id}` | Cập nhật thông tin sinh viên | Quản trị viên hoặc sinh viên |
+
+#### 5.2.3. Tra cứu lớp học phần
+
+| Phương thức | Endpoint | Mô tả | Quyền truy cập |
+|---|---|---|---|
+| GET | `/api/classes` | Lấy danh sách lớp học phần đang mở đăng ký | Quản trị viên hoặc sinh viên |
+| GET | `/api/classes/{id}` | Xem thông tin chi tiết lớp học phần | Quản trị viên hoặc sinh viên |
+
+#### 5.2.4. Đăng ký học phần và thời khóa biểu
+
+| Phương thức | Endpoint | Mô tả | Quyền truy cập |
+|---|---|---|---|
+| POST | `/api/registrations` | Đăng ký lớp học phần | Sinh viên |
+| GET | `/api/registrations` | Lấy danh sách lớp học phần đã đăng ký của sinh viên hiện tại | Sinh viên |
+| DELETE | `/api/registrations/{id}` | Hủy đăng ký lớp học phần | Sinh viên đã đăng ký |
+| GET | `/api/schedules` | Lấy thời khóa biểu từ các lớp học phần đã đăng ký | Sinh viên |
+
+#### 5.2.5. Quản trị hệ thống
+
+| Phương thức | Endpoint | Mô tả | Quyền truy cập |
+|---|---|---|---|
+| POST | `/api/classes` | Tạo lớp học phần mới | Quản trị viên |
+| PUT | `/api/classes/{id}` | Cập nhật thông tin lớp học phần | Quản trị viên |
+| DELETE | `/api/classes/{id}` | Xóa hoặc hủy lớp học phần | Quản trị viên |
+| PUT | `/api/registration-period` | Cấu hình thời gian mở và đóng đăng ký học phần | Quản trị viên |
 
 ### 5.3. Yêu cầu dữ liệu request/response
 
@@ -201,9 +224,9 @@ Phase 1 tập trung hoàn thiện các chức năng nghiệp vụ và bảo đ�
 
 | Tầng | Trách nhiệm |
 |---|---|
-| API / Controller | Tiếp nhận HTTP request, xử lý dữ liệu đầu vào và trả HTTP response. |
-| Business / Service | Xử lý logic nghiệp vụ và kiểm tra các điều kiện liên quan. |
-| Data Access / Repository | Thực hiện truy vấn và thao tác với cơ sở dữ liệu. |
+| Handler | Tiếp nhận HTTP request, xử lý dữ liệu đầu vào và trả HTTP response. |
+| Service | Xử lý logic nghiệp vụ và kiểm tra các điều kiện liên quan. |
+| Repository | Thực hiện truy vấn và thao tác với cơ sở dữ liệu. |
 
 ### 7.2. Xác thực và phân quyền
 
@@ -216,12 +239,13 @@ Phase 1 tập trung hoàn thiện các chức năng nghiệp vụ và bảo đ�
 
 | Hạng mục | Yêu cầu |
 |---|---|
-| Ngôn ngữ | Go |
+| Frontend | React, TypeScript, Vite |
+| Backend | Go, Gin |
 | Giao tiếp | RESTful API, JSON |
 | Tài liệu API | OpenAPI/Swagger |
 | Cơ sở dữ liệu | PostgreSQL |
-| Container | Docker, Docker Compose |
-| Mã nguồn | Git, GitHub |
+| Đóng gói | Docker, Docker Compose |
+| Lưu trữ và quản lý mã nguồn | Git, GitHub |
 | Tài liệu dự án | `README.md` hướng dẫn cài đặt, cấu hình và khởi chạy hệ thống |
 
 ### 7.4. Nguyên tắc phát triển
@@ -234,13 +258,13 @@ Phase 1 ưu tiên hoàn thiện các chức năng cốt lõi, bảo đảm tính
 |---|---|
 | 1 | Đăng nhập hợp lệ trả JWT; thông tin đăng nhập không hợp lệ bị từ chối. |
 | 2 | Các API được bảo vệ từ chối yêu cầu thiếu token, token không hợp lệ hoặc không đủ quyền truy cập. |
-| 3 | Sinh viên có thể xem và cập nhật thông tin cá nhân trong phạm vi được cấp quyền; admin có thể tra cứu và cập nhật thông tin sinh viên. |
+| 3 | Sinh viên có thể xem và cập nhật thông tin cá nhân trong phạm vi được cấp quyền; quản trị viên có thể tra cứu và cập nhật thông tin sinh viên. |
 | 4 | Sinh viên tra cứu được danh sách và thông tin chi tiết các lớp học phần đang mở. |
 | 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng. |
 | 6 | Hệ thống từ chối đăng ký khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ. |
 | 7 | Sinh viên xem được danh sách lớp học phần đã đăng ký và thời khóa biểu của mình. |
 | 8 | Sinh viên chỉ có thể hủy đăng ký thuộc về mình khi đáp ứng điều kiện nghiệp vụ; hủy thành công cập nhật trạng thái đăng ký và sĩ số tương ứng. |
-| 9 | Admin có thể tạo, cập nhật và xóa/hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
-| 10 | Admin có thể cấu hình thời gian mở và đóng đăng ký học phần. |
+| 9 | Quản trị viên có thể tạo, cập nhật và xóa/hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
+| 10 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
 | 11 | OpenAPI/Swagger hoạt động và mô tả đầy đủ các endpoint được triển khai. |
 | 12 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
