@@ -58,6 +58,8 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 5 | Hệ thống cung cấp API đăng xuất; client xóa JWT đang lưu sau khi gọi API đăng xuất. |
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại. |
 
+> Lưu ý: Trong Phase 1, JWT không được thu hồi phía Backend.
+
 ### 3.2. Tra cứu lớp học phần
 
 | STT | Mô tả |
@@ -224,7 +226,7 @@ Phase 1 tập trung hoàn thiện các chức năng nghiệp vụ và bảo đ�
 
 | Tầng | Trách nhiệm |
 |---|---|
-| Handler | Tiếp nhận HTTP request, xử lý dữ liệu đầu vào và trả HTTP response. |
+| Controller | Tiếp nhận HTTP request, xử lý dữ liệu đầu vào và trả HTTP response. |
 | Service | Xử lý logic nghiệp vụ và kiểm tra các điều kiện liên quan. |
 | Repository | Thực hiện truy vấn và thao tác với cơ sở dữ liệu. |
 
