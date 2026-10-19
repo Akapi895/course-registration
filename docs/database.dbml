@@ -1,54 +1,66 @@
-// Schema MVP: 8 bảng, hai role student/admin; giảng viên là tên hiển thị trên lớp.
-// CHECK được ghi trong note để dễ paste trên dbdiagram, chi tiết xem database-design.md.
-// Không dùng delete trong cột hay khối refs; hành vi FK nằm trong Ref cấp ngoài.
 
 Project course_registration {
   database_type: 'PostgreSQL'
-  Note: 'Schema MVP theo docs/srs.md và docs/database-design.md'
+  Note: 'Thiet ke co so du lieu cho Phase 1'
 }
 
+// 1. Người dùng và sinh viên
 Table users {
-  id bigserial [pk, not null]
+  id bigserial [pk]
   username text [not null, unique]
   password_hash text [not null]
-  role text [not null, note: 'CHECK: student, admin; mỗi tài khoản một role']
+  role text [not null, check: `role IN ('student', 'admin')`]
   full_name text [not null]
-  student_code text [unique, note: 'Student bắt buộc; admin phải NULL']
-  faculty text [note: 'Student bắt buộc']
-  major text [note: 'Student bắt buộc']
-  min_credits_exempt boolean [not null, default: false, note: 'Admin cấp ngoại lệ tối thiểu cho student; role khác phải false']
+  student_code text [unique]
+  faculty text
+  major text
   created_at timestamptz [not null, default: `now()`]
+
+  checks {
+    `(role = 'student' AND student_code IS NOT NULL) OR (role = 'admin' AND student_code IS NULL)` [name: 'chk_user_student_code']
+  }
 }
 
+// 2. Học kỳ và thời gian đăng ký
 Table semesters {
-  id bigserial [pk, not null]
+  id bigserial [pk]
   name text [not null, unique]
   registration_opens_at timestamptz [not null]
-  registration_closes_at timestamptz [not null, note: 'CHECK: closes > opens']
-  min_credits int [not null, note: 'CHECK: >= 0 AND <= max_credits']
-  max_credits int [not null, note: 'CHECK: > 0']
+  registration_closes_at timestamptz [not null]
+  max_credits int [not null, check: `max_credits > 0`]
+
+  checks {
+    `registration_closes_at > registration_opens_at` [name: 'chk_registration_period']
+  }
 }
 
+// 3. Học phần
 Table courses {
-  id bigserial [pk, not null]
+  id bigserial [pk]
   code text [not null, unique]
   name text [not null]
-  credits int [not null, note: 'CHECK: > 0']
+  credits int [not null, check: `credits > 0`]
   faculty text [not null]
-  major text [note: 'NULL cho học phần dùng chung; nhãn phục vụ bộ lọc']
+  major text
 }
 
+// 4. Học phần tiên quyết
 Table course_prerequisites {
   course_id bigint [not null]
-  prerequisite_course_id bigint [not null, note: 'CHECK: khác course_id']
+  prerequisite_course_id bigint [not null]
 
   indexes {
     (course_id, prerequisite_course_id) [pk]
   }
+
+  checks {
+    `course_id <> prerequisite_course_id` [name: 'chk_different_prerequisite']
+  }
 }
 
+// 5. Kết quả học phần
 Table course_results {
-  student_id bigint [not null, note: 'users.id có role student; kiểm tra role ở service/seed']
+  student_id bigint [not null]
   course_id bigint [not null]
   passed boolean [not null]
 
@@ -57,52 +69,69 @@ Table course_results {
   }
 }
 
+// 6. Lớp học phần
 Table course_classes {
-  id bigserial [pk, not null]
+  id bigserial [pk]
   course_id bigint [not null]
   semester_id bigint [not null]
-  lecturer_name text [not null, note: 'Tên giảng viên do admin nhập; không tham chiếu tài khoản']
   class_code text [not null]
-  max_capacity int [not null, note: 'CHECK: > 0']
-  enrolled int [not null, default: 0, note: 'CHECK: 0 <= enrolled AND enrolled <= max_capacity']
+  lecturer_name text [not null]
+  max_capacity int [not null, check: `max_capacity > 0`]
+  enrolled int [not null, default: 0]
+  status text [not null, default: 'active', check: `status IN ('active', 'cancelled')`]
 
   indexes {
     (semester_id, class_code) [unique]
-    semester_id
+  }
+
+  checks {
+    `enrolled >= 0 AND enrolled <= max_capacity` [name: 'chk_class_capacity']
   }
 }
 
+// 7. Lịch học
 Table class_schedules {
-  id bigserial [pk, not null]
+  id bigserial [pk]
   class_id bigint [not null]
-  day_of_week smallint [not null, note: 'CHECK: 1..7; 1 = thứ Hai']
-  start_period smallint [not null, note: 'CHECK: > 0; đầu khoảng có tính']
-  end_period smallint [not null, note: 'CHECK: >= start_period; cuối khoảng có tính']
+  day_of_week smallint [not null, check: `day_of_week BETWEEN 1 AND 7`]
+  start_period smallint [not null, check: `start_period > 0`]
+  end_period smallint [not null]
   room text [not null]
 
-  indexes {
-    class_id
+  checks {
+    `end_period >= start_period` [name: 'chk_schedule_period']
   }
 }
 
+// 8. Đăng ký học phần
 Table registrations {
-  id bigserial [pk, not null]
-  student_id bigint [not null, note: 'users.id có role student; JWT xác định sinh viên, admin có thể thao tác cho sinh viên đích']
+  id bigserial [pk]
+  student_id bigint [not null]
   class_id bigint [not null]
-  created_at timestamptz [not null, default: `now()`]
+  status text [not null, default: 'registered', check: `status IN ('registered', 'cancelled')`]
+  registered_at timestamptz [not null, default: `now()`]
+  cancelled_at timestamptz
 
   indexes {
     (student_id, class_id) [unique]
-    class_id
+  }
+
+  checks {
+    `(status = 'registered' AND cancelled_at IS NULL) OR (status = 'cancelled' AND cancelled_at IS NOT NULL)` [name: 'chk_registration_status']
   }
 }
 
-Ref: course_prerequisites.course_id > courses.id [delete: no action]
-Ref: course_prerequisites.prerequisite_course_id > courses.id [delete: no action]
-Ref: course_results.student_id > users.id [delete: no action]
-Ref: course_results.course_id > courses.id [delete: no action]
-Ref: course_classes.course_id > courses.id [delete: no action]
-Ref: course_classes.semester_id > semesters.id [delete: no action]
+// Quan hệ khóa ngoại
+Ref: course_prerequisites.course_id > courses.id
+Ref: course_prerequisites.prerequisite_course_id > courses.id
+
+Ref: course_results.student_id > users.id
+Ref: course_results.course_id > courses.id
+
+Ref: course_classes.course_id > courses.id
+Ref: course_classes.semester_id > semesters.id
+
 Ref: class_schedules.class_id > course_classes.id [delete: cascade]
-Ref: registrations.student_id > users.id [delete: no action]
+
+Ref: registrations.student_id > users.id
 Ref: registrations.class_id > course_classes.id [delete: restrict]
