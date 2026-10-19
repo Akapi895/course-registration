@@ -4,13 +4,13 @@
 
 Hệ thống sử dụng PostgreSQL để lưu trữ và quản lý dữ liệu phục vụ các chức năng theo SRS Phase 1.
 
-Cơ sở dữ liệu gồm 7 bảng: quản lý người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học và đăng ký học phần.
+Cơ sở dữ liệu gồm 8 bảng: quản lý người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập.
 
 Thiết kế sử dụng các ràng buộc cơ sở dữ liệu và transaction để bảo đảm tính toàn vẹn và nhất quán dữ liệu.
 
 ## 2. Sơ đồ quan hệ thực thể (ERD)
 
-Sơ đồ ERD được định nghĩa trong file `database.dbml` và thể hiện quan hệ giữa 7 bảng. Các quan hệ chính gồm: người dùng với đăng ký học phần; học kỳ và học phần với lớp học phần; lớp học phần với lịch học và đăng ký; quan hệ tiên quyết giữa các học phần.
+Sơ đồ ERD được định nghĩa trong file `database.dbml` và thể hiện quan hệ giữa 8 bảng. Các quan hệ chính gồm: người dùng với đăng ký học phần và phiên đăng nhập; học kỳ và học phần với lớp học phần; lớp học phần với lịch học và đăng ký; quan hệ tiên quyết giữa các học phần.
 
 ## 3. Thiết kế chi tiết các bảng
 
@@ -102,10 +102,24 @@ Mỗi bản ghi thể hiện một buổi học lặp theo tuần. Một lớp h
 
 Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyển trạng thái thành `cancelled`; nếu đăng ký lại, bản ghi được chuyển về `registered` và cập nhật `registered_at`.
 
+### 3.8. `auth_sessions` – Phiên đăng nhập
+
+| Trường | Kiểu dữ liệu | Ràng buộc / ý nghĩa |
+|---|---|---|
+| `id` | UUID | PK, DEFAULT `gen_random_uuid()` |
+| `user_id` | BIGINT | NOT NULL, FK → `users.id` |
+| `refresh_token_hash` | TEXT | NOT NULL; giá trị băm của Refresh Token |
+| `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT `now()` |
+| `expires_at` | TIMESTAMPTZ | NOT NULL; thời điểm hết hạn phiên |
+| `revoked_at` | TIMESTAMPTZ | Có thể NULL; thời điểm thu hồi phiên |
+
+Mỗi phiên đăng nhập thuộc về một người dùng. Backend lưu giá trị băm của Refresh Token và sử dụng `expires_at`, `revoked_at` để xác định phiên còn hiệu lực hay đã hết hạn hoặc bị thu hồi.
+
 ## 4. Ràng buộc và tính toàn vẹn dữ liệu
 
 - **Ràng buộc dữ liệu:** PostgreSQL sử dụng PK, FK, UNIQUE, NOT NULL và CHECK để kiểm soát tính hợp lệ, tính duy nhất và mối quan hệ giữa các bảng.
 - **Kiểm tra nghiệp vụ:** Backend kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết, giới hạn tín chỉ và quyền truy cập trước khi cập nhật dữ liệu.
+- **Quản lý phiên đăng nhập:** JWT chứa `sid` tham chiếu đến `auth_sessions.id`. Backend xác minh JWT và kiểm tra phiên còn hiệu lực trước khi cho phép truy cập. Khi đăng xuất, phiên được đánh dấu thu hồi để JWT tương ứng không tiếp tục được sử dụng.
 - **Tính nhất quán:** Đăng ký và hủy học phần sử dụng transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận.
 
-**Giới hạn dữ liệu:** `course_prerequisites` chỉ lưu quan hệ tiên quyết giữa các học phần. Thiết kế 7 bảng hiện tại chưa lưu kết quả học tập của từng sinh viên, nên cần xác định nguồn dữ liệu đó để thực hiện kiểm tra học phần tiên quyết theo SRS.
+**Giới hạn dữ liệu:** `course_prerequisites` chỉ lưu quan hệ tiên quyết giữa các học phần. Thiết kế database hiện tại chưa lưu kết quả học tập của từng sinh viên, nên cần xác định nguồn dữ liệu đó để thực hiện kiểm tra học phần tiên quyết theo SRS.

@@ -1,7 +1,7 @@
 
 Project course_registration {
   database_type: 'PostgreSQL'
-  Note: 'Thiet ke co so du lieu cho Phase 1'
+  Note: 'Thiết kế cơ sở dữ liệu cho Phase 1'
 }
 
 // 1. Người dùng và sinh viên
@@ -37,7 +37,7 @@ Table semesters {
 // 3. Học phần
 Table courses {
   id bigserial [pk]
-  code text [not null, unique]
+  code text [not null, unique, note: 'Mã học phần, ví dụ INT3401']
   name text [not null]
   credits int [not null, check: `credits > 0`]
   faculty text [not null]
@@ -58,23 +58,12 @@ Table course_prerequisites {
   }
 }
 
-// 5. Kết quả học phần
-Table course_results {
-  student_id bigint [not null]
-  course_id bigint [not null]
-  passed boolean [not null]
-
-  indexes {
-    (student_id, course_id) [pk]
-  }
-}
-
-// 6. Lớp học phần
+// 5. Lớp học phần
 Table course_classes {
-  id bigserial [pk]
+  id bigserial [pk, note: 'Định danh nội bộ của lớp học phần']
   course_id bigint [not null]
   semester_id bigint [not null]
-  class_code text [not null]
+  class_code text [not null, note: 'Mã lớp học phần, ví dụ INT3401-01']
   lecturer_name text [not null]
   max_capacity int [not null, check: `max_capacity > 0`]
   enrolled int [not null, default: 0]
@@ -89,35 +78,43 @@ Table course_classes {
   }
 }
 
-// 7. Lịch học
+// 6. Lịch học
 Table class_schedules {
-  id bigserial [pk]
-  class_id bigint [not null]
-  day_of_week smallint [not null, check: `day_of_week BETWEEN 1 AND 7`]
-  start_period smallint [not null, check: `start_period > 0`]
-  end_period smallint [not null]
-  room text [not null]
+  id bigserial [pk, note: 'Định danh riêng của mỗi buổi học']
+  class_id bigint [not null, note: 'Tham chiếu course_classes.id; nhiều buổi có thể thuộc một lớp']
+  day_of_week smallint [not null, check: `day_of_week BETWEEN 2 AND 7`, note: '2 = Thứ Hai, ..., 7 = Thứ Bảy']
+  start_period smallint [not null, check: `start_period > 0`, note: 'Tiết bắt đầu của ca học']
+  end_period smallint [not null, note: 'Tiết kết thúc của ca học, tính cả tiết này']
+  room text [not null, note: 'Phòng học/giảng đường, ví dụ A2-301']
 
   checks {
     `end_period >= start_period` [name: 'chk_schedule_period']
   }
 }
 
-// 8. Đăng ký học phần
+// 7. Đăng ký học phần
 Table registrations {
   id bigserial [pk]
   student_id bigint [not null]
   class_id bigint [not null]
   status text [not null, default: 'registered', check: `status IN ('registered', 'cancelled')`]
   registered_at timestamptz [not null, default: `now()`]
-  cancelled_at timestamptz
 
   indexes {
     (student_id, class_id) [unique]
   }
+}
 
-  checks {
-    `(status = 'registered' AND cancelled_at IS NULL) OR (status = 'cancelled' AND cancelled_at IS NOT NULL)` [name: 'chk_registration_status']
+Table auth_sessions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id bigint [not null]
+  refresh_token_hash text [not null]
+  created_at timestamptz [not null, default: `now()`]
+  expires_at timestamptz [not null]
+  revoked_at timestamptz
+
+  indexes {
+    user_id
   }
 }
 
@@ -125,13 +122,11 @@ Table registrations {
 Ref: course_prerequisites.course_id > courses.id
 Ref: course_prerequisites.prerequisite_course_id > courses.id
 
-Ref: course_results.student_id > users.id
-Ref: course_results.course_id > courses.id
-
 Ref: course_classes.course_id > courses.id
 Ref: course_classes.semester_id > semesters.id
 
 Ref: class_schedules.class_id > course_classes.id [delete: cascade]
 
+Ref: auth_sessions.user_id > users.id
 Ref: registrations.student_id > users.id
 Ref: registrations.class_id > course_classes.id [delete: restrict]
