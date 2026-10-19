@@ -29,8 +29,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | Tác nhân | Mô tả | Chức năng chính |
 |---|---|---|
 | Sinh viên | Người dùng đăng ký học phần | Đăng nhập, tra cứu lớp, đăng ký/hủy học phần, xem thời khóa biểu |
-| Chuyên viên/Admin | Người dùng quản trị hệ thống | Quản lý lớp học phần, cấu hình thời gian đăng ký và các tham số nghiệp vụ |
-| Client | Ứng dụng gọi API | Gửi HTTP request, nhận JSON response và cung cấp token khi cần |
+| Chuyên viên/Admin | Người dùng quản trị hệ thống | Quản lý lớp học phần, cấu hình thời gian đăng ký và các tham số nghiệp vụ |hi
 
 ### 2.2. Ranh giới hệ thống
 
