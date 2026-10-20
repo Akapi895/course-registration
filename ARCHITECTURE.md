@@ -2,8 +2,6 @@
 
 ## 1. Giới thiệu và phạm vi kiến trúc
 
-Hệ thống quản lý và đăng ký học phần được xây dựng dưới dạng RESTful API Backend bằng Go, tổ chức theo kiến trúc phân tầng Controller → Service → Repository. Hệ thống sử dụng PostgreSQL để lưu trữ dữ liệu, JWT để xác thực và phân quyền, JSON để trao đổi dữ liệu và OpenAPI/Swagger để tài liệu hóa API.
-
 Phase 1 tập trung hoàn thiện các chức năng theo SRS, bảo đảm tính đúng đắn nghiệp vụ, tính nhất quán dữ liệu và bảo mật cơ bản. Tối ưu hiệu năng, mở rộng hệ thống và xử lý đồng thời chuyên sâu thuộc phạm vi Phase 2.
 
 ## 2. Cấu trúc repository
@@ -52,37 +50,65 @@ sequenceDiagram
     FE->>C: POST /api/auth/login
     C->>S: Username, Password
     S->>R: Tra cứu tài khoản
-    R->>DB: SELECT
+    R->>DB: SELECT users
     DB-->>R: Thông tin tài khoản
     R-->>S: Dữ liệu người dùng
     S->>S: Kiểm tra mật khẩu
-
     alt Thông tin hợp lệ
-        S->>S: Tạo JWT
-        S-->>C: JWT
-        C-->>FE: 200 OK + JWT
+        S->>S: Tạo Refresh Token và session ID
+        S->>R: Lưu phiên và hash Refresh Token
+        R->>DB: INSERT auth_sessions
+        DB-->>R: Thành công
+        S->>S: Tạo Access JWT chứa sid
+        S-->>C: Access JWT và Refresh Token
+        C-->>FE: 200 OK + JWT + HttpOnly Cookie
     else Không hợp lệ
         C-->>FE: 401 Unauthorized
     end
 
-    Note over FE,DB: Xác thực API được bảo vệ
-    FE->>C: Request + JWT
-    C->>S: Kiểm tra JWT và quyền
-    S->>S: Xác minh chữ ký, thời hạn và vai trò
-    S-->>C: Kết quả xác thực
-    C-->>FE: Cho phép / Từ chối
+    Note over FE,DB: Truy cập API được bảo vệ
+    FE->>C: Request + Access JWT
+    C->>S: Xác thực và kiểm tra quyền
+    S->>S: Xác minh chữ ký, exp và claims
+    S->>R: Kiểm tra phiên theo sid
+    R->>DB: SELECT auth_sessions
+    DB-->>R: Trạng thái và thời hạn phiên
+    R-->>S: Kết quả kiểm tra
+    S-->>C: Cho phép hoặc từ chối
+    C-->>FE: Kết quả xử lý API
+
+    Note over FE,DB: Làm mới Access Token
+    FE->>C: POST /api/auth/refresh + Refresh Cookie
+    C->>S: Yêu cầu làm mới token
+    S->>R: Đối chiếu hash và kiểm tra phiên
+    R->>DB: SELECT auth_sessions
+    DB-->>R: Thông tin phiên
+    alt Refresh Token và phiên hợp lệ
+        S->>S: Tạo Refresh Token thay thế
+        S->>R: Cập nhật hash Refresh Token
+        R->>DB: UPDATE auth_sessions
+        DB-->>R: Thành công
+        S->>S: Tạo Access JWT mới
+        S-->>C: Access JWT và Refresh Token mới
+        C-->>FE: 200 OK + JWT + Cookie mới
+    else Không hợp lệ hoặc hết hạn
+        C-->>FE: 401 Unauthorized
+    end
 
     Note over FE,DB: Đăng xuất
-    FE->>C: POST /api/auth/logout + JWT
-    C->>S: Yêu cầu đăng xuất
-    S->>S: Kiểm tra JWT
+    FE->>C: POST /api/auth/logout + token/cookie
+    C->>S: Xác định phiên từ JWT hoặc Refresh Cookie hợp lệ
+    S->>R: Thu hồi phiên
+    R->>DB: UPDATE auth_sessions.revoked_at
+    DB-->>R: Thành công
     S-->>C: Xác nhận đăng xuất
-    C-->>FE: 200 OK
-    FE->>FE: Xóa JWT
+    C-->>FE: 200 OK + Xóa Refresh Cookie
+    FE->>FE: Xóa Access JWT
 ```
 
-Đối với các API được bảo vệ, Backend kiểm tra chữ ký, thời hạn JWT và quyền truy cập trước khi thực hiện nghiệp vụ.
-Khi đăng xuất, Frontend gọi `POST /api/auth/logout` và xóa JWT đang lưu sau khi nhận phản hồi thành công từ Backend.
+Access JWT chứa `sub`, `role`, `sid` và `exp`; Refresh Token là chuỗi ngẫu nhiên và chỉ lưu dưới dạng hash trong `auth_sessions`. Frontend giữ Access JWT trong bộ nhớ và gửi khi gọi API; Refresh Token được lưu trong HttpOnly Cookie để làm mới JWT khi cần.
+
+Backend kiểm tra chữ ký, thời hạn JWT, quyền truy cập và trạng thái phiên tương ứng trong PostgreSQL. Khi đăng xuất, phiên bị thu hồi nên Access JWT cũ không còn được chấp nhận, kể cả khi chưa hết hạn. Việc làm mới token phải kiểm tra phiên còn hiệu lực và luân chuyển Refresh Token.
 
 ### 3.2. Đăng ký và hủy học phần
 
@@ -95,8 +121,7 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     FE->>C: POST /api/registrations + JWT
-    C->>C: Xác thực và kiểm tra quyền
-    C->>S: Yêu cầu đăng ký
+    C->>S: Xác thực, kiểm tra phiên và quyền
     S->>R: Lấy dữ liệu liên quan
     R->>DB: SELECT
     DB-->>R: Dữ liệu
@@ -106,7 +131,7 @@ sequenceDiagram
 
     alt Đủ điều kiện
         S->>R: Ghi đăng ký và cập nhật sĩ số
-        R->>DB: BEGIN, INSERT, UPDATE
+        R->>DB: BEGIN, INSERT/UPDATE, UPDATE
 
         alt Ghi dữ liệu thành công
             R->>DB: COMMIT
@@ -115,7 +140,7 @@ sequenceDiagram
             C-->>FE: 201 Created
         else Có lỗi
             R->>DB: ROLLBACK
-            R-->>S: Lỗi giao dịch
+            R-->>S: Lỗi xử lý dữ liệu
             S-->>C: Kết quả lỗi
             C-->>FE: HTTP Error
         end
@@ -127,7 +152,7 @@ sequenceDiagram
 
 Service kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết và giới hạn tín chỉ.
 
-Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở hữu và điều kiện hủy, sau đó cập nhật trạng thái đăng ký và sĩ số trong cùng transaction. Giao dịch được rollback nếu xảy ra lỗi.
+Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở hữu và điều kiện hủy, sau đó cập nhật trạng thái đăng ký và sĩ số trong cùng transaction. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận. Khi đăng ký lại một lớp đã hủy, hệ thống cập nhật bản ghi đăng ký cũ thay vì tạo bản ghi trùng.
 
 ### 3.3. Tra cứu và quản trị
 
@@ -138,24 +163,24 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 
 ## 4. Kiến trúc dữ liệu
 
-- **Tổng quan dữ liệu**: Hệ thống sử dụng PostgreSQL để lưu trữ dữ liệu người dùng, sinh viên, học phần, lớp học phần, lịch học, kết quả học tập và đăng ký học phần. Cấu trúc bảng và các quan hệ dữ liệu được mô tả chi tiết trong `database-design.md`.
-
-- **Truy cập dữ liệu**: Tầng Repository chịu trách nhiệm thực hiện các thao tác truy vấn và cập nhật dữ liệu trên PostgreSQL. Tầng Service xử lý logic nghiệp vụ và tương tác với cơ sở dữ liệu thông qua Repository, không thực hiện truy vấn SQL trực tiếp.
-
-- **Giao dịch và tính nhất quán**: Các thao tác đăng ký và hủy học phần sử dụng database transaction để bảo đảm tính nhất quán giữa bản ghi đăng ký và sĩ số lớp học phần. Giao dịch được commit khi toàn bộ thao tác thành công và rollback nếu xảy ra lỗi.
+- **Tổng quan dữ liệu:** Hệ thống sử dụng PostgreSQL với 8 bảng để lưu trữ người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập. Cấu trúc bảng và các quan hệ được mô tả chi tiết trong `database-design.md`.
+- **Truy cập dữ liệu:** Tầng Repository chịu trách nhiệm truy vấn và cập nhật PostgreSQL. Tầng Service xử lý logic nghiệp vụ và truy cập dữ liệu thông qua Repository, không thực hiện truy vấn SQL trực tiếp.
+- **Giao dịch và tính nhất quán:** Đăng ký và hủy học phần sử dụng database transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Các thay đổi chỉ được ghi nhận khi toàn bộ thao tác thành công.
+- **Dữ liệu xác thực:** Bảng `auth_sessions` lưu trạng thái phiên và hash Refresh Token; không lưu Access JWT. Phiên hết hạn hoặc đã bị thu hồi không được sử dụng để truy cập API hoặc làm mới token.
 
 ## 5. Xác thực và phân quyền
 
-- **Xác thực:** Hệ thống sử dụng JWT chứa định danh người dùng (`sub`), vai trò (`role`) và thời gian hết hạn (`exp`).
-- **Kiểm tra token:** Backend xác minh chữ ký và thời hạn JWT trước khi cho phép truy cập các API được bảo vệ.
+- **Access Token:** Sử dụng JWT có thời hạn ngắn, chứa định danh người dùng (`sub`), vai trò (`role`), mã phiên (`sid`) và thời điểm hết hạn (`exp`).
+- **Refresh Token:** Là chuỗi ngẫu nhiên, được lưu phía Frontend bằng HttpOnly Cookie. Backend chỉ lưu hash của token trong `auth_sessions` và luân chuyển token khi làm mới Access JWT.
+- **Kiểm tra token:** Backend xác minh chữ ký, thời hạn Access JWT và kiểm tra `sid` với phiên chưa hết hạn, chưa bị thu hồi trong PostgreSQL trước khi cho phép truy cập các API được bảo vệ.
 - **Phân quyền:** Quyền truy cập được kiểm tra theo vai trò Sinh viên/Quản trị viên và phạm vi dữ liệu được phép thao tác.
-- **Đăng xuất:** Frontend gọi API đăng xuất và xóa JWT đang lưu. Backend không quản lý danh sách token thu hồi.
-- **Bảo mật:** Mật khẩu được băm trước khi lưu trữ; JWT secret được quản lý qua biến môi trường và không lưu trực tiếp trong mã nguồn.
+- **Đăng xuất:** Backend xác định phiên qua Access JWT còn hiệu lực hoặc Refresh Cookie hợp lệ, sau đó thu hồi phiên trong `auth_sessions`. Frontend xóa Access JWT và Backend yêu cầu xóa Refresh Cookie. JWT thuộc phiên đã thu hồi không thể tiếp tục sử dụng.
+- **Bảo mật:** Mật khẩu được băm trước khi lưu trữ; JWT secret và thời hạn token được quản lý qua biến môi trường. Refresh Cookie sử dụng `HttpOnly`, `Secure` khi triển khai qua HTTPS và cấu hình `SameSite` phù hợp; các API sử dụng Cookie cần được bảo vệ trước CSRF.
 
 ## 6. Kiến trúc triển khai và cấu hình
 
 - **Đóng gói:** Frontend (React/Vite), Backend (Go/Gin) và PostgreSQL được tổ chức thành các container riêng biệt, quản lý bằng Docker Compose.
-- **Cấu hình:** Backend sử dụng biến môi trường để quản lý kết nối PostgreSQL, JWT secret và cổng ứng dụng; không hardcode thông tin nhạy cảm.
-- **Lưu trữ:** PostgreSQL sử dụng Docker volume để duy trì dữ liệu khi container khởi động lại.
+- **Cấu hình:** Backend sử dụng biến môi trường để quản lý kết nối PostgreSQL, JWT secret, thời hạn Access/Refresh Token và cổng ứng dụng; không hardcode thông tin nhạy cảm.
+- **Lưu trữ:** PostgreSQL sử dụng Docker volume để duy trì dữ liệu khi container khởi động lại, bao gồm các phiên đăng nhập.
 - **Triển khai:** Môi trường phát triển có thể sử dụng HTTP; môi trường triển khai thực tế phải sử dụng HTTPS.
 - **Khởi chạy:** Hệ thống được khởi chạy theo hướng dẫn trong `README.md`.
