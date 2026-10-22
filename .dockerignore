@@ -1,0 +1,7 @@
+.git
+.cache
+tmp
+database/sources/*preview*
+database/tools/__pycache__
+database/tests/__pycache__
+.env

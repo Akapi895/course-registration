@@ -163,7 +163,7 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 
 ## 4. Kiến trúc dữ liệu
 
-- **Tổng quan dữ liệu:** Hệ thống sử dụng PostgreSQL với 8 bảng để lưu trữ người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập. Cấu trúc bảng và các quan hệ được mô tả chi tiết trong `database-design.md`.
+- **Tổng quan dữ liệu:** Hệ thống sử dụng PostgreSQL với 9 bảng để lưu trữ người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần, phiên đăng nhập và kết quả học tập. Cấu trúc bảng và các quan hệ được mô tả chi tiết trong `database-design.md`.
 - **Truy cập dữ liệu:** Tầng Repository chịu trách nhiệm truy vấn và cập nhật PostgreSQL. Tầng Service xử lý logic nghiệp vụ và truy cập dữ liệu thông qua Repository, không thực hiện truy vấn SQL trực tiếp.
 - **Giao dịch và tính nhất quán:** Đăng ký và hủy học phần sử dụng database transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Các thay đổi chỉ được ghi nhận khi toàn bộ thao tác thành công.
 - **Dữ liệu xác thực:** Bảng `auth_sessions` lưu trạng thái phiên và hash Refresh Token; không lưu Access JWT. Phiên hết hạn hoặc đã bị thu hồi không được sử dụng để truy cập API hoặc làm mới token.

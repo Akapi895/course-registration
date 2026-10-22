@@ -46,6 +46,8 @@ __pycache__/
 # Misc
 *.tmp
 .cache/
+__pycache__/
+*.py[cod]
 
 CLAUDE.md
 AGENTS.md

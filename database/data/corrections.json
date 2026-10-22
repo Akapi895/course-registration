@@ -1,0 +1,27 @@
+{
+  "fet:ELT2036": {
+    "name": "Kỹ thuật điện từ",
+    "source": "fet.pdf trang 9, dòng học phần 34",
+    "reason": "Bảng có ô bị chia, ký tự đầu bị cắt khi trích xuất; đối chiếu tên trong ô gốc."
+  },
+  "fet:ELT3212": {
+    "name": "Mạng truyền thông máy tính 1",
+    "source": "fet.pdf trang 9, dòng học phần 35",
+    "reason": "Bảng có ô bị chia, ký tự đầu bị cắt khi trích xuất; đối chiếu tên trong ô gốc."
+  },
+  "cntt:PHI1006": {
+    "name": "Triết học Mác – Lênin",
+    "reason": "Loại chú thích khối kiến thức bị ghép vào tên; chuẩn hóa dấu gạch với PDF FET trang 7.",
+    "source": "cntt-19.html, dòng học phần 1; fet.pdf trang 7"
+  },
+  "cntt:INT4050": {
+    "name": "Khóa luận tốt nghiệp",
+    "source": "cntt-23.html, dòng học phần 69",
+    "reason": "Loại phần tiếp nối tiêu đề khối V.4 khỏi tên học phần."
+  },
+  "cntt:INT3509": {
+    "name": "Dự án (bắt buộc)",
+    "source": "cntt-23.html, dòng học phần 71",
+    "reason": "Loại phần tiếp nối tiêu đề Các học phần thay thế khóa luận tốt nghiệp."
+  }
+}
