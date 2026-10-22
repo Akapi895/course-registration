@@ -1,12 +1,22 @@
+// @title           Course Registration API
+// @version         1.0
+// @description     API quản lý và đăng ký học phần (Phase 1). Đăng nhập tại POST /api/auth/login, rồi bấm Authorize và nhập "Bearer <access_token>".
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
+// @description     Nhập đúng dạng "Bearer <access_token>": có chữ Bearer, một khoảng trắng, rồi token.
 package main
 
 import (
 	"context"
 	"log"
 
+	_ "github.com/Akapi895/course-registration/backend/docs"
 	"github.com/Akapi895/course-registration/backend/internal/config"
+	"github.com/Akapi895/course-registration/backend/internal/controller"
 	"github.com/Akapi895/course-registration/backend/internal/repository"
-	"github.com/gin-gonic/gin"
+	"github.com/Akapi895/course-registration/backend/internal/service"
 )
 
 func main() {
@@ -21,12 +31,13 @@ func main() {
 	}
 	defer pool.Close()
 
-	r := gin.Default()
+	auth := service.NewAuthService(
+		cfg,
+		repository.NewUserRepository(pool),
+		repository.NewSessionRepository(pool),
+	)
 
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "success", "data": gin.H{}})
-	})
-
+	r := controller.NewRouter(auth)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}

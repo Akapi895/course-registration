@@ -1,0 +1,172 @@
+basePath: /
+definitions:
+  controller.emptySuccessResponse:
+    properties:
+      data:
+        type: object
+      status:
+        example: success
+        type: string
+    type: object
+  controller.failData:
+    properties:
+      code:
+        example: UNAUTHORIZED
+        type: string
+      message:
+        example: Chưa đăng nhập hoặc phiên không hợp lệ
+        type: string
+    type: object
+  controller.failResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.failData'
+      status:
+        example: fail
+        type: string
+    type: object
+  controller.loginData:
+    properties:
+      access_token:
+        type: string
+    type: object
+  controller.loginRequest:
+    properties:
+      password:
+        example: DemoUET@123
+        type: string
+      username:
+        example: student001
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  controller.loginSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.loginData'
+      status:
+        example: success
+        type: string
+    type: object
+  controller.meData:
+    properties:
+      full_name:
+        example: Sinh viên giả lập 001
+        type: string
+      id:
+        example: 7
+        type: integer
+      role:
+        example: student
+        type: string
+      student_code:
+        example: DEMO00001
+        type: string
+      username:
+        example: student001
+        type: string
+    type: object
+  controller.meSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.meData'
+      status:
+        example: success
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API quản lý và đăng ký học phần (Phase 1). Đăng nhập tại POST /api/auth/login,
+    rồi bấm Authorize và nhập "Bearer <access_token>".
+  title: Course Registration API
+  version: "1.0"
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Trả về access JWT và tạo một phiên trong auth_sessions.
+      parameters:
+      - description: Thông tin đăng nhập
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.loginSuccessResponse'
+        "400":
+          description: VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "401":
+          description: INVALID_CREDENTIALS
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      summary: Đăng nhập
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      description: Thu hồi phiên của JWT hiện tại. Sau đó JWT này bị từ chối.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.emptySuccessResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Đăng xuất và thu hồi phiên
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.meSuccessResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Thông tin người dùng hiện tại
+      tags:
+      - auth
+securityDefinitions:
+  BearerAuth:
+    description: 'Nhập đúng dạng "Bearer <access_token>": có chữ Bearer, một khoảng
+      trắng, rồi token.'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

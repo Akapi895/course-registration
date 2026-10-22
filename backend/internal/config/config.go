@@ -10,7 +10,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds the application settings read from environment variables.
 type Config struct {
 	Port        string
 	DatabaseURL string
@@ -19,14 +18,12 @@ type Config struct {
 	SessionTTL  time.Duration
 }
 
-// Load reads the settings from the environment and validates them.
-// For local development it first loads a .env file if one exists; variables
-// already set in the environment take precedence over the file.
+// Load reads the settings from the environment. A .env file in the current or
+// parent directory fills in values that are not already set.
 func Load() (*Config, error) {
 	loadDotEnv()
 
 	var problems []string
-
 	cfg := &Config{
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
@@ -57,9 +54,6 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
-// loadDotEnv looks for .env in the current directory, then in the parent
-// directory, so it works when run from backend/ or from the repository root.
-// A missing file is not an error.
 func loadDotEnv() {
 	for _, path := range []string{".env", "../.env"} {
 		if _, err := os.Stat(path); err == nil {
