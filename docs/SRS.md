@@ -155,7 +155,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 - Dữ liệu trao đổi sử dụng định dạng JSON.
 - Tài liệu API sử dụng OpenAPI/Swagger, dự kiến truy cập tại `/swagger` hoặc `/docs`.
 - Endpoint được bảo vệ yêu cầu token trong header `Authorization: Bearer <token>`.
-- API phải trả mã trạng thái HTTP và thông báo lỗi nhất quán. Mã lỗi nghiệp vụ và cấu trúc lỗi được mô tả trong `docs/api-design.md`.
+- API phải trả mã trạng thái HTTP và thông báo lỗi nhất quán. Cấu trúc request và response của từng endpoint được mô tả trong `docs/api-design.md`.
 
 ### 5.2. Danh sách endpoint
 
@@ -198,13 +198,6 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | PUT | `/api/classes/{id}` | Cập nhật thông tin lớp học phần | Quản trị viên |
 | DELETE | `/api/classes/{id}` | Xóa hoặc hủy lớp học phần | Quản trị viên |
 | PUT | `/api/registration-period` | Cấu hình thời gian mở và đóng đăng ký học phần | Quản trị viên |
-
-#### 5.2.6. Dữ liệu tham chiếu
-
-| Phương thức | Endpoint | Mô tả | Quyền truy cập |
-|---|---|---|---|
-| GET | `/api/semesters` | Lấy danh sách học kỳ kèm thời gian mở và đóng đăng ký | Quản trị viên hoặc sinh viên |
-| GET | `/api/courses` | Lấy danh sách học phần, có thể lọc theo khoa | Quản trị viên hoặc sinh viên |
 
 ### 5.3. Yêu cầu dữ liệu request/response
 

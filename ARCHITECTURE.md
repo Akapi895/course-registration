@@ -42,7 +42,7 @@ course-registration/
 - **Một file cho mỗi tài nguyên trong mỗi tầng.** Ví dụ `class.go` xuất hiện trong `controller/`, `service/` và `repository/`. Không tách thêm `dto/` hay `model/`.
 - **Phụ thuộc chỉ đi một chiều:** `controller → service → repository`. Controller không chứa SQL. Service không import `gin`.
 - **Struct request và response** nằm trong `controller/`. **Struct theo bảng** nằm trong `repository/` và được service dùng chung.
-- **Lỗi nghiệp vụ** là biến khai báo trong `service/errors.go`, ví dụ `ErrClassFull`. Controller ánh xạ sang mã HTTP và mã lỗi theo `docs/api-design.md`.
+- **Lỗi nghiệp vụ** là biến khai báo trong `service/errors.go`, ví dụ `ErrClassFull`. Controller ánh xạ sang HTTP status và mã lỗi (`data.code`) theo `docs/api-design.md`.
 - **JWT và băm mật khẩu** nằm trong `service/auth.go`. Middleware trong `controller/middleware.go` gọi service để xác minh token và kiểm tra phiên.
 - **Repository trả `nil` khi không tìm thấy bản ghi.** Khi vi phạm ràng buộc UNIQUE, repository trả `ErrDuplicate` để service chuyển thành lỗi nghiệp vụ.
 - **Route nằm trong `controller/router.go`**, gắn middleware theo nhóm endpoint.
@@ -147,7 +147,7 @@ sequenceDiagram
     end
 ```
 
-Service kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết và giới hạn tín chỉ. Thứ tự kiểm tra và câu lệnh cập nhật sĩ số nằm trong `docs/api-design.md` mục 4.
+Service kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết và giới hạn tín chỉ. Câu lệnh cập nhật sĩ số được mô tả trong ADR-02.
 
 Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở hữu và điều kiện hủy, sau đó cập nhật trạng thái đăng ký và sĩ số trong cùng transaction. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận. Khi đăng ký lại một lớp đã hủy, hệ thống cập nhật bản ghi đăng ký cũ thay vì tạo bản ghi trùng.
 
