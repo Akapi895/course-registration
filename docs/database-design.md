@@ -123,7 +123,7 @@ Mỗi phiên đăng nhập thuộc về một người dùng. Backend lưu giá 
 | `course_id` | BIGINT | PK ghép, FK → `courses.id` |
 | `passed` | BOOLEAN | NOT NULL; kết quả đạt/chưa đạt học phần |
 
-Khóa chính ghép (`student_id`, `course_id`) bảo đảm mỗi sinh viên chỉ có một kết quả cho mỗi học phần. Trường `passed` được sử dụng để kiểm tra điều kiện tiên quyết khi đăng ký học phần.
+Khóa chính ghép (`student_id`, `course_id`) bảo đảm mỗi sinh viên chỉ có một kết quả cho mỗi học phần. Trường `passed` được sử dụng để kiểm tra điều kiện tiên quyết khi đăng ký học phần. Chỉ mục phụ trên `course_id` hỗ trợ kiểm tra khóa ngoại khi cập nhật hoặc xóa học phần và truy vấn kết quả theo học phần.
 
 ## 4. Ràng buộc và tính toàn vẹn dữ liệu
 

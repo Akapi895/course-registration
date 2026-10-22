@@ -127,6 +127,7 @@ Table course_results {
 
   indexes {
     (student_id, course_id) [pk]
+    course_id
   }
 }
 

@@ -72,3 +72,10 @@ CREATE TABLE auth_sessions (
  revoked_at TIMESTAMPTZ
 );
 CREATE INDEX ON auth_sessions(user_id);
+CREATE TABLE course_results (
+ student_id BIGINT NOT NULL REFERENCES users(id),
+ course_id BIGINT NOT NULL REFERENCES courses(id),
+ passed BOOLEAN NOT NULL,
+ PRIMARY KEY (student_id, course_id)
+);
+CREATE INDEX ON course_results(course_id);

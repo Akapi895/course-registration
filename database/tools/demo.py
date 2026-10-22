@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from crawl import ROOT, FACULTIES, MAJORS
 
 TABLES = ['users', 'semesters', 'courses', 'course_prerequisites', 'course_classes',
-          'class_schedules', 'registrations', 'auth_sessions']
+          'class_schedules', 'registrations', 'auth_sessions', 'course_results']
 
 
 def generate(reference_date, random_seed):
@@ -73,6 +73,20 @@ def generate(reference_date, random_seed):
     for student in range(6, 101):
         # One class/student, keeping room for all controlled edge cases.
         register(student, rng.choice(list(range(17,35)) if student <= 50 else list(range(36,69))))
+    # Every prerequisite of a registered class is passed, so the fixture meets the rule the backend enforces.
+    prerequisites_of = {}
+    for edge in data['course_prerequisites']:
+        prerequisites_of.setdefault(edge['course_id'], set()).add(edge['prerequisite_course_id'])
+    for student in range(1, 101):
+        passed = set()
+        for r in data['registrations']:
+            if r['student_id'] == student and r['status'] == 'registered':
+                passed |= prerequisites_of.get(data['course_classes'][r['class_id']-1]['course_id'], set())
+        data['course_results'].extend(dict(student_id=student, course_id=c, passed=True) for c in sorted(passed))
+        # Some students also have a failed course that is not a prerequisite of any registered class.
+        if student % 5 == 0:
+            failed = rng.choice([c['id'] for c in data['courses'] if c['id'] not in passed])
+            data['course_results'].append(dict(student_id=student, course_id=failed, passed=False))
     def target(class_id):
         c = data['course_classes'][class_id-1]
         return dict(class_id=class_id, class_code=c['class_code'])
@@ -89,4 +103,4 @@ def generate(reference_date, random_seed):
         ('Lớp đã hủy','student001',3,'Lớp cancelled')]]
     return data, dict(reference_date=reference_date, random_seed=random_seed,
         password='DemoUET@123', max_credits_note='12 là cấu hình demo, không phải quy định UET',
-        scenarios=scenarios, prerequisite_check='Chưa hỗ trợ kết quả học tập; không nghiệm thu luật đạt tiên quyết')
+        scenarios=scenarios, prerequisite_check='Mọi tiên quyết của đăng ký hiện hành đã đạt; luật đăng ký mới do backend kiểm tra')

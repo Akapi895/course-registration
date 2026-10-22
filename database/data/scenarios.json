@@ -75,5 +75,5 @@
       "expected": "Lớp cancelled"
     }
   ],
-  "prerequisite_check": "Chưa hỗ trợ kết quả học tập; không nghiệm thu luật đạt tiên quyết"
+  "prerequisite_check": "Mọi tiên quyết của đăng ký hiện hành đã đạt; luật đăng ký mới do backend kiểm tra"
 }

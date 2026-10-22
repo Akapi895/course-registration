@@ -35,7 +35,7 @@ def migrate(conn):
         conn.execute(migration)
         metadata = json.dumps(dict(migration=digest, schema=schema_fingerprint(conn)))
         conn.execute(sql.SQL('COMMENT ON TABLE users IS {}').format(sql.Literal(metadata)))
-        print('Applied 001_initial.sql (8 tables)')
+        print(f'Applied 001_initial.sql ({len(TABLES)} tables)')
     else:
         if {r['tablename'] for r in tables} != set(TABLES):
             raise ValueError('Database has unexpected tables; refusing migration')
@@ -46,14 +46,23 @@ def migrate(conn):
         print('Migration already applied; schema verified')
 
 
+COMPOSITE_KEYS = {
+    'course_prerequisites': ('course_id', 'prerequisite_course_id'),
+    'course_results': ('student_id', 'course_id'),
+}
+
+
+def row_key(table):
+    return COMPOSITE_KEYS.get(table, ('id',))
+
+
 def read_table(conn, table):
-    order = 'course_id, prerequisite_course_id' if table == 'course_prerequisites' else 'id'
+    order = ', '.join(row_key(table))
     return conn.execute(sql.SQL('SELECT * FROM {} ORDER BY ' + order).format(sql.Identifier(table))).fetchall()
 
 
 def sorted_rows(table, rows):
-    keys = ('course_id','prerequisite_course_id') if table == 'course_prerequisites' else ('id',)
-    return sorted(rows, key=lambda r: tuple(r[k] for k in keys))
+    return sorted(rows, key=lambda r: tuple(r[k] for k in row_key(table)))
 
 
 def seed(conn, data):
@@ -72,7 +81,7 @@ def seed(conn, data):
             conn.execute(sql.SQL('INSERT INTO {} ({}) VALUES ({})').format(sql.Identifier(table),
                 sql.SQL(',').join(map(sql.Identifier,columns)),
                 sql.SQL(',').join(sql.Placeholder() for _ in columns)), list(row.values()))
-        if data[table] and table != 'course_prerequisites':
+        if data[table] and table not in COMPOSITE_KEYS:
             conn.execute("SELECT setval(pg_get_serial_sequence(%s,'id'), %s)",
                          (table,max(r['id'] for r in data[table])))
     print('Seed inserted atomically')
@@ -94,7 +103,13 @@ def validate_fixture(data):
             visit(child,path|{node})
     for node in graph:
         visit(node,set())
+    results = {(r['student_id'],r['course_id']):r['passed'] for r in data['course_results']}
+    for result in data['course_results']:
+        assert users[result['student_id']]['role']=='student'
     active = [r for r in data['registrations'] if r['status']=='registered']
+    for registration in active:
+        for prerequisite in graph.get(classes[registration['class_id']]['course_id'],[]):
+            assert results.get((registration['student_id'],prerequisite)) is True, 'Registered class lacks a passed prerequisite'
     semesters = {s['id']:s for s in data['semesters']}
     for registration in data['registrations']:
         cls = classes[registration['class_id']]
@@ -146,6 +161,10 @@ def verify(conn, expected):
         ("UPDATE registrations SET status='invalid' WHERE id=1", '23514'),
         ("INSERT INTO registrations(student_id,class_id) VALUES (1,4)", '23505'),
         ("INSERT INTO auth_sessions(user_id,refresh_token_hash,expires_at) VALUES (-1,'demo',now())", '23503'),
+        ("INSERT INTO course_results(student_id,course_id,passed) SELECT student_id,course_id,true FROM course_results ORDER BY student_id,course_id LIMIT 1", '23505'),
+        ("INSERT INTO course_results(student_id,course_id,passed) VALUES (1,1,NULL)", '23502'),
+        ("INSERT INTO course_results(student_id,course_id,passed) VALUES (-1,1,true)", '23503'),
+        ("INSERT INTO course_results(student_id,course_id,passed) VALUES (1,-1,true)", '23503'),
         ("DELETE FROM course_classes WHERE id=4", '23503')]
     for query, state in probes:
         try:
@@ -227,7 +246,7 @@ def main():
         return
     if args.command=='reset':
         if not args.confirm_reset:
-            raise ValueError('Reset deletes all 8 tables of demo data. Pass --confirm-reset explicitly.')
+            raise ValueError(f'Reset deletes all {len(TABLES)} tables of demo data. Pass --confirm-reset explicitly.')
         with connect() as conn:
             migrate(conn)
             conn.execute(sql.SQL('TRUNCATE {} RESTART IDENTITY').format(sql.SQL(',').join(map(sql.Identifier,TABLES))))

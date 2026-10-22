@@ -66,6 +66,10 @@ class FixtureTests(unittest.TestCase):
         wrong['course_prerequisites']=[dict(course_id=1,prerequisite_course_id=2),dict(course_id=2,prerequisite_course_id=1)]
         with self.assertRaises(AssertionError):
             validate_fixture(wrong)
+        wrong=copy.deepcopy(data)
+        wrong['course_results']=[r for r in data['course_results'] if not r['passed']]
+        with self.assertRaises(AssertionError):
+            validate_fixture(wrong)
 
     def test_catalog_provenance_and_coverage(self):
         catalog=json.loads((ROOT/'data/catalog.json').read_text(encoding='utf-8'))

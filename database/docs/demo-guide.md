@@ -21,7 +21,7 @@ docker compose ps
 
 Lần build đầu cần Internet để tải image/thư viện. Seed dùng catalog đã lưu, không cần crawl UET lại. Các service công cụ dùng chung image; khi sửa requirements hoặc Dockerfile, chạy lại `docker compose build seed`. Mã Python và dataset được bind mount nên lần chạy tiếp theo đọc trực tiếp thay đổi trong repo.
 
-Kết quả mong đợi: service `db` có trạng thái `healthy`; verify in `PASS` và các số lượng: 102 users, 3 semesters, 126 courses, 83 course_prerequisites, 80 course_classes, 82 class_schedules, 104 registrations, 0 auth_sessions. Seed lần hai báo `Identical demo already exists; no changes`.
+Kết quả mong đợi: service `db` có trạng thái `healthy`; verify in `PASS` và các số lượng: 102 users, 3 semesters, 126 courses, 83 course_prerequisites, 80 course_classes, 82 class_schedules, 104 registrations, 0 auth_sessions, 98 course_results. Seed lần hai báo `Identical demo already exists; no changes`.
 
 `.env` local hiện đặt `POSTGRES_PORT=55432` vì Windows từ chối bind cổng 5432. File `.env.example` vẫn mặc định 5432; nếu tạo lại `.env` từ file mẫu trên máy này, đổi lại thành 55432 trước khi chạy `docker compose up -d db`. Cổng nội bộ giữa các container luôn là `db:5432`.
 
@@ -47,7 +47,7 @@ Nếu đã đổi `POSTGRES_USER`/`POSTGRES_DB`, thay hai giá trị tương ứ
 
 ## 3. Xem dữ liệu mẫu trong psql
 
-Các khối SQL bên dưới chạy trong `psql`, không chạy trực tiếp trong PowerShell. Tắt phân trang để dễ xem, liệt kê đúng 8 bảng:
+Các khối SQL bên dưới chạy trong `psql`, không chạy trực tiếp trong PowerShell. Tắt phân trang để dễ xem, liệt kê đúng 9 bảng:
 
 ```sql
 \pset pager off
@@ -94,6 +94,16 @@ Xem sĩ số lớp đầy (1), còn một chỗ (2), đã hủy (3) và lớp đ
 ```sql
 SELECT id, class_code, status, enrolled, max_capacity
 FROM course_classes WHERE id IN (1,2,3,7) ORDER BY id;
+```
+
+Xem kết quả học tập của `student001`, dùng để kiểm tra tiên quyết của các đăng ký hiện hành:
+
+```sql
+SELECT cr.course_id, c.code, c.name, cr.passed
+FROM course_results cr
+JOIN courses c ON c.id = cr.course_id
+WHERE cr.student_id = 1
+ORDER BY cr.course_id;
 ```
 
 Danh sách đầy đủ 10 tình huống cùng tài khoản, mã lớp và kết quả mong đợi nằm trong [scenarios.json](../data/scenarios.json). Ví dụ `student001` đăng ký lớp 5 sẽ trùng lịch lớp 4; `student002` đăng ký lớp 14 sẽ vượt 12 tín chỉ. Backend sau này phải kiểm tra và trả lỗi nghiệp vụ; database hiện không tự từ chối mọi tình huống này.
@@ -150,7 +160,7 @@ Tests dùng nguồn đã lưu; verify kiểm tra schema, fixture, DAG tiên quy�
 
 ## 6. Reset khi chủ động muốn bỏ thay đổi demo
 
-Reset **xóa toàn bộ dữ liệu trong 8 bảng**, giữ schema. Không cần reset nếu chỉ chạy các truy vấn đọc và transaction rollback ở trên.
+Reset **xóa toàn bộ dữ liệu trong 9 bảng**, giữ schema. Không cần reset nếu chỉ chạy các truy vấn đọc và transaction rollback ở trên.
 
 ```powershell
 docker compose run --rm seed reset --confirm-reset

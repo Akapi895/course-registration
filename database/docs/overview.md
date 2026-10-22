@@ -5,7 +5,7 @@ Tài liệu database được tổ chức tại thư mục này:
 - [Chạy demo local](demo-guide.md): khởi động, kết nối, truy vấn và thử transaction.
 - [Nguồn dữ liệu và crawler](data-sources.md): nguồn CTĐT, cách cập nhật và rà soát dữ liệu.
 
-PostgreSQL triển khai đúng **8 bảng** theo [thiết kế database](../../docs/database-design.md) và [DBML](../../docs/database.dbml). Dự án chưa có backend/API/frontend; tài khoản, lớp, lịch và đăng ký là fixture phục vụ phát triển.
+PostgreSQL triển khai đúng **9 bảng** theo [thiết kế database](../../docs/database-design.md) và [DBML](../../docs/database.dbml). Dự án chưa có backend/API/frontend; tài khoản, lớp, lịch và đăng ký là fixture phục vụ phát triển.
 
 Các đường dẫn dạng `database/...` và mọi lệnh shell trong bộ tài liệu đều tính từ thư mục gốc repository.
 
@@ -22,6 +22,7 @@ Các đường dẫn dạng `database/...` và mọi lệnh shell trong bộ tà
 | Lớp | 80: 35 chuyên ngành CNTT, 35 chuyên ngành ĐTVT, 6 lớp chung, 4 lớp ở học kỳ khác |
 | Buổi học | 82 |
 | Đăng ký | 104, gồm 103 đang đăng ký và 1 đã hủy |
+| Kết quả học tập | 98, gồm 78 đạt và 20 chưa đạt |
 | Phiên đăng nhập | 0 |
 
 Username `student001` … `student100`, `admin1`, `admin2`; cùng mật khẩu demo **`DemoUET@123`**, lưu bcrypt cost 12. Các tài khoản này chỉ dùng phát triển local. File `database/data/demo-password.json` chứa hash cố định để seed lặp lại giống nhau; bcrypt xác thực được bằng Go.
@@ -32,11 +33,11 @@ Ngày neo mặc định `REFERENCE_DATE=2026-10-20`, múi giờ `Asia/Ho_Chi_Min
 
 Seed chạy trong một transaction, khóa bảng để tránh thay đổi đồng thời. Nếu database rỗng thì nạp; nếu toàn bộ nội dung giống fixture thì không làm gì; dữ liệu khác bị từ chối, kể cả thay đổi từ thao tác demo/API. Migration kiểm tra checksum migration và fingerprint schema ghi trong comment bảng `users`, không thêm bảng migration thứ 9.
 
-## Giới hạn ánh xạ vào 8 bảng
+## Giới hạn ánh xạ vào 9 bảng
 
 - `courses.code` là duy nhất. Học phần xuất hiện ở cả hai CTĐT hoặc chưa xác định khoa sở hữu được gắn nhãn quy ước `Liên khoa`, `major=NULL`. Với học phần chuyên ngành, faculty/major là nhãn phục vụ demo, không khẳng định đơn vị giảng dạy thực tế.
-- Schema không lưu khóa tuyển sinh, nhóm tự chọn, tín chỉ tối thiểu mỗi nhóm hay quan hệ nhiều ngành–một môn. Những thông tin này nằm ngoài DB trong catalog; không thể tái dựng đầy đủ CTĐT chỉ từ 8 bảng.
-- Không có bảng kết quả học tập. Quan hệ tiên quyết không chứng minh sinh viên đã đạt môn; không nghiệm thu kiểm tra đạt tiên quyết với bộ seed này.
+- Schema không lưu khóa tuyển sinh, nhóm tự chọn, tín chỉ tối thiểu mỗi nhóm hay quan hệ nhiều ngành–một môn. Những thông tin này nằm ngoài DB trong catalog; không thể tái dựng đầy đủ CTĐT chỉ từ 9 bảng.
+- Bảng `course_results` chỉ là kết quả đạt/chưa đạt do fixture sinh, không phải bảng điểm thật. Fixture bảo đảm mọi tiên quyết của đăng ký hiện hành đã đạt; luật này khi đăng ký mới vẫn do backend kiểm tra.
 - Khác biệt tiên quyết giữa hai phiên bản CTĐT được báo cáo và bỏ khỏi DB cho học phần đó. Không gộp chúng thành điều kiện bắt buộc mới. Mã tiên quyết không tồn tại không được tự tạo môn để đủ FK.
 - Không có dữ liệu cá nhân sinh viên thật; tên giảng viên, phòng, lịch và sĩ số không phải thời khóa biểu chính thức UET.
 - Theo thiết kế, quyền sinh viên, trùng lịch, tín chỉ, thời gian đăng ký và cập nhật sĩ số nhất quán do backend thực hiện. Không thêm trigger thay nghiệp vụ.
