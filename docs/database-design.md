@@ -108,12 +108,12 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 |---|---|---|
 | `id` | UUID | PK, DEFAULT `gen_random_uuid()` |
 | `user_id` | BIGINT | NOT NULL, FK → `users.id` |
-| `refresh_token_hash` | TEXT | NOT NULL; giá trị băm của Refresh Token |
+| `refresh_token_hash` | TEXT | NOT NULL; hash của một chuỗi ngẫu nhiên tạo khi đăng nhập, không trả về client (Phase 1 không dùng Refresh Token) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT `now()` |
 | `expires_at` | TIMESTAMPTZ | NOT NULL; thời điểm hết hạn phiên |
 | `revoked_at` | TIMESTAMPTZ | Có thể NULL; thời điểm thu hồi phiên |
 
-Mỗi phiên đăng nhập thuộc về một người dùng. Backend lưu giá trị băm của Refresh Token và sử dụng `expires_at`, `revoked_at` để xác định phiên còn hiệu lực hay đã hết hạn hoặc bị thu hồi.
+Mỗi phiên đăng nhập thuộc về một người dùng. Backend sử dụng `expires_at` và `revoked_at` để xác định phiên còn hiệu lực hay đã hết hạn hoặc bị thu hồi. Đăng xuất đặt `revoked_at`. Cột `refresh_token_hash` được giữ theo schema hiện tại; nên bỏ cột này khi có thay đổi schema sau này.
 
 ### 3.9. `course_results` – Kết quả học tập
 
