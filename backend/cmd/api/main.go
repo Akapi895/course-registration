@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/Akapi895/course-registration/backend/internal/config"
+	"github.com/Akapi895/course-registration/backend/internal/repository"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,6 +14,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	pool, err := repository.NewPool(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
 
 	r := gin.Default()
 
