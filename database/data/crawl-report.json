@@ -1,0 +1,211 @@
+{
+  "course_count": 126,
+  "membership_count": 144,
+  "by_program": {
+    "cntt": 66,
+    "fet": 74
+  },
+  "issues": [
+    {
+      "source": "fet.pdf",
+      "page": 8,
+      "row": 6,
+      "reason": "missing_code",
+      "raw": [
+        "10",
+        "",
+        "Kỹ năng bổ trợ\nSoft Skills",
+        "3",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "source": "fet.pdf",
+      "page": 8,
+      "row": 7,
+      "reason": "missing_code",
+      "raw": [
+        "11",
+        "",
+        "Giáo dục thể chất\nPhysical Education",
+        "4",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "source": "fet.pdf",
+      "page": 8,
+      "row": 8,
+      "reason": "missing_code",
+      "raw": [
+        "12",
+        "",
+        "Giáo dục quốc phòng – an\nninh\nNational Defence Education",
+        "8",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "source": "fet.pdf",
+      "page": 13,
+      "row": 14,
+      "reason": "missing_code",
+      "raw": [
+        "82",
+        "",
+        "3 tín chỉ từ danh sách các học\nphần tự chọn theo các định\nhướng mà sinh viên chưa học",
+        "3",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "source": "cntt-19.html",
+      "page": 19,
+      "line": 34,
+      "reason": "missing_code_or_credits",
+      "raw": "              7                                                      4"
+    },
+    {
+      "source": "cntt-19.html",
+      "page": 19,
+      "line": 37,
+      "reason": "missing_code_or_credits",
+      "raw": "              8                                                      8"
+    },
+    {
+      "source": "cntt-23.html",
+      "page": 23,
+      "line": 13,
+      "reason": "missing_code_or_credits",
+      "raw": "              66    01 môn thuộc ngành ĐTVT                          3"
+    },
+    {
+      "source": "cntt-23.html",
+      "page": 23,
+      "line": 15,
+      "reason": "missing_code_or_credits",
+      "raw": "              67    01 môn thuộc khối ngành Kinh tế                  3"
+    },
+    {
+      "source": "cntt-23.html",
+      "page": 23,
+      "line": 16,
+      "reason": "missing_code_or_credits",
+      "raw": "              68    01 môn thuộc khối ngành Luật                     3"
+    },
+    {
+      "source": "cntt-23.html",
+      "page": 23,
+      "line": 23,
+      "reason": "missing_code_or_credits",
+      "raw": "              70"
+    },
+    {
+      "source": "cntt-23.html",
+      "page": 23,
+      "line": 29,
+      "reason": "missing_code_or_credits",
+      "raw": "              72                tự chọn theo các định hướng mà       3"
+    },
+    {
+      "source": "fet.pdf",
+      "page": 8,
+      "row": 17,
+      "ordinal": 19,
+      "code": "ELT2035",
+      "name": "Tín hiệu và hệ thống",
+      "credits": 3,
+      "block": "Khối kiến thức theo khối ngành",
+      "kind": "elective",
+      "prerequisite_raw": "MAT1041",
+      "program": "fet",
+      "reason": "prerequisites_vary_between_programs"
+    },
+    {
+      "source": "fet.pdf",
+      "page": 12,
+      "row": 17,
+      "ordinal": 72,
+      "code": "INT3103",
+      "name": "Tối ưu hóa",
+      "credits": 3,
+      "block": "Khối kiến thức bổ trợ",
+      "kind": "elective",
+      "prerequisite_raw": "INT1050",
+      "program": "fet",
+      "reason": "prerequisites_vary_between_programs"
+    },
+    {
+      "source": "cntt-20.html",
+      "page": 20,
+      "line": 6,
+      "ordinal": 16,
+      "code": "ELT2035",
+      "name": "Tín hiệu và hệ thống",
+      "credits": 3,
+      "block": "Khối kiến thức theo khối ngành",
+      "kind": "required",
+      "prerequisite_raw": "MAT1042",
+      "program": "cntt",
+      "reason": "prerequisites_vary_between_programs"
+    },
+    {
+      "source": "cntt-21.html",
+      "page": 21,
+      "line": 60,
+      "ordinal": 45,
+      "code": "INT3213",
+      "name": "Nhập môn an toàn thông tin",
+      "credits": 3,
+      "block": "Khối kiến thức ngành tự chọn",
+      "kind": "elective",
+      "prerequisite_raw": "INT3201",
+      "program": "cntt",
+      "reason": "missing_prerequisite_target",
+      "target": "INT3201"
+    },
+    {
+      "source": "cntt-22.html",
+      "page": 22,
+      "line": 8,
+      "ordinal": 47,
+      "code": "INT3211",
+      "name": "Tích hợp hệ thống",
+      "credits": 3,
+      "block": "Khối kiến thức ngành tự chọn",
+      "kind": "elective",
+      "prerequisite_raw": "INT3201",
+      "program": "cntt",
+      "reason": "missing_prerequisite_target",
+      "target": "INT3201"
+    },
+    {
+      "source": "cntt-23.html",
+      "page": 23,
+      "line": 11,
+      "ordinal": 65,
+      "code": "INT3103",
+      "name": "Tối ưu hóa",
+      "credits": 3,
+      "block": "Khối kiến thức bổ trợ",
+      "kind": "elective",
+      "prerequisite_raw": "MAT1093 MAT1042",
+      "program": "cntt",
+      "reason": "prerequisites_vary_between_programs"
+    }
+  ],
+  "conflicts": [],
+  "candidate_sha256": "671e8aaea8212ddd7a110bafc1aeff55b079d929e3bf59c954e79bf973942454"
+}

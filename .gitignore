@@ -35,6 +35,7 @@ desktop.ini
 # Test coverage
 coverage/
 .nyc_output/
+__pycache__/
 
 # Database
 *.sql.gz
@@ -45,6 +46,8 @@ coverage/
 # Misc
 *.tmp
 .cache/
+__pycache__/
+*.py[cod]
 
 CLAUDE.md
 AGENTS.md

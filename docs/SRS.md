@@ -53,12 +53,13 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 |---|---|
 | 1 | Hệ thống cho phép đăng nhập bằng username và password. |
 | 2 | Hệ thống kiểm tra thông tin đăng nhập và chỉ cấp JWT khi hợp lệ. |
-| 3 | JWT chứa định danh, vai trò người dùng và thời gian hết hạn. |
+| 3 | JWT chứa định danh, vai trò người dùng, mã phiên (`sid`) và thời gian hết hạn. |
 | 4 | Client gửi JWT trong header Authorization: `Bearer <token>` đối với các API yêu cầu xác thực. |
-| 5 | Hệ thống cung cấp API đăng xuất; client xóa JWT đang lưu sau khi gọi API đăng xuất. |
+| 5 | Hệ thống cung cấp API đăng xuất để thu hồi phiên đăng nhập hiện tại; client xóa JWT đang lưu sau khi gọi API đăng xuất. |
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại. |
+| 7 | Hệ thống chỉ chấp nhận JWT khi phiên đăng nhập tương ứng còn hiệu lực và chưa bị thu hồi. |
 
-> Lưu ý: Trong Phase 1, JWT không được thu hồi phía Backend.
+> Lưu ý: Phiên đăng nhập được lưu trong cơ sở dữ liệu. Trong Phase 1, Backend thu hồi phiên khi đăng xuất và từ chối JWT thuộc phiên đã thu hồi hoặc đã hết hạn.
 
 ### 3.2. Tra cứu lớp học phần
 
@@ -154,7 +155,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 - Dữ liệu trao đổi sử dụng định dạng JSON.
 - Tài liệu API sử dụng OpenAPI/Swagger, dự kiến truy cập tại `/swagger` hoặc `/docs`.
 - Endpoint được bảo vệ yêu cầu token trong header `Authorization: Bearer <token>`.
-- API phải trả mã trạng thái HTTP và thông báo lỗi nhất quán.
+- API phải trả mã trạng thái HTTP và thông báo lỗi nhất quán. Cấu trúc request và response của từng endpoint được mô tả trong `docs/api-design.md`.
 
 ### 5.2. Danh sách endpoint
 
@@ -163,7 +164,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | Phương thức | Endpoint | Mô tả | Quyền truy cập |
 |---|---|---|---|
 | POST | `/api/auth/login` | Đăng nhập hệ thống, trả về JWT | Công khai |
-| POST | `/api/auth/logout` | Đăng xuất hệ thống | Đã xác thực |
+| POST | `/api/auth/logout` | Đăng xuất hệ thống và thu hồi phiên đăng nhập | Đã xác thực |
 | GET | `/api/auth/me` | Lấy thông tin người dùng hiện tại | Đã xác thực |
 
 #### 5.2.2. Quản lý sinh viên
@@ -236,6 +237,7 @@ Phase 1 tập trung hoàn thiện các chức năng nghiệp vụ và bảo đ�
 - Các API yêu cầu xác thực phải kiểm tra tính hợp lệ của token.
 - Hệ thống phân quyền truy cập dựa trên vai trò người dùng.
 - Người dùng chỉ được truy cập và thao tác trên dữ liệu thuộc phạm vi quyền hạn của mình.
+- Phiên đăng nhập được lưu trong cơ sở dữ liệu và được kiểm tra ở mỗi request được bảo vệ.
 
 ### 7.3. Công nghệ và đóng gói
 
@@ -259,7 +261,7 @@ Phase 1 ưu tiên hoàn thiện các chức năng cốt lõi, bảo đảm tính
 | STT | Tiêu chí nghiệm thu |
 |---|---|
 | 1 | Đăng nhập hợp lệ trả JWT; thông tin đăng nhập không hợp lệ bị từ chối. |
-| 2 | Các API được bảo vệ từ chối yêu cầu thiếu token, token không hợp lệ hoặc không đủ quyền truy cập. |
+| 2 | Các API được bảo vệ từ chối yêu cầu thiếu token, token không hợp lệ, token thuộc phiên đã đăng xuất hoặc không đủ quyền truy cập. |
 | 3 | Sinh viên có thể xem và cập nhật thông tin cá nhân trong phạm vi được cấp quyền; quản trị viên có thể tra cứu và cập nhật thông tin sinh viên. |
 | 4 | Sinh viên tra cứu được danh sách và thông tin chi tiết các lớp học phần đang mở. |
 | 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng. |

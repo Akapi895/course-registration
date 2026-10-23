@@ -4,13 +4,13 @@
 
 Hệ thống sử dụng PostgreSQL để lưu trữ và quản lý dữ liệu phục vụ các chức năng theo SRS Phase 1.
 
-Cơ sở dữ liệu gồm 8 bảng: quản lý người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập.
+Cơ sở dữ liệu gồm 9 bảng: quản lý người dùng, học kỳ, học phần, điều kiện tiên quyết, kết quả học tập, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập.
 
 Thiết kế sử dụng các ràng buộc cơ sở dữ liệu và transaction để bảo đảm tính toàn vẹn và nhất quán dữ liệu.
 
 ## 2. Sơ đồ quan hệ thực thể (ERD)
 
-Sơ đồ ERD được định nghĩa trong file `database.dbml` và thể hiện quan hệ giữa 8 bảng. Các quan hệ chính gồm: người dùng với đăng ký học phần và phiên đăng nhập; học kỳ và học phần với lớp học phần; lớp học phần với lịch học và đăng ký; quan hệ tiên quyết giữa các học phần.
+Sơ đồ ERD được định nghĩa trong file `database.dbml` và thể hiện quan hệ giữa 9 bảng. Các quan hệ chính gồm: người dùng với đăng ký học phần, kết quả học tập và phiên đăng nhập; học kỳ và học phần với lớp học phần; lớp học phần với lịch học và đăng ký; quan hệ tiên quyết giữa các học phần và kết quả học tập của sinh viên.
 
 ## 3. Thiết kế chi tiết các bảng
 
@@ -108,12 +108,22 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 |---|---|---|
 | `id` | UUID | PK, DEFAULT `gen_random_uuid()` |
 | `user_id` | BIGINT | NOT NULL, FK → `users.id` |
-| `refresh_token_hash` | TEXT | NOT NULL; giá trị băm của Refresh Token |
+| `refresh_token_hash` | TEXT | NOT NULL; hash của một chuỗi ngẫu nhiên tạo khi đăng nhập, không trả về client (Phase 1 không dùng Refresh Token) |
 | `created_at` | TIMESTAMPTZ | NOT NULL, DEFAULT `now()` |
 | `expires_at` | TIMESTAMPTZ | NOT NULL; thời điểm hết hạn phiên |
 | `revoked_at` | TIMESTAMPTZ | Có thể NULL; thời điểm thu hồi phiên |
 
-Mỗi phiên đăng nhập thuộc về một người dùng. Backend lưu giá trị băm của Refresh Token và sử dụng `expires_at`, `revoked_at` để xác định phiên còn hiệu lực hay đã hết hạn hoặc bị thu hồi.
+Mỗi phiên đăng nhập thuộc về một người dùng. Backend sử dụng `expires_at` và `revoked_at` để xác định phiên còn hiệu lực hay đã hết hạn hoặc bị thu hồi. Đăng xuất đặt `revoked_at`. Cột `refresh_token_hash` được giữ theo schema hiện tại; nên bỏ cột này khi có thay đổi schema sau này.
+
+### 3.9. `course_results` – Kết quả học tập
+
+| Trường | Kiểu dữ liệu | Ràng buộc / ý nghĩa |
+|---|---|---|
+| `student_id` | BIGINT | PK ghép, FK → `users.id` |
+| `course_id` | BIGINT | PK ghép, FK → `courses.id` |
+| `passed` | BOOLEAN | NOT NULL; kết quả đạt/chưa đạt học phần |
+
+Khóa chính ghép (`student_id`, `course_id`) bảo đảm mỗi sinh viên chỉ có một kết quả cho mỗi học phần. Trường `passed` được sử dụng để kiểm tra điều kiện tiên quyết khi đăng ký học phần. Chỉ mục phụ trên `course_id` hỗ trợ kiểm tra khóa ngoại khi cập nhật hoặc xóa học phần và truy vấn kết quả theo học phần.
 
 ## 4. Ràng buộc và tính toàn vẹn dữ liệu
 
@@ -121,5 +131,3 @@ Mỗi phiên đăng nhập thuộc về một người dùng. Backend lưu giá 
 - **Kiểm tra nghiệp vụ:** Backend kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết, giới hạn tín chỉ và quyền truy cập trước khi cập nhật dữ liệu.
 - **Quản lý phiên đăng nhập:** JWT chứa `sid` tham chiếu đến `auth_sessions.id`. Backend xác minh JWT và kiểm tra phiên còn hiệu lực trước khi cho phép truy cập. Khi đăng xuất, phiên được đánh dấu thu hồi để JWT tương ứng không tiếp tục được sử dụng.
 - **Tính nhất quán:** Đăng ký và hủy học phần sử dụng transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận.
-
-**Giới hạn dữ liệu:** `course_prerequisites` chỉ lưu quan hệ tiên quyết giữa các học phần. Thiết kế database hiện tại chưa lưu kết quả học tập của từng sinh viên, nên cần xác định nguồn dữ liệu đó để thực hiện kiểm tra học phần tiên quyết theo SRS.

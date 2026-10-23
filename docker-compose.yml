@@ -1,0 +1,76 @@
+name: uet-course-registration
+x-tool: &tool
+  image: uet-course-registration-tools:local
+  build:
+    context: .
+    dockerfile: database/Dockerfile
+  environment:
+    DATABASE_URL: postgresql://${POSTGRES_USER:-course_app}:${POSTGRES_PASSWORD:-local_demo_only}@db:5432/${POSTGRES_DB:-course_registration}
+    REFERENCE_DATE: ${REFERENCE_DATE:-2026-10-20}
+    RANDOM_SEED: ${RANDOM_SEED:-20261020}
+  depends_on:
+    db:
+      condition: service_healthy
+  volumes:
+    - ./database:/workspace/database
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-course_app}:${POSTGRES_PASSWORD:-local_demo_only}@db:5432/${POSTGRES_DB:-course_registration}
+      JWT_SECRET: ${JWT_SECRET:-local_demo_only_change_this_jwt_secret}
+      JWT_TTL: ${JWT_TTL:-1h}
+      SESSION_TTL: ${SESSION_TTL:-24h}
+      PORT: "8080"
+      GIN_MODE: release
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-course_registration}
+      POSTGRES_USER: ${POSTGRES_USER:-course_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_demo_only}
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  migrate:
+    <<: *tool
+    profiles: [tools]
+    command: [migrate]
+  seed:
+    <<: *tool
+    profiles: [tools]
+    command: [seed]
+  verify:
+    <<: *tool
+    profiles: [tools]
+    command: [verify]
+  crawl:
+    image: uet-course-registration-tools:local
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    profiles: [tools]
+    volumes:
+      - ./database:/workspace/database
+    command: [crawl]
+volumes:
+  postgres_data:

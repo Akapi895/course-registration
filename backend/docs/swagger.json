@@ -1,0 +1,1673 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API quản lý và đăng ký học phần (Phase 1). Đăng nhập tại POST /api/auth/login, rồi bấm Authorize và nhập \"Bearer \u003caccess_token\u003e\".",
+        "title": "Course Registration API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/auth/login": {
+            "post": {
+                "description": "Trả về access JWT và tạo một phiên trong auth_sessions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Đăng nhập",
+                "parameters": [
+                    {
+                        "description": "Thông tin đăng nhập",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.loginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.loginSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "VALIDATION_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "INVALID_CREDENTIALS",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Thu hồi phiên của JWT hiện tại. Sau đó JWT này bị từ chối.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Đăng xuất và thu hồi phiên",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.emptySuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Thông tin người dùng hiện tại",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.meSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký. Trả về danh sách rỗng khi chưa có học kỳ nào mở đăng ký.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Danh sách lớp học phần đang mở",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Lọc theo khoa",
+                        "name": "faculty",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lọc theo ngành",
+                        "name": "major",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classListSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Tạo lớp active kèm lịch học. class_code phải duy nhất trong học kỳ.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Tạo lớp học phần (admin)",
+                "parameters": [
+                    {
+                        "description": "Thông tin lớp và lịch học",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.createClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classCreatedSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "VALIDATION_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "CONFLICT",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trả về cả lớp đã hủy, với trạng thái status = cancelled.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Chi tiết lớp học phần",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID lớp học phần",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classDetailSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Thay thế mã lớp, giảng viên, sĩ số và lịch học. Không đổi được course_id và semester_id. Sau khi có sinh viên đăng ký, không đổi được lịch học.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Cập nhật lớp học phần (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID lớp học phần",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cần cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.updateClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classUpdatedSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "VALIDATION_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "CONFLICT, CLASS_CANCELLED, CAPACITY_BELOW_ENROLLED hoặc SCHEDULE_LOCKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Chuyển lớp sang trạng thái cancelled. Các đăng ký còn hiệu lực của lớp cũng được hủy. Không xóa vật lý.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Hủy lớp học phần (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID lớp học phần",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classCancelSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "CLASS_CANCELLED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registration-period": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Đặt thời điểm mở và đóng đăng ký. Thời điểm đóng phải sau thời điểm mở.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registration-period"
+                ],
+                "summary": "Cấu hình thời gian đăng ký của học kỳ (admin)",
+                "parameters": [
+                    {
+                        "description": "Học kỳ và khung thời gian đăng ký",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.updateRegistrationPeriodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.registrationPeriodSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "VALIDATION_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trả về toàn bộ đăng ký đang hiệu lực (status = registered) của sinh viên hiện tại.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrations"
+                ],
+                "summary": "Các học phần đã đăng ký của tôi",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.registrationListSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Chỉ sinh viên được đăng ký. Kiểm tra lớp, thời gian, đăng ký trùng, trùng lịch, tiên quyết, tín chỉ và sĩ số trong một transaction.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrations"
+                ],
+                "summary": "Đăng ký lớp học phần",
+                "parameters": [
+                    {
+                        "description": "Lớp cần đăng ký",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.registerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/controller.registrationSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "VALIDATION_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET hoặc CREDIT_LIMIT_EXCEEDED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/registrations/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Chỉ hủy được đăng ký của chính mình, trong thời gian đăng ký của học kỳ.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "registrations"
+                ],
+                "summary": "Hủy đăng ký học phần",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID đăng ký",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.cancelSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "REGISTRATION_NOT_ACTIVE hoặc REGISTRATION_CLOSED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/schedules": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trả về lịch học của các đăng ký đang hiệu lực, tất cả học kỳ. Client tự lọc theo học kỳ nếu cần.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Thời khóa biểu của tôi",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.scheduleListSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/students/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sinh viên chỉ xem được tài khoản của chính mình. Admin xem được mọi sinh viên.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Xem thông tin sinh viên",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID tài khoản sinh viên",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.studentSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Thay thế họ tên, khoa và ngành. Sinh viên chỉ sửa được tài khoản của chính mình. Admin sửa được mọi sinh viên.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Cập nhật thông tin sinh viên",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID tài khoản sinh viên",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thông tin cần cập nhật",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.updateStudentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.studentProfileSuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "VALIDATION_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "FORBIDDEN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "controller.cancelData": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 301
+                },
+                "status": {
+                    "type": "string",
+                    "example": "cancelled"
+                }
+            }
+        },
+        "controller.cancelSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.cancelData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.classCancelData": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "status": {
+                    "type": "string",
+                    "example": "cancelled"
+                }
+            }
+        },
+        "controller.classCancelSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classCancelData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.classCreatedData": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "enrolled": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "controller.classCreatedSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classCreatedData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.classDetailData": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "course_code": {
+                    "type": "string",
+                    "example": "INT3401"
+                },
+                "course_id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Hệ điều hành"
+                },
+                "credits": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "enrolled": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "lecturer_name": {
+                    "type": "string",
+                    "example": "Giảng viên A"
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "registration_open": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.scheduleItem"
+                    }
+                },
+                "semester_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "controller.classDetailSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classDetailData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.classItem": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "course_code": {
+                    "type": "string",
+                    "example": "INT3401"
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Hệ điều hành"
+                },
+                "credits": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "enrolled": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "registration_open": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "controller.classListData": {
+            "type": "object",
+            "properties": {
+                "classes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.classItem"
+                    }
+                }
+            }
+        },
+        "controller.classListSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classListData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.classUpdatedData": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "lecturer_name": {
+                    "type": "string",
+                    "example": "Giảng viên B"
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "example": 60
+                }
+            }
+        },
+        "controller.classUpdatedSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classUpdatedData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.createClassRequest": {
+            "type": "object",
+            "required": [
+                "class_code",
+                "course_id",
+                "lecturer_name",
+                "max_capacity",
+                "schedules",
+                "semester_id"
+            ],
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "course_id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "lecturer_name": {
+                    "type": "string",
+                    "example": "Giảng viên A"
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "example": 50
+                },
+                "schedules": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/controller.scheduleRequest"
+                    }
+                },
+                "semester_id": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "controller.emptySuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.failData": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "UNAUTHORIZED"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Chưa đăng nhập hoặc phiên không hợp lệ"
+                }
+            }
+        },
+        "controller.failResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.failData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "fail"
+                }
+            }
+        },
+        "controller.loginData": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "controller.loginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "DemoUET@123"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "student001"
+                }
+            }
+        },
+        "controller.loginSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.loginData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.meData": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string",
+                    "example": "Sinh viên giả lập 001"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 7
+                },
+                "role": {
+                    "type": "string",
+                    "example": "student"
+                },
+                "student_code": {
+                    "type": "string",
+                    "example": "DEMO00001"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "student001"
+                }
+            }
+        },
+        "controller.meSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.meData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.registerRequest": {
+            "type": "object",
+            "required": [
+                "class_id"
+            ],
+            "properties": {
+                "class_id": {
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "controller.registeredClassItem": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "class_id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "course_code": {
+                    "type": "string",
+                    "example": "INT3401"
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Hệ điều hành"
+                },
+                "credits": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 301
+                },
+                "registered_at": {
+                    "type": "string",
+                    "example": "2026-10-21T09:00:00+07:00"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "registered"
+                }
+            }
+        },
+        "controller.registrationData": {
+            "type": "object",
+            "properties": {
+                "class_id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 301
+                },
+                "registered_at": {
+                    "type": "string",
+                    "example": "2026-10-21T09:00:00+07:00"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "registered"
+                }
+            }
+        },
+        "controller.registrationListData": {
+            "type": "object",
+            "properties": {
+                "registrations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.registeredClassItem"
+                    }
+                }
+            }
+        },
+        "controller.registrationListSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.registrationListData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.registrationPeriodData": {
+            "type": "object",
+            "properties": {
+                "registration_closes_at": {
+                    "type": "string",
+                    "example": "2026-11-14T23:59:59+07:00"
+                },
+                "registration_opens_at": {
+                    "type": "string",
+                    "example": "2026-11-01T00:00:00+07:00"
+                },
+                "semester_id": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "controller.registrationPeriodSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.registrationPeriodData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.registrationSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.registrationData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.scheduleItem": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "end_period": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "room": {
+                    "type": "string",
+                    "example": "A2-301"
+                },
+                "start_period": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "controller.scheduleListData": {
+            "type": "object",
+            "properties": {
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.timetableItem"
+                    }
+                }
+            }
+        },
+        "controller.scheduleListSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.scheduleListData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.scheduleRequest": {
+            "type": "object",
+            "required": [
+                "day_of_week",
+                "end_period",
+                "room",
+                "start_period"
+            ],
+            "properties": {
+                "day_of_week": {
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 2,
+                    "example": 2
+                },
+                "end_period": {
+                    "type": "integer",
+                    "maximum": 32767,
+                    "example": 3
+                },
+                "room": {
+                    "type": "string",
+                    "example": "A2-301"
+                },
+                "start_period": {
+                    "type": "integer",
+                    "maximum": 32767,
+                    "example": 1
+                }
+            }
+        },
+        "controller.studentData": {
+            "type": "object",
+            "properties": {
+                "faculty": {
+                    "type": "string",
+                    "example": "CNTT"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Sinh viên giả lập 001"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 7
+                },
+                "major": {
+                    "type": "string",
+                    "example": "Khoa học máy tính"
+                },
+                "student_code": {
+                    "type": "string",
+                    "example": "DEMO00001"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "student001"
+                }
+            }
+        },
+        "controller.studentProfileData": {
+            "type": "object",
+            "properties": {
+                "faculty": {
+                    "type": "string",
+                    "example": "CNTT"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Nguyễn Văn A"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 7
+                },
+                "major": {
+                    "type": "string",
+                    "example": "Khoa học máy tính"
+                },
+                "student_code": {
+                    "type": "string",
+                    "example": "DEMO00001"
+                }
+            }
+        },
+        "controller.studentProfileSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.studentProfileData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.studentSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.studentData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.timetableItem": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "class_id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "course_code": {
+                    "type": "string",
+                    "example": "INT3401"
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Hệ điều hành"
+                },
+                "day_of_week": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "end_period": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "room": {
+                    "type": "string",
+                    "example": "A2-301"
+                },
+                "start_period": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "controller.updateClassRequest": {
+            "type": "object",
+            "required": [
+                "class_code",
+                "lecturer_name",
+                "max_capacity",
+                "schedules"
+            ],
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "lecturer_name": {
+                    "type": "string",
+                    "example": "Giảng viên B"
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "example": 60
+                },
+                "schedules": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/controller.scheduleRequest"
+                    }
+                }
+            }
+        },
+        "controller.updateRegistrationPeriodRequest": {
+            "type": "object",
+            "required": [
+                "registration_closes_at",
+                "registration_opens_at",
+                "semester_id"
+            ],
+            "properties": {
+                "registration_closes_at": {
+                    "type": "string",
+                    "example": "2026-11-14T23:59:59+07:00"
+                },
+                "registration_opens_at": {
+                    "type": "string",
+                    "example": "2026-11-01T00:00:00+07:00"
+                },
+                "semester_id": {
+                    "type": "integer",
+                    "example": 2
+                }
+            }
+        },
+        "controller.updateStudentRequest": {
+            "type": "object",
+            "required": [
+                "full_name"
+            ],
+            "properties": {
+                "faculty": {
+                    "type": "string",
+                    "example": "CNTT"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Nguyễn Văn A"
+                },
+                "major": {
+                    "type": "string",
+                    "example": "Khoa học máy tính"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Nhập đúng dạng \"Bearer \u003caccess_token\u003e\": có chữ Bearer, một khoảng trắng, rồi token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

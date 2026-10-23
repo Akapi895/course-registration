@@ -105,6 +105,7 @@ Table registrations {
   }
 }
 
+// 8. Phiên đăng nhập
 Table auth_sessions {
   id uuid [pk, default: `gen_random_uuid()`]
   user_id bigint [not null]
@@ -118,7 +119,22 @@ Table auth_sessions {
   }
 }
 
+// 9. Kết quả học tập
+Table course_results {
+  student_id bigint [not null]
+  course_id bigint [not null]
+  passed boolean [not null]
+
+  indexes {
+    (student_id, course_id) [pk]
+    course_id
+  }
+}
+
+
 // Quan hệ khóa ngoại
+Ref: course_results.student_id > users.id
+Ref: course_results.course_id > courses.id
 Ref: course_prerequisites.course_id > courses.id
 Ref: course_prerequisites.prerequisite_course_id > courses.id
 
