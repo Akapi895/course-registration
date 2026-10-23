@@ -13,6 +13,7 @@ type Semester struct {
 	ID                   int64
 	RegistrationOpensAt  time.Time
 	RegistrationClosesAt time.Time
+	MaxCredits           int
 }
 
 type SemesterRepository struct {
@@ -27,7 +28,7 @@ func NewSemesterRepository(db *pgxpool.Pool) *SemesterRepository {
 // or nil when none has opened yet.
 func (r *SemesterRepository) FindCurrent(ctx context.Context, now time.Time) (*Semester, error) {
 	return r.queryOne(ctx,
-		`SELECT id, registration_opens_at, registration_closes_at
+		`SELECT id, registration_opens_at, registration_closes_at, max_credits
 		 FROM semesters
 		 WHERE registration_opens_at <= $1
 		 ORDER BY registration_opens_at DESC
@@ -38,7 +39,7 @@ func (r *SemesterRepository) FindCurrent(ctx context.Context, now time.Time) (*S
 
 func (r *SemesterRepository) FindByID(ctx context.Context, id int64) (*Semester, error) {
 	return r.queryOne(ctx,
-		`SELECT id, registration_opens_at, registration_closes_at
+		`SELECT id, registration_opens_at, registration_closes_at, max_credits
 		 FROM semesters WHERE id = $1`,
 		id,
 	)
@@ -46,7 +47,9 @@ func (r *SemesterRepository) FindByID(ctx context.Context, id int64) (*Semester,
 
 func (r *SemesterRepository) queryOne(ctx context.Context, query string, args ...any) (*Semester, error) {
 	var s Semester
-	err := r.db.QueryRow(ctx, query, args...).Scan(&s.ID, &s.RegistrationOpensAt, &s.RegistrationClosesAt)
+	err := r.db.QueryRow(ctx, query, args...).Scan(
+		&s.ID, &s.RegistrationOpensAt, &s.RegistrationClosesAt, &s.MaxCredits,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
