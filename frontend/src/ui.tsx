@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type
 import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import logo from './assets/logo.png'
 import { db, semStatus, setSemester, ui, useDb, type SemStatus } from './api'
-import type { ClassSection } from './data'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -74,11 +73,6 @@ export function SemBadge({ s }: { s: SemStatus }) {
 export function seatState(c: { enrolled: number; capacity: number }) {
   const left = c.capacity - c.enrolled
   return left <= 0 ? 'full' : left / c.capacity <= 0.1 || left <= 3 ? 'almost' : 'open'
-}
-export function SeatBadge({ c, registered }: { c: ClassSection; registered?: boolean }) {
-  if (registered) return <Badge tone="blue"><CheckCircle2 className="h-3 w-3" />Đã đăng ký</Badge>
-  const s = seatState(c)
-  return s === 'full' ? <Badge tone="red">Đã đầy</Badge> : s === 'almost' ? <Badge tone="orange">Sắp đầy</Badge> : <Badge tone="green">Còn chỗ</Badge>
 }
 export function Capacity({ c }: { c: { enrolled: number; capacity: number } }) {
   const pct = Math.min(100, (c.enrolled / c.capacity) * 100)

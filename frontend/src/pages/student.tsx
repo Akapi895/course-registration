@@ -1,10 +1,10 @@
-import { Fragment, useState, type FormEvent } from 'react'
-import { BookOpen, Layers, Gauge, Search, FilterX, CalendarDays, List, ArrowRight, Lock, CalendarRange, MapPin, UserRound, CheckCircle2, XCircle, ChevronDown, Ban, Loader2 } from 'lucide-react'
+import { Fragment, useState } from 'react'
+import { BookOpen, Layers, Gauge, Search, FilterX, CalendarDays, List, ArrowRight, Lock, CalendarRange, MapPin, CheckCircle2, XCircle, ChevronDown, Ban, Loader2 } from 'lucide-react'
 import Layout from '../Layout'
 import { Link, navigate } from '../router'
-import { type ApiError, register, markSubmitted, sessionSubmitted, checkRegistration, DAYS, bundleLabel, cancelCheck, cls, course, credits, db, fmtDT, passed, practice, practiceBlock, regSlots, semStatus, semester, sessionText, student, studentRegs, ui, updateAccountName, updateStudent, useDb, useSession, type Slot } from '../api'
-import { type ClassSection, type Course, type PracticeGroup, type Registration, type Session, type Student } from '../data'
-import { Modal, Alert, Badge, Button, Capacity, Card, CreditBar, Empty, Field, Input, PageHeader, Pagination, PillToggle, SemBadge, Select, Skeleton, Stat, Table, Td, cx, toast, useLoading } from '../ui'
+import { type ApiError, register, markSubmitted, sessionSubmitted, checkRegistration, DAYS, bundleLabel, cancelCheck, cls, course, credits, db, fmtDT, passed, practice, practiceBlock, regSlots, semStatus, semester, sessionText, student, studentRegs, ui, useDb, useSession, type Slot } from '../api'
+import { type ClassSection, type Course, type PracticeGroup, type Registration, type Session } from '../data'
+import { Modal, Alert, Badge, Button, Capacity, Card, CreditBar, Empty, Input, PageHeader, Pagination, PillToggle, SemBadge, Select, Skeleton, Stat, Table, Td, cx, useLoading } from '../ui'
 import { CheckList, useCancelFlow } from '../flows'
 
 const useMe = () => { useDb(); return student(useSession()!.studentId!) }
