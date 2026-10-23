@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -139,22 +138,12 @@ func parseID(c *gin.Context) (int64, bool) {
 	return id, true
 }
 
-// bindUpdateStudent rejects fields outside the updatable set before binding,
-// so that client-owned fields such as username or role cannot be changed.
+// bindUpdateStudent accepts only the updatable profile fields, so that
+// client-owned fields such as username or role cannot be changed.
 func bindUpdateStudent(c *gin.Context) (updateStudentRequest, bool) {
 	var req updateStudentRequest
-	var fields map[string]json.RawMessage
-
-	body, err := c.GetRawData()
-	if err != nil || json.Unmarshal(body, &fields) != nil || json.Unmarshal(body, &req) != nil {
-		fail(c, 400, "VALIDATION_ERROR", "Dữ liệu không hợp lệ")
+	if !bindJSON(c, updatableStudentFields, &req) {
 		return req, false
-	}
-	for name := range fields {
-		if !updatableStudentFields[name] {
-			fail(c, 400, "VALIDATION_ERROR", "Trường không được phép cập nhật: "+name)
-			return req, false
-		}
 	}
 	if strings.TrimSpace(req.FullName) == "" {
 		fail(c, 400, "VALIDATION_ERROR", "full_name là bắt buộc")

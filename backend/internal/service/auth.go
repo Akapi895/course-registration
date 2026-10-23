@@ -20,13 +20,6 @@ type tokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-// Principal is the authenticated caller of a request.
-type Principal struct {
-	UserID int64
-	Role   string
-	SID    string
-}
-
 type AuthService struct {
 	cfg      *config.Config
 	users    *repository.UserRepository

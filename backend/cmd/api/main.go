@@ -41,8 +41,9 @@ func main() {
 	students := service.NewStudentService(users)
 	classService := service.NewClassService(classes, semesters)
 	registrationService := service.NewRegistrationService(registrations, classes, semesters)
+	periods := service.NewRegistrationPeriodService(semesters)
 
-	r := controller.NewRouter(auth, students, classService, registrationService)
+	r := controller.NewRouter(auth, students, classService, registrationService, periods)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}

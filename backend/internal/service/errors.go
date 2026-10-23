@@ -18,4 +18,11 @@ var (
 	ErrCreditLimitExceeded   = errors.New("credit limit exceeded")
 	ErrRegistrationNotActive = errors.New("registration not active")
 	ErrRegistrationNotFound  = errors.New("registration not found")
+
+	ErrClassCodeTaken            = errors.New("class code taken")
+	ErrCapacityBelowEnrolled     = errors.New("capacity below enrolled")
+	ErrScheduleLocked            = errors.New("schedule locked")
+	ErrInvalidReference          = errors.New("invalid reference")
+	ErrInvalidSchedule           = errors.New("invalid schedule")
+	ErrInvalidRegistrationPeriod = errors.New("invalid registration period")
 )

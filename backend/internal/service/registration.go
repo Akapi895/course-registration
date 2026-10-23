@@ -180,13 +180,6 @@ func (s *RegistrationService) semesterOf(ctx context.Context, semesterID int64) 
 	return semester, nil
 }
 
-func requireStudent(p *Principal) error {
-	if p.Role != repository.RoleStudent {
-		return ErrForbidden
-	}
-	return nil
-}
-
 func checkNoScheduleConflict(ctx context.Context, tx *repository.RegistrationTx, studentID int64, class repository.Class, semesterID int64) error {
 	registered, err := tx.RegisteredSchedules(ctx, studentID, semesterID)
 	if err != nil {

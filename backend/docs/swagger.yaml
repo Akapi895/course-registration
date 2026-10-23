@@ -17,6 +17,46 @@ definitions:
         example: success
         type: string
     type: object
+  controller.classCancelData:
+    properties:
+      id:
+        example: 10
+        type: integer
+      status:
+        example: cancelled
+        type: string
+    type: object
+  controller.classCancelSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.classCancelData'
+      status:
+        example: success
+        type: string
+    type: object
+  controller.classCreatedData:
+    properties:
+      class_code:
+        example: INT3401-01
+        type: string
+      enrolled:
+        example: 0
+        type: integer
+      id:
+        example: 10
+        type: integer
+      status:
+        example: active
+        type: string
+    type: object
+  controller.classCreatedSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.classCreatedData'
+      status:
+        example: success
+        type: string
+    type: object
   controller.classDetailData:
     properties:
       class_code:
@@ -109,6 +149,59 @@ definitions:
       status:
         example: success
         type: string
+    type: object
+  controller.classUpdatedData:
+    properties:
+      class_code:
+        example: INT3401-01
+        type: string
+      id:
+        example: 10
+        type: integer
+      lecturer_name:
+        example: Giảng viên B
+        type: string
+      max_capacity:
+        example: 60
+        type: integer
+    type: object
+  controller.classUpdatedSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.classUpdatedData'
+      status:
+        example: success
+        type: string
+    type: object
+  controller.createClassRequest:
+    properties:
+      class_code:
+        example: INT3401-01
+        type: string
+      course_id:
+        example: 5
+        type: integer
+      lecturer_name:
+        example: Giảng viên A
+        type: string
+      max_capacity:
+        example: 50
+        type: integer
+      schedules:
+        items:
+          $ref: '#/definitions/controller.scheduleRequest'
+        minItems: 1
+        type: array
+      semester_id:
+        example: 2
+        type: integer
+    required:
+    - class_code
+    - course_id
+    - lecturer_name
+    - max_capacity
+    - schedules
+    - semester_id
     type: object
   controller.emptySuccessResponse:
     properties:
@@ -251,6 +344,26 @@ definitions:
         example: success
         type: string
     type: object
+  controller.registrationPeriodData:
+    properties:
+      registration_closes_at:
+        example: "2026-11-14T23:59:59+07:00"
+        type: string
+      registration_opens_at:
+        example: "2026-11-01T00:00:00+07:00"
+        type: string
+      semester_id:
+        example: 2
+        type: integer
+    type: object
+  controller.registrationPeriodSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.registrationPeriodData'
+      status:
+        example: success
+        type: string
+    type: object
   controller.registrationSuccessResponse:
     properties:
       data:
@@ -288,6 +401,28 @@ definitions:
       status:
         example: success
         type: string
+    type: object
+  controller.scheduleRequest:
+    properties:
+      day_of_week:
+        example: 2
+        maximum: 7
+        minimum: 2
+        type: integer
+      end_period:
+        example: 3
+        type: integer
+      room:
+        example: A2-301
+        type: string
+      start_period:
+        example: 1
+        type: integer
+    required:
+    - day_of_week
+    - end_period
+    - room
+    - start_period
     type: object
   controller.studentData:
     properties:
@@ -370,6 +505,44 @@ definitions:
       start_period:
         example: 1
         type: integer
+    type: object
+  controller.updateClassRequest:
+    properties:
+      class_code:
+        example: INT3401-01
+        type: string
+      lecturer_name:
+        example: Giảng viên B
+        type: string
+      max_capacity:
+        example: 60
+        type: integer
+      schedules:
+        items:
+          $ref: '#/definitions/controller.scheduleRequest'
+        minItems: 1
+        type: array
+    required:
+    - class_code
+    - lecturer_name
+    - max_capacity
+    - schedules
+    type: object
+  controller.updateRegistrationPeriodRequest:
+    properties:
+      registration_closes_at:
+        example: "2026-11-14T23:59:59+07:00"
+        type: string
+      registration_opens_at:
+        example: "2026-11-01T00:00:00+07:00"
+        type: string
+      semester_id:
+        example: 2
+        type: integer
+    required:
+    - registration_closes_at
+    - registration_opens_at
+    - semester_id
     type: object
   controller.updateStudentRequest:
     properties:
@@ -502,7 +675,92 @@ paths:
       summary: Danh sách lớp học phần đang mở
       tags:
       - classes
+    post:
+      consumes:
+      - application/json
+      description: Tạo lớp active kèm lịch học. class_code phải duy nhất trong học
+        kỳ.
+      parameters:
+      - description: Thông tin lớp và lịch học
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.createClassRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/controller.classCreatedSuccessResponse'
+        "400":
+          description: VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "403":
+          description: FORBIDDEN
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "409":
+          description: CONFLICT
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Tạo lớp học phần (admin)
+      tags:
+      - classes
   /api/classes/{id}:
+    delete:
+      description: Chuyển lớp sang trạng thái cancelled. Các đăng ký còn hiệu lực
+        của lớp cũng được hủy. Không xóa vật lý.
+      parameters:
+      - description: ID lớp học phần
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.classCancelSuccessResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "403":
+          description: FORBIDDEN
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "409":
+          description: CLASS_CANCELLED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Hủy lớp học phần (admin)
+      tags:
+      - classes
     get:
       description: Trả về cả lớp đã hủy, với trạng thái status = cancelled.
       parameters:
@@ -535,6 +793,101 @@ paths:
       summary: Chi tiết lớp học phần
       tags:
       - classes
+    put:
+      consumes:
+      - application/json
+      description: Thay thế mã lớp, giảng viên, sĩ số và lịch học. Không đổi được
+        course_id và semester_id. Sau khi có sinh viên đăng ký, không đổi được lịch
+        học.
+      parameters:
+      - description: ID lớp học phần
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Thông tin cần cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.updateClassRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.classUpdatedSuccessResponse'
+        "400":
+          description: VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "403":
+          description: FORBIDDEN
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "409":
+          description: CONFLICT, CLASS_CANCELLED, CAPACITY_BELOW_ENROLLED hoặc SCHEDULE_LOCKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Cập nhật lớp học phần (admin)
+      tags:
+      - classes
+  /api/registration-period:
+    put:
+      consumes:
+      - application/json
+      description: Đặt thời điểm mở và đóng đăng ký. Thời điểm đóng phải sau thời
+        điểm mở.
+      parameters:
+      - description: Học kỳ và khung thời gian đăng ký
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.updateRegistrationPeriodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.registrationPeriodSuccessResponse'
+        "400":
+          description: VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "403":
+          description: FORBIDDEN
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Cấu hình thời gian đăng ký của học kỳ (admin)
+      tags:
+      - registration-period
   /api/registrations:
     get:
       description: Trả về toàn bộ đăng ký đang hiệu lực (status = registered) của
