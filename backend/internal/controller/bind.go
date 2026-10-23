@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,8 @@ func bindJSON(c *gin.Context, allowed map[string]bool, req any) bool {
 	}
 
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(body, &fields) != nil || json.Unmarshal(body, req) != nil {
+	// Unmarshal checks the entire body, including data after the first value.
+	if json.Unmarshal(body, &fields) != nil {
 		fail(c, 400, "VALIDATION_ERROR", "Dữ liệu không hợp lệ")
 		return false
 	}
@@ -27,6 +29,12 @@ func bindJSON(c *gin.Context, allowed map[string]bool, req any) bool {
 			fail(c, 400, "VALIDATION_ERROR", "Trường không được phép cập nhật: "+name)
 			return false
 		}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(req); err != nil {
+		fail(c, 400, "VALIDATION_ERROR", "Dữ liệu không hợp lệ")
+		return false
 	}
 	if err := binding.Validator.ValidateStruct(req); err != nil {
 		fail(c, 400, "VALIDATION_ERROR", "Dữ liệu không hợp lệ")

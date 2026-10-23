@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var registerFields = map[string]bool{"class_id": true}
+
 type RegistrationController struct {
 	registrations *service.RegistrationService
 }
@@ -79,8 +81,7 @@ type cancelSuccessResponse struct {
 // @Router      /api/registrations [post]
 func (h *RegistrationController) Register(c *gin.Context) {
 	var req registerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, "VALIDATION_ERROR", "class_id không hợp lệ")
+	if !bindJSON(c, registerFields, &req) {
 		return
 	}
 

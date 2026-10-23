@@ -5,6 +5,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var loginFields = map[string]bool{"username": true, "password": true}
+
 type AuthController struct {
 	auth *service.AuthService
 }
@@ -59,8 +61,7 @@ type emptySuccessResponse struct {
 // @Router      /api/auth/login [post]
 func (h *AuthController) Login(c *gin.Context) {
 	var req loginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, "VALIDATION_ERROR", "Thiếu username hoặc password")
+	if !bindJSON(c, loginFields, &req) {
 		return
 	}
 

@@ -5,6 +5,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var creatableClassFields = map[string]bool{
+	"course_id": true, "semester_id": true, "class_code": true,
+	"lecturer_name": true, "max_capacity": true, "schedules": true,
+}
+
 var updatableClassFields = map[string]bool{
 	"class_code": true, "lecturer_name": true, "max_capacity": true, "schedules": true,
 }
@@ -227,8 +232,7 @@ func (h *ClassController) Get(c *gin.Context) {
 // @Router      /api/classes [post]
 func (h *ClassController) Create(c *gin.Context) {
 	var req createClassRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, 400, "VALIDATION_ERROR", "Dữ liệu không hợp lệ")
+	if !bindJSON(c, creatableClassFields, &req) {
 		return
 	}
 
