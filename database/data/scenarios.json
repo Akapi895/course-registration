@@ -75,5 +75,5 @@
       "expected": "Lớp cancelled"
     }
   ],
-  "prerequisite_check": "Mọi tiên quyết của đăng ký hiện hành đã đạt; luật đăng ký mới do backend kiểm tra"
+  "prerequisite_check": "Mọi tiên quyết của đăng ký hiện hành và hai tình huống vượt tín chỉ, đăng ký lại đã đạt; luật đăng ký mới do backend kiểm tra"
 }

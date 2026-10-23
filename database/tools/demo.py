@@ -77,11 +77,16 @@ def generate(reference_date, random_seed):
     prerequisites_of = {}
     for edge in data['course_prerequisites']:
         prerequisites_of.setdefault(edge['course_id'], set()).add(edge['prerequisite_course_id'])
+    # Prepare prerequisites for the re-registration and credit-limit scenarios.
+    scenario_targets = {1: 6, 2: 14}
     for student in range(1, 101):
         passed = set()
         for r in data['registrations']:
             if r['student_id'] == student and r['status'] == 'registered':
                 passed |= prerequisites_of.get(data['course_classes'][r['class_id']-1]['course_id'], set())
+        if student in scenario_targets:
+            cls = data['course_classes'][scenario_targets[student]-1]
+            passed |= prerequisites_of.get(cls['course_id'], set())
         data['course_results'].extend(dict(student_id=student, course_id=c, passed=True) for c in sorted(passed))
         # Some students also have a failed course that is not a prerequisite of any registered class.
         if student % 5 == 0:
@@ -103,4 +108,4 @@ def generate(reference_date, random_seed):
         ('Lớp đã hủy','student001',3,'Lớp cancelled')]]
     return data, dict(reference_date=reference_date, random_seed=random_seed,
         password='DemoUET@123', max_credits_note='12 là cấu hình demo, không phải quy định UET',
-        scenarios=scenarios, prerequisite_check='Mọi tiên quyết của đăng ký hiện hành đã đạt; luật đăng ký mới do backend kiểm tra')
+        scenarios=scenarios, prerequisite_check='Mọi tiên quyết của đăng ký hiện hành và hai tình huống vượt tín chỉ, đăng ký lại đã đạt; luật đăng ký mới do backend kiểm tra')
