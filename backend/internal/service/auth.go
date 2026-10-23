@@ -85,23 +85,44 @@ func (s *AuthService) Me(ctx context.Context, userID int64) (*repository.User, e
 // VerifyAccessToken returns ErrSessionRevoked when the token is valid but its
 // session is revoked or expired.
 func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Principal, error) {
-	claims := &tokenClaims{}
+	// Preserve JSON types so exp must be a number, not a numeric string.
+	claims := jwt.MapClaims{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(*jwt.Token) (any, error) {
 		return []byte(s.cfg.JWTSecret), nil
-	}, jwt.WithValidMethods([]string{"HS256"}))
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
 	if err != nil || !parsed.Valid {
 		return nil, ErrUnauthorized
 	}
 
-	owner, err := s.sessions.ActiveOwner(ctx, claims.SID)
+	subject, err := claims.GetSubject()
+	if err != nil {
+		return nil, ErrUnauthorized
+	}
+	userID, err := strconv.ParseInt(subject, 10, 64)
+	if err != nil || userID <= 0 || strconv.FormatInt(userID, 10) != subject {
+		return nil, ErrUnauthorized
+	}
+	role, ok := claims["role"].(string)
+	if !ok || (role != repository.RoleStudent && role != repository.RoleAdmin) {
+		return nil, ErrUnauthorized
+	}
+	sid, ok := claims["sid"].(string)
+	if !ok || len(sid) != 36 || sid[8] != '-' || sid[13] != '-' || sid[18] != '-' || sid[23] != '-' {
+		return nil, ErrUnauthorized
+	}
+	if _, err := hex.DecodeString(sid[:8] + sid[9:13] + sid[14:18] + sid[19:23] + sid[24:]); err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	owner, err := s.sessions.ActiveOwner(ctx, sid)
 	if err != nil {
 		return nil, err
 	}
 	if owner == 0 {
 		return nil, ErrSessionRevoked
 	}
-	if strconv.FormatInt(owner, 10) != claims.Subject {
+	if owner != userID {
 		return nil, ErrUnauthorized
 	}
-	return &Principal{UserID: owner, Role: claims.Role, SID: claims.SID}, nil
+	return &Principal{UserID: owner, Role: role, SID: sid}, nil
 }
