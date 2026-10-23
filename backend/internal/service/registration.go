@@ -96,6 +96,12 @@ func (s *RegistrationService) enroll(
 		return nil, ErrClassFull
 	}
 
+	// ClaimSeat holds the class row lock until this transaction ends. Reload the
+	// schedules after acquiring it so a preceding admin update is visible.
+	class.Schedules, err = tx.ClassSchedules(ctx, class.ID)
+	if err != nil {
+		return nil, err
+	}
 	if err := checkNoScheduleConflict(ctx, tx, studentID, *class, semester.ID); err != nil {
 		return nil, err
 	}

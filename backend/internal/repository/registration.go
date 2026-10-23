@@ -224,6 +224,11 @@ func (t *RegistrationTx) ClassStatus(ctx context.Context, classID int64) (string
 	return status, err
 }
 
+// ClassSchedules reads the current schedules on the registration transaction.
+func (t *RegistrationTx) ClassSchedules(ctx context.Context, classID int64) ([]Schedule, error) {
+	return schedulesOf(ctx, t.tx, classID)
+}
+
 func (t *RegistrationTx) ReleaseSeat(ctx context.Context, classID int64) error {
 	_, err := t.tx.Exec(ctx, `UPDATE course_classes SET enrolled = enrolled - 1 WHERE id = $1`, classID)
 	return err
