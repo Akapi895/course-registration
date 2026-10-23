@@ -134,6 +134,12 @@ func (t *RegistrationTx) LockStudent(ctx context.Context, studentID int64) error
 	return err
 }
 
+// LockClass locks the class row before its registrations are changed.
+func (t *RegistrationTx) LockClass(ctx context.Context, classID int64) error {
+	_, err := t.tx.Exec(ctx, `SELECT 1 FROM course_classes WHERE id = $1 FOR UPDATE`, classID)
+	return err
+}
+
 func (t *RegistrationTx) IsRegistered(ctx context.Context, studentID, classID int64) (bool, error) {
 	var ok bool
 	err := t.tx.QueryRow(ctx,

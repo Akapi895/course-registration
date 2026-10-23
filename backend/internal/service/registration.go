@@ -150,6 +150,10 @@ func (s *RegistrationService) Cancel(ctx context.Context, p *Principal, registra
 		if err := tx.LockStudent(ctx, p.UserID); err != nil {
 			return err
 		}
+		// Match the class -> registration lock order of admin cancellation.
+		if err := tx.LockClass(ctx, reg.ClassID); err != nil {
+			return err
+		}
 		cancelled, err := tx.CancelRegistration(ctx, reg.ID)
 		if err != nil {
 			return err
