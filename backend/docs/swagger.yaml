@@ -186,6 +186,7 @@ definitions:
         type: string
       max_capacity:
         example: 50
+        maximum: 2147483647
         type: integer
       schedules:
         items:
@@ -411,12 +412,14 @@ definitions:
         type: integer
       end_period:
         example: 3
+        maximum: 32767
         type: integer
       room:
         example: A2-301
         type: string
       start_period:
         example: 1
+        maximum: 32767
         type: integer
     required:
     - day_of_week
@@ -516,6 +519,7 @@ definitions:
         type: string
       max_capacity:
         example: 60
+        maximum: 2147483647
         type: integer
       schedules:
         items:

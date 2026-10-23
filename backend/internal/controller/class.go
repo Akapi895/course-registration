@@ -67,8 +67,8 @@ type classDetailSuccessResponse struct {
 
 type scheduleRequest struct {
 	DayOfWeek   int    `json:"day_of_week" binding:"required,min=2,max=7" example:"2"`
-	StartPeriod int    `json:"start_period" binding:"required,gt=0" example:"1"`
-	EndPeriod   int    `json:"end_period" binding:"required,gt=0" example:"3"`
+	StartPeriod int    `json:"start_period" binding:"required,gt=0,max=32767" example:"1"`
+	EndPeriod   int    `json:"end_period" binding:"required,gt=0,max=32767" example:"3"`
 	Room        string `json:"room" binding:"required" example:"A2-301"`
 }
 
@@ -77,14 +77,14 @@ type createClassRequest struct {
 	SemesterID   int64             `json:"semester_id" binding:"required,gt=0" example:"2"`
 	ClassCode    string            `json:"class_code" binding:"required" example:"INT3401-01"`
 	LecturerName string            `json:"lecturer_name" binding:"required" example:"Giảng viên A"`
-	MaxCapacity  int               `json:"max_capacity" binding:"required,gt=0" example:"50"`
+	MaxCapacity  int               `json:"max_capacity" binding:"required,gt=0,max=2147483647" example:"50"`
 	Schedules    []scheduleRequest `json:"schedules" binding:"required,min=1,dive"`
 }
 
 type updateClassRequest struct {
 	ClassCode    string            `json:"class_code" binding:"required" example:"INT3401-01"`
 	LecturerName string            `json:"lecturer_name" binding:"required" example:"Giảng viên B"`
-	MaxCapacity  int               `json:"max_capacity" binding:"required,gt=0" example:"60"`
+	MaxCapacity  int               `json:"max_capacity" binding:"required,gt=0,max=2147483647" example:"60"`
 	Schedules    []scheduleRequest `json:"schedules" binding:"required,min=1,dive"`
 }
 

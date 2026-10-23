@@ -1144,6 +1144,7 @@ const docTemplate = `{
                 },
                 "max_capacity": {
                     "type": "integer",
+                    "maximum": 2147483647,
                     "example": 50
                 },
                 "schedules": {
@@ -1465,6 +1466,7 @@ const docTemplate = `{
                 },
                 "end_period": {
                     "type": "integer",
+                    "maximum": 32767,
                     "example": 3
                 },
                 "room": {
@@ -1473,6 +1475,7 @@ const docTemplate = `{
                 },
                 "start_period": {
                     "type": "integer",
+                    "maximum": 32767,
                     "example": 1
                 }
             }
@@ -1611,6 +1614,7 @@ const docTemplate = `{
                 },
                 "max_capacity": {
                     "type": "integer",
+                    "maximum": 2147483647,
                     "example": 60
                 },
                 "schedules": {
