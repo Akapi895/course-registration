@@ -49,10 +49,7 @@ export const semester = (id: string) => db.semesters.find((s) => s.id === id)!
 export const student = (id: string) => db.students.find((s) => s.id === id)!
 export type SemStatus = 'upcoming' | 'open' | 'closed'
 export function semStatus(s: Semester): SemStatus {
-  const n = Date.now()
-  if (n < +new Date(s.openAt)) return 'upcoming'
-  if (n > +new Date(s.closeAt)) return 'closed'
-  return 'open'
+  return periodStatus(s)
 }
 /** Semester to advertise publicly (login page): open one first, else the next upcoming, else latest. */
 export function currentPeriod() {
@@ -182,11 +179,6 @@ export async function updateStudent(id: string, patch: Partial<Pick<Student, 'na
   Object.assign(student(id), patch)
   const acc = db.accounts.find((a) => a.studentId === id)
   if (acc && patch.name) acc.name = patch.name
-  emit()
-}
-export async function updateAccountName(username: string, name: string) {
-  await wait(500)
-  db.accounts.find((a) => a.username === username)!.name = name
   emit()
 }
 

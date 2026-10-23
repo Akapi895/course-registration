@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
-import { type ApiError, bundleLabel, cancelCheck, cancelRegistration, checkRegistration, cls, course, credits, db, practice, register, semester, sessionText, useDb } from './api'
+import { cancelCheck, cancelRegistration, checkRegistration, cls, course, credits, db, practice, semester, sessionText, useDb } from './api'
 import { Alert, Badge, Button, Modal, toast } from './ui'
 
 /** Lists every component of a course bundle: theory class and practice group. */
@@ -23,67 +23,6 @@ export function BundleSummary({ classId, practiceId }: { classId: string; practi
       {g && part('TH', g.code, g.sessions, `${g.enrolled}/${g.capacity}`, g.lecturer)}
     </div>
   )
-}
-
-/** Confirmation flow for registering one course bundle. Nothing is held or queued. */
-export function useRegisterFlow(studentId: string) {
-  useDb()
-  const [sel, setSel] = useState<{ classId: string; practiceId?: string } | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<{ ok: boolean; msg: string; code?: string } | null>(null)
-  const close = () => { if (!busy) { setSel(null); setResult(null) } }
-  const submit = async () => {
-    if (busy || !sel) return
-    setBusy(true); setResult(null)
-    try {
-      await register(studentId, sel.classId, sel.practiceId)
-      setResult({ ok: true, msg: '' })
-      toast(`Đã đăng ký ${course(cls(sel.classId)!.courseId).name}.`)
-    } catch (e) {
-      setResult({ ok: false, msg: (e as Error).message, code: (e as ApiError).code })
-    } finally { setBusy(false) }
-  }
-  let modal = null
-  if (sel) {
-    const c = cls(sel.classId)!
-    const co = course(c.courseId)
-    const sem = semester(c.semesterId)
-    const cur = credits(studentId, sem.id)
-    const warn = checkRegistration(studentId, sel.classId, sel.practiceId).filter((x) => !x.ok)
-    const retry = result && !result.ok && result.code === 'NETWORK'
-    modal = (
-      <Modal open onClose={close} closable={!busy}
-        title={result?.ok ? 'Đăng ký thành công' : result ? 'Đăng ký không thành công' : 'Xác nhận đăng ký học phần'}
-        footer={result && !retry ? <Button variant={result.ok ? 'primary' : 'secondary'} onClick={close}>Đóng</Button> : (
-          <>
-            <Button variant="secondary" onClick={close} disabled={busy}>Quay lại</Button>
-            <Button onClick={submit} loading={busy}>{busy ? 'Đang xử lý…' : retry ? 'Thử lại' : 'Xác nhận đăng ký'}</Button>
-          </>
-        )}>
-        <div className="space-y-4">
-          <BundleSummary classId={sel.classId} practiceId={sel.practiceId} />
-          {result?.ok ? (
-            <Alert tone="success" title="Đã ghi nhận cả bộ đăng ký">{bundleLabel(sel.classId, sel.practiceId)}. Tổng tín chỉ hiện tại: {cur}/{sem.maxCredits}.</Alert>
-          ) : result ? (
-            <Alert tone="error" title="Hệ thống từ chối đăng ký">{result.msg}{(result.code === 'seat' || result.code === 'practice') && ' Sĩ số đã được cập nhật lại.'}{!retry && ' Không thành phần nào được ghi nhận.'}</Alert>
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-4 text-sm">
-                <span className="text-muted">Tín chỉ tính một lần theo học phần · dự kiến sau đăng ký</span>
-                <span className="whitespace-nowrap text-lg font-semibold tabular-nums">{cur} → {cur + co.credits}<span className="text-sm font-normal text-muted"> / {sem.maxCredits}</span></span>
-              </div>
-              {warn.length > 0 ? (
-                <Alert tone="warning" title="Kiểm tra trước phát hiện vấn đề (tham khảo)">
-                  <ul className="list-disc pl-4">{warn.map((w) => <li key={w.key}>{w.message}</li>)}</ul>
-                </Alert>
-              ) : <p className="text-[13px] text-muted">Lớp lý thuyết và nhóm thực hành được đăng ký cùng lúc: chỉ thành công khi mọi thành phần hợp lệ và còn chỗ.</p>}
-            </>
-          )}
-        </div>
-      </Modal>
-    )
-  }
-  return { start: (classId: string, practiceId?: string) => { setResult(null); setSel({ classId, practiceId }) }, modal }
 }
 
 export function useCancelFlow() {
