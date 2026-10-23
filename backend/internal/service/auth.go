@@ -14,10 +14,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Claims struct {
+type tokenClaims struct {
 	Role string `json:"role"`
 	SID  string `json:"sid"`
 	jwt.RegisteredClaims
+}
+
+// Principal is the authenticated caller of a request.
+type Principal struct {
+	UserID int64
+	Role   string
+	SID    string
 }
 
 type AuthService struct {
@@ -55,7 +62,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 		return "", err
 	}
 
-	claims := Claims{
+	claims := tokenClaims{
 		Role: user.Role,
 		SID:  sid,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -71,12 +78,8 @@ func (s *AuthService) Logout(ctx context.Context, sid string) error {
 	return s.sessions.Revoke(ctx, sid)
 }
 
-func (s *AuthService) Me(ctx context.Context, subject string) (*repository.User, error) {
-	id, err := strconv.ParseInt(subject, 10, 64)
-	if err != nil {
-		return nil, ErrUnauthorized
-	}
-	user, err := s.users.FindByID(ctx, id)
+func (s *AuthService) Me(ctx context.Context, userID int64) (*repository.User, error) {
+	user, err := s.users.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +91,8 @@ func (s *AuthService) Me(ctx context.Context, subject string) (*repository.User,
 
 // VerifyAccessToken returns ErrSessionRevoked when the token is valid but its
 // session is revoked or expired.
-func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Claims, error) {
-	claims := &Claims{}
+func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Principal, error) {
+	claims := &tokenClaims{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(*jwt.Token) (any, error) {
 		return []byte(s.cfg.JWTSecret), nil
 	}, jwt.WithValidMethods([]string{"HS256"}))
@@ -107,5 +110,5 @@ func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Cla
 	if strconv.FormatInt(owner, 10) != claims.Subject {
 		return nil, ErrUnauthorized
 	}
-	return claims, nil
+	return &Principal{UserID: owner, Role: claims.Role, SID: claims.SID}, nil
 }

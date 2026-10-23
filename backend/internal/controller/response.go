@@ -39,6 +39,10 @@ func failWithError(c *gin.Context, err error) {
 		fail(c, 401, "SESSION_REVOKED", "Phiên đăng nhập đã bị thu hồi hoặc đã hết hạn")
 	case errors.Is(err, service.ErrUnauthorized):
 		fail(c, 401, "UNAUTHORIZED", "Chưa đăng nhập hoặc phiên không hợp lệ")
+	case errors.Is(err, service.ErrForbidden):
+		fail(c, 403, "FORBIDDEN", "Bạn không có quyền truy cập dữ liệu này")
+	case errors.Is(err, service.ErrNotFound):
+		fail(c, 404, "NOT_FOUND", "Không tìm thấy dữ liệu")
 	default:
 		log.Printf("internal error: %v", err)
 		fail(c, 500, "INTERNAL_ERROR", "Lỗi hệ thống")

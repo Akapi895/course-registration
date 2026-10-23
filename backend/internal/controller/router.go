@@ -7,7 +7,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func NewRouter(auth *service.AuthService) *gin.Engine {
+func NewRouter(auth *service.AuthService, students *service.StudentService) *gin.Engine {
 	r := gin.Default()
 
 	r.GET("/health", func(c *gin.Context) {
@@ -16,6 +16,7 @@ func NewRouter(auth *service.AuthService) *gin.Engine {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	authCtl := NewAuthController(auth)
+	studentCtl := NewStudentController(students)
 
 	api := r.Group("/api")
 	api.POST("/auth/login", authCtl.Login)
@@ -23,6 +24,8 @@ func NewRouter(auth *service.AuthService) *gin.Engine {
 	protected := api.Group("", AuthRequired(auth))
 	protected.POST("/auth/logout", authCtl.Logout)
 	protected.GET("/auth/me", authCtl.Me)
+	protected.GET("/students/:id", studentCtl.Get)
+	protected.PUT("/students/:id", studentCtl.Update)
 
 	return r
 }

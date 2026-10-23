@@ -83,7 +83,7 @@ func (h *AuthController) Login(c *gin.Context) {
 // @Failure     500 {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/auth/logout [post]
 func (h *AuthController) Logout(c *gin.Context) {
-	if err := h.auth.Logout(c.Request.Context(), currentClaims(c).SID); err != nil {
+	if err := h.auth.Logout(c.Request.Context(), currentPrincipal(c).SID); err != nil {
 		failWithError(c, err)
 		return
 	}
@@ -100,7 +100,7 @@ func (h *AuthController) Logout(c *gin.Context) {
 // @Failure     500 {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/auth/me [get]
 func (h *AuthController) Me(c *gin.Context) {
-	user, err := h.auth.Me(c.Request.Context(), currentClaims(c).Subject)
+	user, err := h.auth.Me(c.Request.Context(), currentPrincipal(c).UserID)
 	if err != nil {
 		failWithError(c, err)
 		return

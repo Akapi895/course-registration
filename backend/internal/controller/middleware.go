@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const claimsKey = "claims"
+const principalKey = "principal"
 
 func AuthRequired(auth *service.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -17,13 +17,13 @@ func AuthRequired(auth *service.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := auth.VerifyAccessToken(c.Request.Context(), token)
+		principal, err := auth.VerifyAccessToken(c.Request.Context(), token)
 		if err != nil {
 			failWithError(c, err)
 			return
 		}
 
-		c.Set(claimsKey, claims)
+		c.Set(principalKey, principal)
 		c.Next()
 	}
 }
@@ -34,7 +34,7 @@ func bearerToken(header string) (string, bool) {
 	return token, ok && token != ""
 }
 
-func currentClaims(c *gin.Context) *service.Claims {
-	claims, _ := c.Get(claimsKey)
-	return claims.(*service.Claims)
+func currentPrincipal(c *gin.Context) *service.Principal {
+	p, _ := c.Get(principalKey)
+	return p.(*service.Principal)
 }

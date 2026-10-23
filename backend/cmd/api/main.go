@@ -31,13 +31,13 @@ func main() {
 	}
 	defer pool.Close()
 
-	auth := service.NewAuthService(
-		cfg,
-		repository.NewUserRepository(pool),
-		repository.NewSessionRepository(pool),
-	)
+	users := repository.NewUserRepository(pool)
+	sessions := repository.NewSessionRepository(pool)
 
-	r := controller.NewRouter(auth)
+	auth := service.NewAuthService(cfg, users, sessions)
+	students := service.NewStudentService(users)
+
+	r := controller.NewRouter(auth, students)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}

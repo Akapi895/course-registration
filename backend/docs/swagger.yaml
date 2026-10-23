@@ -76,6 +76,73 @@ definitions:
         example: success
         type: string
     type: object
+  controller.studentData:
+    properties:
+      faculty:
+        example: CNTT
+        type: string
+      full_name:
+        example: Sinh viên giả lập 001
+        type: string
+      id:
+        example: 7
+        type: integer
+      major:
+        example: Khoa học máy tính
+        type: string
+      student_code:
+        example: DEMO00001
+        type: string
+      username:
+        example: student001
+        type: string
+    type: object
+  controller.studentProfileData:
+    properties:
+      faculty:
+        example: CNTT
+        type: string
+      full_name:
+        example: Nguyễn Văn A
+        type: string
+      id:
+        example: 7
+        type: integer
+      major:
+        example: Khoa học máy tính
+        type: string
+      student_code:
+        example: DEMO00001
+        type: string
+    type: object
+  controller.studentProfileSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.studentProfileData'
+      status:
+        example: success
+        type: string
+    type: object
+  controller.studentSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.studentData'
+      status:
+        example: success
+        type: string
+    type: object
+  controller.updateStudentRequest:
+    properties:
+      faculty:
+        example: CNTT
+        type: string
+      full_name:
+        example: Nguyễn Văn A
+        type: string
+      major:
+        example: Khoa học máy tính
+        type: string
+    type: object
 info:
   contact: {}
   description: API quản lý và đăng ký học phần (Phase 1). Đăng nhập tại POST /api/auth/login,
@@ -162,6 +229,93 @@ paths:
       summary: Thông tin người dùng hiện tại
       tags:
       - auth
+  /api/students/{id}:
+    get:
+      description: Sinh viên chỉ xem được tài khoản của chính mình. Admin xem được
+        mọi sinh viên.
+      parameters:
+      - description: ID tài khoản sinh viên
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.studentSuccessResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "403":
+          description: FORBIDDEN
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Xem thông tin sinh viên
+      tags:
+      - students
+    put:
+      consumes:
+      - application/json
+      description: Thay thế họ tên, khoa và ngành. Sinh viên chỉ sửa được tài khoản
+        của chính mình. Admin sửa được mọi sinh viên.
+      parameters:
+      - description: ID tài khoản sinh viên
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Thông tin cần cập nhật
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/controller.updateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.studentProfileSuccessResponse'
+        "400":
+          description: VALIDATION_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "403":
+          description: FORBIDDEN
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Cập nhật thông tin sinh viên
+      tags:
+      - students
 securityDefinitions:
   BearerAuth:
     description: 'Nhập đúng dạng "Bearer <access_token>": có chữ Bearer, một khoảng
