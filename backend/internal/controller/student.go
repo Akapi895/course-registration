@@ -66,7 +66,7 @@ type updateStudentRequest struct {
 // @Failure     500 {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/students/{id} [get]
 func (h *StudentController) Get(c *gin.Context) {
-	id, ok := parseStudentID(c)
+	id, ok := parseID(c)
 	if !ok {
 		return
 	}
@@ -103,7 +103,7 @@ func (h *StudentController) Get(c *gin.Context) {
 // @Failure     500  {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/students/{id} [put]
 func (h *StudentController) Update(c *gin.Context) {
-	id, ok := parseStudentID(c)
+	id, ok := parseID(c)
 	if !ok {
 		return
 	}
@@ -130,7 +130,7 @@ func (h *StudentController) Update(c *gin.Context) {
 	})
 }
 
-func parseStudentID(c *gin.Context) (int64, bool) {
+func parseID(c *gin.Context) (int64, bool) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		fail(c, 404, "NOT_FOUND", "Không tìm thấy dữ liệu")

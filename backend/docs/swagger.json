@@ -133,6 +133,109 @@
                 }
             }
         },
+        "/api/classes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký. Trả về danh sách rỗng khi chưa có học kỳ nào mở đăng ký.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Danh sách lớp học phần đang mở",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Lọc theo khoa",
+                        "name": "faculty",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Lọc theo ngành",
+                        "name": "major",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classListSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/classes/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trả về cả lớp đã hủy, với trạng thái status = cancelled.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Chi tiết lớp học phần",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID lớp học phần",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.classDetailSuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "NOT_FOUND",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "INTERNAL_ERROR",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/students/{id}": {
             "get": {
                 "security": [
@@ -267,6 +370,137 @@
         }
     },
     "definitions": {
+        "controller.classDetailData": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "course_code": {
+                    "type": "string",
+                    "example": "INT3401"
+                },
+                "course_id": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Hệ điều hành"
+                },
+                "credits": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "enrolled": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "lecturer_name": {
+                    "type": "string",
+                    "example": "Giảng viên A"
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "registration_open": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.scheduleItem"
+                    }
+                },
+                "semester_id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                }
+            }
+        },
+        "controller.classDetailSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classDetailData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
+        "controller.classItem": {
+            "type": "object",
+            "properties": {
+                "class_code": {
+                    "type": "string",
+                    "example": "INT3401-01"
+                },
+                "course_code": {
+                    "type": "string",
+                    "example": "INT3401"
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Hệ điều hành"
+                },
+                "credits": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "enrolled": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "max_capacity": {
+                    "type": "integer",
+                    "example": 50
+                },
+                "registration_open": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "controller.classListData": {
+            "type": "object",
+            "properties": {
+                "classes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.classItem"
+                    }
+                }
+            }
+        },
+        "controller.classListSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.classListData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                }
+            }
+        },
         "controller.emptySuccessResponse": {
             "type": "object",
             "properties": {
@@ -375,6 +609,27 @@
                 "status": {
                     "type": "string",
                     "example": "success"
+                }
+            }
+        },
+        "controller.scheduleItem": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "end_period": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "room": {
+                    "type": "string",
+                    "example": "A2-301"
+                },
+                "start_period": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },

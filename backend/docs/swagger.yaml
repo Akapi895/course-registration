@@ -1,5 +1,98 @@
 basePath: /
 definitions:
+  controller.classDetailData:
+    properties:
+      class_code:
+        example: INT3401-01
+        type: string
+      course_code:
+        example: INT3401
+        type: string
+      course_id:
+        example: 5
+        type: integer
+      course_name:
+        example: Hệ điều hành
+        type: string
+      credits:
+        example: 3
+        type: integer
+      enrolled:
+        example: 42
+        type: integer
+      id:
+        example: 10
+        type: integer
+      lecturer_name:
+        example: Giảng viên A
+        type: string
+      max_capacity:
+        example: 50
+        type: integer
+      registration_open:
+        example: true
+        type: boolean
+      schedules:
+        items:
+          $ref: '#/definitions/controller.scheduleItem'
+        type: array
+      semester_id:
+        example: 2
+        type: integer
+      status:
+        example: active
+        type: string
+    type: object
+  controller.classDetailSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.classDetailData'
+      status:
+        example: success
+        type: string
+    type: object
+  controller.classItem:
+    properties:
+      class_code:
+        example: INT3401-01
+        type: string
+      course_code:
+        example: INT3401
+        type: string
+      course_name:
+        example: Hệ điều hành
+        type: string
+      credits:
+        example: 3
+        type: integer
+      enrolled:
+        example: 42
+        type: integer
+      id:
+        example: 10
+        type: integer
+      max_capacity:
+        example: 50
+        type: integer
+      registration_open:
+        example: true
+        type: boolean
+    type: object
+  controller.classListData:
+    properties:
+      classes:
+        items:
+          $ref: '#/definitions/controller.classItem'
+        type: array
+    type: object
+  controller.classListSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.classListData'
+      status:
+        example: success
+        type: string
+    type: object
   controller.emptySuccessResponse:
     properties:
       data:
@@ -75,6 +168,21 @@ definitions:
       status:
         example: success
         type: string
+    type: object
+  controller.scheduleItem:
+    properties:
+      day_of_week:
+        example: 2
+        type: integer
+      end_period:
+        example: 3
+        type: integer
+      room:
+        example: A2-301
+        type: string
+      start_period:
+        example: 1
+        type: integer
     type: object
   controller.studentData:
     properties:
@@ -229,6 +337,72 @@ paths:
       summary: Thông tin người dùng hiện tại
       tags:
       - auth
+  /api/classes:
+    get:
+      description: Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất
+        đã mở đăng ký. Trả về danh sách rỗng khi chưa có học kỳ nào mở đăng ký.
+      parameters:
+      - description: Lọc theo khoa
+        in: query
+        name: faculty
+        type: string
+      - description: Lọc theo ngành
+        in: query
+        name: major
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.classListSuccessResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Danh sách lớp học phần đang mở
+      tags:
+      - classes
+  /api/classes/{id}:
+    get:
+      description: Trả về cả lớp đã hủy, với trạng thái status = cancelled.
+      parameters:
+      - description: ID lớp học phần
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.classDetailSuccessResponse'
+        "401":
+          description: UNAUTHORIZED hoặc SESSION_REVOKED
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "404":
+          description: NOT_FOUND
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+        "500":
+          description: INTERNAL_ERROR
+          schema:
+            $ref: '#/definitions/controller.failResponse'
+      security:
+      - BearerAuth: []
+      summary: Chi tiết lớp học phần
+      tags:
+      - classes
   /api/students/{id}:
     get:
       description: Sinh viên chỉ xem được tài khoản của chính mình. Admin xem được

@@ -33,11 +33,14 @@ func main() {
 
 	users := repository.NewUserRepository(pool)
 	sessions := repository.NewSessionRepository(pool)
+	semesters := repository.NewSemesterRepository(pool)
+	classes := repository.NewClassRepository(pool)
 
 	auth := service.NewAuthService(cfg, users, sessions)
 	students := service.NewStudentService(users)
+	classService := service.NewClassService(classes, semesters)
 
-	r := controller.NewRouter(auth, students)
+	r := controller.NewRouter(auth, students, classService)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}
