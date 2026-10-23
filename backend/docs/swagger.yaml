@@ -559,6 +559,8 @@ definitions:
       major:
         example: Khoa học máy tính
         type: string
+    required:
+    - full_name
     type: object
 info:
   contact: {}

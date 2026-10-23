@@ -1650,6 +1650,9 @@ const docTemplate = `{
         },
         "controller.updateStudentRequest": {
             "type": "object",
+            "required": [
+                "full_name"
+            ],
             "properties": {
                 "faculty": {
                     "type": "string",

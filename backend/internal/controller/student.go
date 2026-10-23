@@ -46,7 +46,7 @@ type studentProfileSuccessResponse struct {
 }
 
 type updateStudentRequest struct {
-	FullName string  `json:"full_name" example:"Nguyễn Văn A"`
+	FullName string  `json:"full_name" binding:"required" example:"Nguyễn Văn A"`
 	Faculty  *string `json:"faculty" example:"CNTT"`
 	Major    *string `json:"major" example:"Khoa học máy tính"`
 }
