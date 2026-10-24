@@ -54,6 +54,7 @@ export interface Prerequisite {
 export interface ClassDetail extends ClassSummary {
   course_id: number
   faculty: string
+  major: string | null
   semester_id: number
   semester_name: string
   lecturer_name: string

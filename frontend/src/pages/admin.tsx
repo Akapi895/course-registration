@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { ArrowLeft, Ban, CalendarClock, Eye, FilterX, ListChecks, Lock, MapPin, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, Ban, CalendarClock, Eye, FilterX, ListChecks, Lock, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import { ApiError } from '../api/client'
+import { ClassDetailModal } from '../components/ClassDetailModal'
 import { PeriodBanner } from '../components/PeriodBanner'
 import { Link, navigate, query, useRoute } from '../router'
 import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type RegistrationPeriod, type Student } from '../api/types'
@@ -26,6 +27,7 @@ const positiveInt = (v: string) => { const n = Number(v); return Number.isSafeIn
 // ---------------- Dashboard ----------------
 export function AdminDashboard() {
   const resource = useRequest(useCallback((signal: AbortSignal) => api.listClasses({}, signal), []))
+  const admin = useClassAdmin(resource.reload)
   const list = resource.data?.classes ?? []
   const full = list.filter((c) => c.enrolled >= c.max_capacity).length
   const near = list.filter((c) => seatState(c) !== 'open').sort((a, b) => b.enrolled / b.max_capacity - a.enrolled / a.max_capacity)
@@ -51,7 +53,7 @@ export function AdminDashboard() {
               <Table head={['Mã lớp', 'Học phần', 'Sĩ số', 'Trạng thái']} minWidth={600}>
                 {near.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50">
-                    <Td className="whitespace-nowrap font-medium"><Link to={`/admin/classes/${c.id}`} className="text-primary hover:underline">{c.class_code}</Link></Td>
+                    <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => admin.show(c.id)} className="text-primary hover:underline">{c.class_code}</button></Td>
                     <Td>{c.course_name}<div className="text-xs text-muted">{c.course_code}</div></Td>
                     <Td><Capacity c={c} /></Td>
                     <Td>{c.enrolled >= c.max_capacity ? <Badge tone="red">Đã đầy</Badge> : <Badge tone="orange">Gần đầy</Badge>}</Td>
@@ -62,6 +64,7 @@ export function AdminDashboard() {
           </Card>
         </div>
       )}
+      {admin.modal}
     </Layout>
   )
 }
@@ -181,15 +184,38 @@ function CancelClassModal({ value, onClose, onCancelled }: { value: Pick<ClassSu
   )
 }
 
+type ClassStep =
+  | { type: 'detail'; id: number }
+  | { type: 'edit'; id: number; back: boolean }
+  | { type: 'cancel'; value: Pick<ClassSummary, 'id' | 'class_code' | 'course_name' | 'enrolled'>; back: boolean }
+
+/**
+ * Class popups: details with edit and cancel buttons. Editing or cancelling from the details returns to them
+ * afterwards; editing or cancelling straight from a list row just closes. `onChanged` refreshes the page's data.
+ */
+function useClassAdmin(onChanged: () => void) {
+  const [step, setStep] = useState<ClassStep | null>(null)
+  const leave = (back: boolean, id: number) => setStep(back ? { type: 'detail', id } : null)
+  let modal = null
+  if (step?.type === 'detail') modal = <ClassDetailModal classId={step.id} onClose={() => setStep(null)} admin={{ onEdit: (c) => setStep({ type: 'edit', id: c.id, back: true }), onCancel: (c) => setStep({ type: 'cancel', value: c, back: true }) }} />
+  else if (step?.type === 'edit') { const { id, back } = step; modal = <EditClass id={id} onClose={() => leave(back, id)} onSaved={() => { onChanged(); leave(back, id) }} /> }
+  else if (step?.type === 'cancel') { const { value, back } = step; modal = <CancelClassModal value={value} onClose={() => leave(back, value.id)} onCancelled={() => { onChanged(); leave(back, value.id) }} /> }
+  return {
+    show: (id: number) => setStep({ type: 'detail', id }),
+    edit: (id: number) => setStep({ type: 'edit', id, back: false }),
+    cancel: (value: Extract<ClassStep, { type: 'cancel' }>['value']) => setStep({ type: 'cancel', value, back: false }),
+    modal,
+  }
+}
+
 export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
   const [q, setQ] = useState('')
   const [fac, setFac] = useState('')
   const [major, setMajor] = useState('')
   const [page, setPage] = useState(1)
   const [creating, setCreating] = useState(isNew)
-  const [editId, setEditId] = useState<number | null>(null)
-  const [cancelling, setCancelling] = useState<ClassSummary | null>(null)
   const resource = useRequest(useCallback((signal: AbortSignal) => api.listClasses({ faculty: fac, major }, signal), [fac, major]))
+  const admin = useClassAdmin(resource.reload)
   const list = (resource.data?.classes ?? []).filter((c) => `${c.class_code} ${c.course_code} ${c.course_name}`.toLowerCase().includes(q.trim().toLowerCase()))
   const size = 10
   const pg = Math.min(page, Math.max(1, Math.ceil(list.length / size)))
@@ -211,14 +237,14 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
           <Table head={['Mã lớp', 'Học phần', 'TC', 'Sĩ số', 'Thao tác']} minWidth={720}>
             {list.slice((pg - 1) * size, pg * size).map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
-                <Td className="whitespace-nowrap font-medium"><Link to={`/admin/classes/${c.id}`} className="text-primary hover:underline">{c.class_code}</Link></Td>
+                <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => admin.show(c.id)} className="text-primary hover:underline">{c.class_code}</button></Td>
                 <Td>{c.course_name}<div className="text-xs text-muted">{c.course_code}</div></Td>
                 <Td>{c.credits}</Td>
                 <Td><Capacity c={c} /></Td>
                 <Td><div className="flex gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/classes/${c.id}`)} aria-label={`Xem lớp ${c.class_code}`} title="Xem chi tiết"><Eye className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" onClick={() => setEditId(c.id)} aria-label={`Sửa lớp ${c.class_code}`} title="Chỉnh sửa"><Pencil className="h-4 w-4" /></Button>
-                  <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setCancelling(c)} aria-label={`Hủy lớp ${c.class_code}`} title="Hủy lớp"><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => admin.show(c.id)} aria-label={`Xem lớp ${c.class_code}`} title="Xem chi tiết"><Eye className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => admin.edit(c.id)} aria-label={`Sửa lớp ${c.class_code}`} title="Chỉnh sửa"><Pencil className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" className="text-red-600" onClick={() => admin.cancel(c)} aria-label={`Hủy lớp ${c.class_code}`} title="Hủy lớp"><Trash2 className="h-4 w-4" /></Button>
                 </div></Td>
               </tr>
             ))}
@@ -226,44 +252,8 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
           <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
         </>)}
       </Card>
-      {creating && <ClassForm onClose={closeCreate} onSaved={(id) => { setCreating(false); navigate(`/admin/classes/${id}`) }} />}
-      {editId !== null && <EditClass id={editId} onClose={() => setEditId(null)} onSaved={() => { setEditId(null); resource.reload() }} />}
-      {cancelling && <CancelClassModal value={cancelling} onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); resource.reload() }} />}
-    </Layout>
-  )
-}
-
-export function AdminClassDetail({ id }: { id: string }) {
-  const resource = useRequest(useCallback((signal: AbortSignal) => api.getClass(Number(id), signal), [id]))
-  const [editing, setEditing] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
-  const c = resource.data
-  const ready = c && !resource.loading && !resource.error
-  const crumbs = <><Link to="/admin/classes" className="hover:text-primary">Quản lý lớp học phần</Link> <span aria-hidden>/</span> {c?.class_code ?? 'Chi tiết'}</>
-  return (
-    <Layout title="Chi tiết lớp học phần">
-      <PageHeader crumbs={crumbs} title={ready ? `${c.class_code} · ${c.course_name}` : 'Chi tiết lớp học phần'} desc={ready ? `${c.course_code} · ${c.credits} tín chỉ` : undefined}
-        actions={ready && c.status === 'active' ? <><Button variant="secondary" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Chỉnh sửa</Button><Button variant="secondary" className="text-red-600" onClick={() => setCancelling(true)}><Trash2 className="h-4 w-4" />Hủy lớp</Button></> : undefined} />
-      <RequestStatus {...resource} retry={resource.reload} />
-      {ready && (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="min-w-0 space-y-6">
-            <Card title={`Lịch học (${c.schedules.length} buổi/tuần)`}>
-              <Table head={['Thứ', 'Tiết', 'Phòng']} minWidth={360}>
-                {c.schedules.map((x, i) => <tr key={i}><Td className="font-medium">{DAYS[x.day_of_week]}</Td><Td>Tiết {x.start_period}–{x.end_period}</Td><Td><span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-muted" />{x.room}</span></Td></tr>)}
-              </Table>
-            </Card>
-          </div>
-          <Card title="Thông tin lớp" className="h-fit" action={c.status === 'cancelled' ? <Badge tone="red">Đã hủy</Badge> : undefined}>
-            <dl className="space-y-3 p-5 text-sm">
-              {([['Học phần', `${c.course_code} · ${c.course_name}`], ['Giảng viên', c.lecturer_name], ['Sức chứa', c.max_capacity], ['Đã đăng ký', c.enrolled]] as const).map(([k, v]) => <div key={k}><dt className="text-muted">{k}</dt><dd className="font-medium">{v}</dd></div>)}
-              <Capacity c={c} />
-            </dl>
-          </Card>
-        </div>
-      )}
-      {editing && c && <ClassForm existing={c} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); resource.reload() }} />}
-      {cancelling && c && <CancelClassModal value={c} onClose={() => setCancelling(false)} onCancelled={() => { setCancelling(false); resource.reload() }} />}
+      {creating && <ClassForm onClose={closeCreate} onSaved={(id) => { setCreating(false); resource.reload(); admin.show(id) }} />}
+      {admin.modal}
     </Layout>
   )
 }
