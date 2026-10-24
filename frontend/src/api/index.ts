@@ -1,4 +1,4 @@
-import { request } from './http'
+import { request } from './client'
 import type { ClassCreate, ClassDetail, ClassSummary, ClassUpdate, CurrentUser, RegisteredClass, Registration, RegistrationPeriod, Student, StudentInput, StudentProfile, TimetableEntry } from './types'
 
 export const login = (username: string, password: string, signal?: AbortSignal) => request<{ access_token: string }>('/api/auth/login', { method: 'POST', body: { username, password }, auth: false, signal })

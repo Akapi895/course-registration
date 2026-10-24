@@ -1,13 +1,15 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { BookOpen, CalendarDays, ListChecks, Search } from 'lucide-react'
-import Layout from '../Layout'
+import Layout from '../components/Layout'
 import * as api from '../api'
-import { useAuth } from '../AuthProvider'
-import { RegisterClassModal, ScheduleList, ScheduleTable, StudentProfileEditor, useCancelFlow } from '../flows'
+import { useAuth } from '../auth/AuthProvider'
+import { RegisterClassModal, useCancelFlow } from '../components/RegistrationFlow'
+import { ScheduleList, ScheduleTable } from '../components/Schedule'
+import { StudentProfileEditor } from '../components/StudentProfileEditor'
 import { Link, navigate } from '../router'
-import { DAYS } from '../types'
-import { useRequest } from '../useRequest'
-import { Alert, Badge, Button, Capacity, Card, Empty, Field, Input, PageHeader, Pagination, PillToggle, RequestStatus, Stat, Table, Td, fmtDT } from '../ui'
+import { DAYS } from '../api/types'
+import { useRequest } from '../hooks/useRequest'
+import { Alert, Badge, Button, Capacity, Card, Empty, Field, Input, PageHeader, Pagination, PillToggle, RequestStatus, Stat, Table, Td, fmtDT } from '../components/ui'
 
 export function StudentDashboard() {
   const { user, refreshUser } = useAuth()

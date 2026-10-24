@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowLeft, Eye, EyeOff, LifeBuoy } from 'lucide-react'
-import { useAuth } from '../AuthProvider'
-import { cooldownUntil } from '../registrationCompletion'
-import { Alert, Button, ErrorNotice, Field, Input, Logo } from '../ui'
+import { useAuth } from '../auth/AuthProvider'
+import { cooldownUntil } from '../auth/registrationCompletion'
+import { Alert, Button, ErrorNotice, Field, Input, Logo } from '../components/ui'
 import { Link, navigate, query, useRoute } from '../router'
 
 function AuthShell({ children }: { children: ReactNode }) {

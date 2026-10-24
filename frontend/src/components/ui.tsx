@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
-import logo from './assets/logo.png'
-import { ApiError } from './http'
+import logo from '../assets/logo.png'
+import { ApiError } from '../api/client'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 

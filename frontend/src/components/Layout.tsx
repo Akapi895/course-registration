@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { LayoutDashboard, BookPlus, ListChecks, CalendarDays, Menu, LogOut, X, Timer, School, Users, CalendarClock } from 'lucide-react'
-import { Link, navigate, useRoute } from './router'
-import { useAuth } from './AuthProvider'
-import { tokenExpiresAt } from './http'
+import { Link, navigate, useRoute } from '../router'
+import { useAuth } from '../auth/AuthProvider'
+import { tokenExpiresAt } from '../api/client'
 import { Button, Drawer, ErrorNotice, Logo, cx } from './ui'
 
 const studentMenu = [

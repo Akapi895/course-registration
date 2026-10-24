@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import * as api from './api'
-import { ApiError, AUTH_EXPIRED, getAccessToken, setAccessToken, tokenExpiresAt } from './http'
+import * as api from '../api'
+import { ApiError, AUTH_EXPIRED, getAccessToken, setAccessToken, tokenExpiresAt } from '../api/client'
 import { clearRegistrationNotice, confirmRegistrationLogout, cooldownUntil, getRegistrationNotice, recordRegistration, rememberCooldown, type RegistrationNotice } from './registrationCompletion'
-import type { CurrentUser } from './types'
+import type { CurrentUser } from '../api/types'
 
 interface AuthState {
   user: CurrentUser | null

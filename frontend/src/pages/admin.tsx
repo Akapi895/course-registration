@@ -1,13 +1,14 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { BookOpen, ListChecks, Plus, School, Search } from 'lucide-react'
-import Layout from '../Layout'
+import Layout from '../components/Layout'
 import * as api from '../api'
-import { ApiError } from '../http'
-import { ScheduleTable, StudentProfileEditor } from '../flows'
+import { ApiError } from '../api/client'
+import { ScheduleTable } from '../components/Schedule'
+import { StudentProfileEditor } from '../components/StudentProfileEditor'
 import { Link, navigate, query, useRoute } from '../router'
-import { DAYS, type ClassDetail, type ClassUpdate, type RegistrationPeriod } from '../types'
-import { useRequest } from '../useRequest'
-import { Alert, Badge, Button, Capacity, Card, Empty, ErrorNotice, Field, Input, Modal, PageHeader, Pagination, RequestStatus, Select, Stat, Table, Td, fmtDT, toast } from '../ui'
+import { DAYS, type ClassDetail, type ClassUpdate, type RegistrationPeriod } from '../api/types'
+import { useRequest } from '../hooks/useRequest'
+import { Alert, Badge, Button, Capacity, Card, Empty, ErrorNotice, Field, Input, Modal, PageHeader, Pagination, RequestStatus, Select, Stat, Table, Td, fmtDT, toast } from '../components/ui'
 
 export function AdminDashboard() {
   const resource = useRequest(useCallback((signal) => api.listClasses({}, signal), []))
