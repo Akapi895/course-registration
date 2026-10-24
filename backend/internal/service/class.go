@@ -45,16 +45,30 @@ type ScheduleInput struct {
 	Room        string
 }
 
-// ListCurrent returns the active classes of the current semester. It returns an
-// empty list when no semester has opened for registration yet.
-func (s *ClassService) ListCurrent(ctx context.Context, filter ClassFilter) ([]ClassView, error) {
+// SemesterView is a semester with its registration state at the time of the request.
+type SemesterView struct {
+	repository.Semester
+	RegistrationOpen bool
+}
+
+// CurrentClasses is the current semester together with its active classes.
+type CurrentClasses struct {
+	// Semester is nil when no semester has opened for registration yet.
+	Semester *SemesterView
+	Classes  []ClassView
+}
+
+// ListCurrent returns the active classes of the current semester and the
+// semester itself. Classes is empty and Semester is nil when no semester has
+// opened for registration yet.
+func (s *ClassService) ListCurrent(ctx context.Context, filter ClassFilter) (*CurrentClasses, error) {
 	now := time.Now()
 	semester, err := s.semesters.FindCurrent(ctx, now)
 	if err != nil {
 		return nil, err
 	}
 	if semester == nil {
-		return []ClassView{}, nil
+		return &CurrentClasses{Classes: []ClassView{}}, nil
 	}
 
 	classes, err := s.classes.ListActiveBySemester(ctx, semester.ID, filter.Faculty, filter.Major)
@@ -67,10 +81,23 @@ func (s *ClassService) ListCurrent(ctx context.Context, filter ClassFilter) ([]C
 	for _, c := range classes {
 		views = append(views, ClassView{Class: c, RegistrationOpen: open})
 	}
-	return views, nil
+	return &CurrentClasses{Semester: &SemesterView{Semester: *semester, RegistrationOpen: open}, Classes: views}, nil
 }
 
-func (s *ClassService) Get(ctx context.Context, classID int64) (*ClassView, error) {
+// PrerequisiteView is a prerequisite course. Passed is set only when the caller
+// is a student, and tells whether that student passed the course.
+type PrerequisiteView struct {
+	repository.Prerequisite
+	Passed *bool
+}
+
+// ClassDetail is a class with the prerequisites of its course.
+type ClassDetail struct {
+	ClassView
+	Prerequisites []PrerequisiteView
+}
+
+func (s *ClassService) Get(ctx context.Context, p *Principal, classID int64) (*ClassDetail, error) {
 	class, err := s.classes.FindByID(ctx, classID)
 	if err != nil {
 		return nil, err
@@ -87,7 +114,28 @@ func (s *ClassService) Get(ctx context.Context, classID int64) (*ClassView, erro
 		return nil, fmt.Errorf("class %d refers to missing semester %d", class.ID, class.SemesterID)
 	}
 
-	return &ClassView{Class: *class, RegistrationOpen: isRegistrationOpen(*semester, time.Now())}, nil
+	var studentID *int64
+	if p.Role == repository.RoleStudent {
+		studentID = &p.UserID
+	}
+	required, err := s.classes.Prerequisites(ctx, class.CourseID, studentID)
+	if err != nil {
+		return nil, err
+	}
+	prerequisites := make([]PrerequisiteView, 0, len(required))
+	for _, r := range required {
+		view := PrerequisiteView{Prerequisite: r}
+		if studentID != nil {
+			passed := r.Passed
+			view.Passed = &passed
+		}
+		prerequisites = append(prerequisites, view)
+	}
+
+	return &ClassDetail{
+		ClassView:     ClassView{Class: *class, RegistrationOpen: isRegistrationOpen(*semester, time.Now())},
+		Prerequisites: prerequisites,
+	}, nil
 }
 
 // Create adds a new active class and returns its id.

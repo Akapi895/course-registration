@@ -61,13 +61,19 @@ func fail(c *gin.Context, status int, code, message string) {
 	c.AbortWithStatusJSON(status, failResponse{Status: "fail", Data: failData{Code: code, Message: message}})
 }
 
-func failWithError(c *gin.Context, err error) {
+// classify maps a service error to its HTTP status, code and message.
+// Unknown errors are logged and reported as INTERNAL_ERROR.
+func classify(err error) (int, string, string) {
 	for _, f := range failures {
 		if errors.Is(err, f.err) {
-			fail(c, f.status, f.code, f.message)
-			return
+			return f.status, f.code, f.message
 		}
 	}
 	log.Printf("internal error: %v", err)
-	fail(c, 500, "INTERNAL_ERROR", "Lỗi hệ thống")
+	return 500, "INTERNAL_ERROR", "Lỗi hệ thống"
+}
+
+func failWithError(c *gin.Context, err error) {
+	status, code, message := classify(err)
+	fail(c, status, code, message)
 }

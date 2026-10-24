@@ -14,7 +14,9 @@ type Class struct {
 	CourseCode   string
 	CourseName   string
 	Credits      int
+	Faculty      string
 	SemesterID   int64
+	SemesterName string
 	ClassCode    string
 	LecturerName string
 	MaxCapacity  int
@@ -52,10 +54,11 @@ type querier interface {
 }
 
 const classSelect = `
-	SELECT cc.id, cc.course_id, c.code, c.name, c.credits, cc.semester_id,
+	SELECT cc.id, cc.course_id, c.code, c.name, c.credits, c.faculty, cc.semester_id, s.name,
 	       cc.class_code, cc.lecturer_name, cc.max_capacity, cc.enrolled, cc.status
 	FROM course_classes cc
-	JOIN courses c ON c.id = cc.course_id`
+	JOIN courses c ON c.id = cc.course_id
+	JOIN semesters s ON s.id = cc.semester_id`
 
 // ListActiveBySemester returns the active classes of a semester. A nil filter
 // matches every value.
@@ -214,8 +217,39 @@ func schedulesOf(ctx context.Context, q querier, classID int64) ([]Schedule, err
 func scanClass(row pgx.Row) (Class, error) {
 	var c Class
 	err := row.Scan(
-		&c.ID, &c.CourseID, &c.CourseCode, &c.CourseName, &c.Credits, &c.SemesterID,
+		&c.ID, &c.CourseID, &c.CourseCode, &c.CourseName, &c.Credits, &c.Faculty, &c.SemesterID, &c.SemesterName,
 		&c.ClassCode, &c.LecturerName, &c.MaxCapacity, &c.Enrolled, &c.Status,
 	)
 	return c, err
+}
+
+// Prerequisite is a course that must be passed before registering for another.
+type Prerequisite struct {
+	CourseID   int64
+	CourseCode string
+	CourseName string
+	// Passed reports whether the asking student passed the course; false when no student is given.
+	Passed bool
+}
+
+// Prerequisites lists the prerequisite courses of a course, ordered by code.
+// When studentID is not nil, Passed tells whether that student passed each one.
+func (r *ClassRepository) Prerequisites(ctx context.Context, courseID int64, studentID *int64) ([]Prerequisite, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT p.id, p.code, p.name, COALESCE(res.passed, false)
+		FROM course_prerequisites cp
+		JOIN courses p ON p.id = cp.prerequisite_course_id
+		LEFT JOIN course_results res ON res.course_id = p.id AND res.student_id = $2::bigint
+		WHERE cp.course_id = $1
+		ORDER BY p.code`,
+		courseID, studentID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (Prerequisite, error) {
+		var p Prerequisite
+		err := row.Scan(&p.CourseID, &p.CourseCode, &p.CourseName, &p.Passed)
+		return p, err
+	})
 }

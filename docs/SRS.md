@@ -68,19 +68,22 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 1 | Trả về danh sách lớp học phần đang mở đăng ký. |
 | 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. |
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
+| 4 | Danh sách lớp kèm thông tin học kỳ hiện tại (tên, thời gian mở/đóng đăng ký, giới hạn tín chỉ tối đa) để client hiển thị đợt đăng ký. |
+| 5 | Chi tiết lớp học phần kèm khoa, tên học kỳ và các học phần tiên quyết; với sinh viên, mỗi học phần tiên quyết cho biết sinh viên đó đã đạt hay chưa. |
 
 ### 3.3. Đăng ký và hủy học phần
 
 | STT | Mô tả |
 |---|---|
-| 1 | Sinh viên đã xác thực có thể gửi yêu cầu đăng ký lớp học phần. |
-| 2 | Hệ thống kiểm tra các quy tắc nghiệp vụ trước khi ghi nhận đăng ký. |
-| 3 | Ghi nhận đăng ký và cập nhật sĩ số nhất quán trong giao dịch dữ liệu. |
+| 1 | Sinh viên đã xác thực có thể gửi yêu cầu đăng ký một hoặc nhiều lớp học phần trong cùng một yêu cầu. |
+| 2 | Hệ thống kiểm tra các quy tắc nghiệp vụ cho từng lớp trước khi ghi nhận đăng ký. |
+| 3 | Ghi nhận đăng ký của từng lớp và cập nhật sĩ số nhất quán trong giao dịch dữ liệu. |
 | 4 | Sinh viên xem được danh sách học phần đã đăng ký thành công của mình. |
 | 5 | Sinh viên có thể hủy đăng ký khi đáp ứng các điều kiện nghiệp vụ. |
 | 6 | Hệ thống cập nhật trạng thái đăng ký và sĩ số lớp học phần khi hủy đăng ký thành công. |
 | 7 | Cung cấp thời khóa biểu tổng hợp từ các lớp học phần đã đăng ký. |
-| 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có. |
+| 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có; với đăng ký nhiều lớp, trả kết quả và lý do từ chối (nếu có) cho từng lớp. |
+| 9 | Khi đăng ký nhiều lớp, hệ thống xử lý lần lượt từng lớp theo thứ tự gửi: lớp đáp ứng điều kiện được ghi nhận, lớp không đáp ứng bị từ chối kèm lý do mà không ảnh hưởng các lớp khác. Yêu cầu vẫn hoàn tất khi chỉ một phần số lớp được ghi nhận. |
 
 ### 3.4. Quản lý thông tin sinh viên
 
@@ -113,11 +116,11 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 #### 3.6.2. Đăng ký học phần
 
-1. Sinh viên đã đăng nhập gửi yêu cầu đăng ký lớp học phần.
-2. Hệ thống xác thực người dùng và kiểm tra thời gian đăng ký.
-3. Hệ thống kiểm tra sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết và giới hạn tín chỉ.
-4. Nếu đáp ứng các điều kiện, hệ thống ghi nhận đăng ký và cập nhật sĩ số trong cùng giao dịch dữ liệu.
-5. Hệ thống trả xác nhận đăng ký nếu hợp lệ; nếu không, trả lỗi tương ứng.
+1. Sinh viên đã đăng nhập gửi yêu cầu đăng ký một hoặc nhiều lớp học phần (tối đa 20 lớp, không trùng nhau).
+2. Hệ thống xác thực người dùng và kiểm tra dữ liệu yêu cầu; yêu cầu sai định dạng bị từ chối toàn bộ.
+3. Với từng lớp, theo thứ tự gửi, hệ thống kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết và giới hạn tín chỉ. Trùng lịch và giới hạn tín chỉ được tính cả với các lớp vừa được ghi nhận trong cùng yêu cầu.
+4. Nếu lớp đáp ứng các điều kiện, hệ thống ghi nhận đăng ký và cập nhật sĩ số của lớp đó trong cùng giao dịch dữ liệu; nếu không, lớp bị từ chối với mã lỗi tương ứng và các lớp khác không bị ảnh hưởng.
+5. Hệ thống trả kết quả cho từng lớp (đã đăng ký hoặc bị từ chối kèm lý do) cùng số lớp thành công và số lớp bị từ chối. Ví dụ: gửi 5 lớp, 3 lớp thành công và 2 lớp hết chỗ thì 3 đăng ký vẫn được ghi nhận và 2 lớp còn lại được báo lỗi.
 
 #### 3.6.3. Tra cứu lớp học phần
 
@@ -146,6 +149,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 7 | Thời gian đăng ký hợp lệ | Thời điểm mở đăng ký phải trước thời điểm đóng đăng ký. |
 | 8 | Quyền sở hữu đăng ký | Sinh viên chỉ được phép xem và hủy các đăng ký học phần của chính mình. |
 | 9 | Kiểm tra dữ liệu lớp | Thông tin lớp học phần khi tạo mới hoặc cập nhật phải đáp ứng các ràng buộc dữ liệu đã quy định. |
+| 10 | Đăng ký nhiều lớp | Mỗi yêu cầu đăng ký gồm 1 đến 20 lớp khác nhau. Các quy tắc 1–6 áp dụng riêng cho từng lớp; lớp bị từ chối không làm mất các lớp đã được ghi nhận trong cùng yêu cầu. |
 
 ## 5. Yêu cầu giao diện và API
 
@@ -185,7 +189,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 | Phương thức | Endpoint | Mô tả | Quyền truy cập |
 |---|---|---|---|
-| POST | `/api/registrations` | Đăng ký lớp học phần | Sinh viên |
+| POST | `/api/registrations` | Đăng ký một hoặc nhiều lớp học phần | Sinh viên |
 | GET | `/api/registrations` | Lấy danh sách lớp học phần đã đăng ký của sinh viên hiện tại | Sinh viên |
 | DELETE | `/api/registrations/{id}` | Hủy đăng ký lớp học phần | Sinh viên đã đăng ký |
 | GET | `/api/schedules` | Lấy thời khóa biểu từ các lớp học phần đã đăng ký | Sinh viên |
@@ -264,11 +268,12 @@ Phase 1 ưu tiên hoàn thiện các chức năng cốt lõi, bảo đảm tính
 | 2 | Các API được bảo vệ từ chối yêu cầu thiếu token, token không hợp lệ, token thuộc phiên đã đăng xuất hoặc không đủ quyền truy cập. |
 | 3 | Sinh viên có thể xem và cập nhật thông tin cá nhân trong phạm vi được cấp quyền; quản trị viên có thể tra cứu và cập nhật thông tin sinh viên. |
 | 4 | Sinh viên tra cứu được danh sách và thông tin chi tiết các lớp học phần đang mở. |
-| 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng. |
-| 6 | Hệ thống từ chối đăng ký khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ. |
+| 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng cho từng lớp được ghi nhận. |
+| 6 | Hệ thống từ chối đăng ký từng lớp khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ, kèm mã lỗi tương ứng cho lớp đó. |
 | 7 | Sinh viên xem được danh sách lớp học phần đã đăng ký và thời khóa biểu của mình. |
 | 8 | Sinh viên chỉ có thể hủy đăng ký thuộc về mình khi đáp ứng điều kiện nghiệp vụ; hủy thành công cập nhật trạng thái đăng ký và sĩ số tương ứng. |
 | 9 | Quản trị viên có thể tạo, cập nhật và xóa/hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
 | 10 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
 | 11 | OpenAPI/Swagger hoạt động và mô tả đầy đủ các endpoint được triển khai. |
 | 12 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
+| 13 | Yêu cầu đăng ký nhiều lớp ghi nhận các lớp hợp lệ và trả lý do từ chối cho các lớp còn lại; một số lớp bị từ chối không làm mất các lớp đã được ghi nhận. Yêu cầu có danh sách rỗng, trùng lớp hoặc quá 20 lớp bị từ chối toàn bộ. |

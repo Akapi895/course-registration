@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var registerFields = map[string]bool{"class_id": true}
+var registerFields = map[string]bool{"class_ids": true}
 
 type RegistrationController struct {
 	registrations *service.RegistrationService
@@ -18,19 +18,29 @@ func NewRegistrationController(registrations *service.RegistrationService) *Regi
 }
 
 type registerRequest struct {
-	ClassID int64 `json:"class_id" binding:"required,gt=0" example:"10"`
+	ClassIDs []int64 `json:"class_ids" binding:"required,min=1,max=20,dive,gt=0" example:"10,11,12"`
 }
 
-type registrationData struct {
-	ID           int64     `json:"id" example:"301"`
-	ClassID      int64     `json:"class_id" example:"10"`
-	Status       string    `json:"status" example:"registered"`
-	RegisteredAt time.Time `json:"registered_at" example:"2026-10-21T09:00:00+07:00"`
+// registerResultItem is the outcome for one requested class. A registered
+// class carries id and registered_at; a failed class carries code and message.
+type registerResultItem struct {
+	ClassID      int64      `json:"class_id" example:"10"`
+	Status       string     `json:"status" enums:"registered,failed" example:"registered"`
+	ID           *int64     `json:"id,omitempty" example:"301"`
+	RegisteredAt *time.Time `json:"registered_at,omitempty" example:"2026-10-21T09:00:00+07:00"`
+	Code         string     `json:"code,omitempty" example:"CLASS_FULL"`
+	Message      string     `json:"message,omitempty" example:"Lớp học phần đã đủ sĩ số"`
 }
 
-type registrationSuccessResponse struct {
-	Status string           `json:"status" example:"success"`
-	Data   registrationData `json:"data"`
+type registerData struct {
+	RegisteredCount int                  `json:"registered_count" example:"3"`
+	FailedCount     int                  `json:"failed_count" example:"2"`
+	Results         []registerResultItem `json:"results"`
+}
+
+type registerSuccessResponse struct {
+	Status string       `json:"status" example:"success"`
+	Data   registerData `json:"data"`
 }
 
 type registeredClassItem struct {
@@ -64,19 +74,17 @@ type cancelSuccessResponse struct {
 }
 
 // Register godoc
-// @Summary     Đăng ký lớp học phần
-// @Description Chỉ sinh viên được đăng ký. Kiểm tra lớp, thời gian, đăng ký trùng, trùng lịch, tiên quyết, tín chỉ và sĩ số trong một transaction.
+// @Summary     Đăng ký một hoặc nhiều lớp học phần
+// @Description Chỉ sinh viên được đăng ký. Gửi tối đa 20 lớp trong `class_ids`, không trùng nhau. Các lớp được xử lý lần lượt theo thứ tự gửi, mỗi lớp trong một transaction riêng: lớp đáp ứng điều kiện được ghi nhận, lớp bị từ chối được trả lại kèm `code` (NOT_FOUND, CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET, CREDIT_LIMIT_EXCEEDED hoặc INTERNAL_ERROR) và `message`, không ảnh hưởng các lớp khác. Quy tắc trùng lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trong cùng yêu cầu. Yêu cầu hợp lệ luôn trả 200, kể cả khi mọi lớp đều bị từ chối; xem `registered_count`, `failed_count` và `results`.
 // @Tags        registrations
 // @Accept      json
 // @Produce     json
 // @Security    BearerAuth
-// @Param       body body     registerRequest true "Lớp cần đăng ký"
-// @Success     201  {object} registrationSuccessResponse
+// @Param       body body     registerRequest true "Danh sách lớp cần đăng ký"
+// @Success     200  {object} registerSuccessResponse
 // @Failure     400  {object} failResponse "VALIDATION_ERROR"
 // @Failure     401  {object} failResponse "UNAUTHORIZED hoặc SESSION_REVOKED"
 // @Failure     403  {object} failResponse "FORBIDDEN"
-// @Failure     404  {object} failResponse "NOT_FOUND"
-// @Failure     409  {object} failResponse "CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET hoặc CREDIT_LIMIT_EXCEEDED"
 // @Failure     500  {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/registrations [post]
 func (h *RegistrationController) Register(c *gin.Context) {
@@ -84,18 +92,37 @@ func (h *RegistrationController) Register(c *gin.Context) {
 	if !bindJSON(c, registerFields, &req) {
 		return
 	}
+	seen := make(map[int64]bool, len(req.ClassIDs))
+	for _, id := range req.ClassIDs {
+		if seen[id] {
+			fail(c, 400, "VALIDATION_ERROR", "Danh sách lớp bị trùng")
+			return
+		}
+		seen[id] = true
+	}
 
-	reg, err := h.registrations.Register(c.Request.Context(), currentPrincipal(c), req.ClassID)
+	results, err := h.registrations.RegisterBatch(c.Request.Context(), currentPrincipal(c), req.ClassIDs)
 	if err != nil {
 		failWithError(c, err)
 		return
 	}
-	success(c, 201, registrationData{
-		ID:           reg.ID,
-		ClassID:      reg.ClassID,
-		Status:       reg.Status,
-		RegisteredAt: reg.RegisteredAt,
-	})
+
+	data := registerData{Results: make([]registerResultItem, 0, len(results))}
+	for _, r := range results {
+		item := registerResultItem{ClassID: r.ClassID}
+		if r.Err != nil {
+			_, item.Code, item.Message = classify(r.Err)
+			item.Status = "failed"
+			data.FailedCount++
+		} else {
+			item.Status = r.Registration.Status
+			item.ID = &r.Registration.ID
+			item.RegisteredAt = &r.Registration.RegisteredAt
+			data.RegisteredCount++
+		}
+		data.Results = append(data.Results, item)
+	}
+	success(c, 200, data)
 }
 
 // List godoc

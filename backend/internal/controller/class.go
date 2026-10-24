@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"time"
+
 	"github.com/Akapi895/course-registration/backend/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -33,8 +35,21 @@ type classItem struct {
 	RegistrationOpen bool   `json:"registration_open" example:"true"`
 }
 
+// semesterItem is the semester the listed classes belong to, so clients can
+// show the registration window and the credit limit.
+type semesterItem struct {
+	ID                   int64     `json:"id" example:"2"`
+	Name                 string    `json:"name" example:"Học kỳ 1 năm học 2026-2027"`
+	MaxCredits           int       `json:"max_credits" example:"24"`
+	RegistrationOpensAt  time.Time `json:"registration_opens_at" example:"2026-10-13T00:00:00+07:00"`
+	RegistrationClosesAt time.Time `json:"registration_closes_at" example:"2026-11-19T00:00:00+07:00"`
+	RegistrationOpen     bool      `json:"registration_open" example:"true"`
+}
+
 type classListData struct {
-	Classes []classItem `json:"classes"`
+	// Semester is null when no semester has opened for registration yet.
+	Semester *semesterItem `json:"semester"`
+	Classes  []classItem   `json:"classes"`
 }
 
 type classListSuccessResponse struct {
@@ -49,20 +64,32 @@ type scheduleItem struct {
 	Room        string `json:"room" example:"A2-301"`
 }
 
+// prerequisiteItem is a prerequisite course. Passed is present only for a
+// student caller and tells whether that student passed the course.
+type prerequisiteItem struct {
+	CourseID   int64  `json:"course_id" example:"4"`
+	CourseCode string `json:"course_code" example:"INT2211"`
+	CourseName string `json:"course_name" example:"Cơ sở dữ liệu"`
+	Passed     *bool  `json:"passed,omitempty" example:"true"`
+}
+
 type classDetailData struct {
-	ID               int64          `json:"id" example:"10"`
-	CourseID         int64          `json:"course_id" example:"5"`
-	CourseCode       string         `json:"course_code" example:"INT3401"`
-	CourseName       string         `json:"course_name" example:"Hệ điều hành"`
-	Credits          int            `json:"credits" example:"3"`
-	SemesterID       int64          `json:"semester_id" example:"2"`
-	ClassCode        string         `json:"class_code" example:"INT3401-01"`
-	LecturerName     string         `json:"lecturer_name" example:"Giảng viên A"`
-	MaxCapacity      int            `json:"max_capacity" example:"50"`
-	Enrolled         int            `json:"enrolled" example:"42"`
-	Status           string         `json:"status" example:"active"`
-	RegistrationOpen bool           `json:"registration_open" example:"true"`
-	Schedules        []scheduleItem `json:"schedules"`
+	ID               int64              `json:"id" example:"10"`
+	CourseID         int64              `json:"course_id" example:"5"`
+	CourseCode       string             `json:"course_code" example:"INT3401"`
+	CourseName       string             `json:"course_name" example:"Hệ điều hành"`
+	Credits          int                `json:"credits" example:"3"`
+	Faculty          string             `json:"faculty" example:"Công nghệ thông tin"`
+	SemesterID       int64              `json:"semester_id" example:"2"`
+	SemesterName     string             `json:"semester_name" example:"Học kỳ 1 năm học 2026-2027"`
+	ClassCode        string             `json:"class_code" example:"INT3401-01"`
+	LecturerName     string             `json:"lecturer_name" example:"Giảng viên A"`
+	MaxCapacity      int                `json:"max_capacity" example:"50"`
+	Enrolled         int                `json:"enrolled" example:"42"`
+	Status           string             `json:"status" example:"active"`
+	RegistrationOpen bool               `json:"registration_open" example:"true"`
+	Schedules        []scheduleItem     `json:"schedules"`
+	Prerequisites    []prerequisiteItem `json:"prerequisites"`
 }
 
 type classDetailSuccessResponse struct {
@@ -129,7 +156,7 @@ type classCancelSuccessResponse struct {
 
 // List godoc
 // @Summary     Danh sách lớp học phần đang mở
-// @Description Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký. Trả về danh sách rỗng khi chưa có học kỳ nào mở đăng ký.
+// @Description Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký, cùng thông tin học kỳ đó (`semester`: tên, giới hạn tín chỉ, thời gian mở/đóng đăng ký). Khi chưa có học kỳ nào mở đăng ký, `semester` là null và danh sách rỗng.
 // @Tags        classes
 // @Produce     json
 // @Security    BearerAuth
@@ -140,7 +167,7 @@ type classCancelSuccessResponse struct {
 // @Failure     500 {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/classes [get]
 func (h *ClassController) List(c *gin.Context) {
-	views, err := h.classes.ListCurrent(c.Request.Context(), service.ClassFilter{
+	current, err := h.classes.ListCurrent(c.Request.Context(), service.ClassFilter{
 		Faculty: optionalQuery(c, "faculty"),
 		Major:   optionalQuery(c, "major"),
 	})
@@ -149,8 +176,8 @@ func (h *ClassController) List(c *gin.Context) {
 		return
 	}
 
-	items := make([]classItem, 0, len(views))
-	for _, v := range views {
+	items := make([]classItem, 0, len(current.Classes))
+	for _, v := range current.Classes {
 		items = append(items, classItem{
 			ID:               v.ID,
 			ClassCode:        v.ClassCode,
@@ -162,12 +189,23 @@ func (h *ClassController) List(c *gin.Context) {
 			RegistrationOpen: v.RegistrationOpen,
 		})
 	}
-	success(c, 200, classListData{Classes: items})
+	data := classListData{Classes: items}
+	if s := current.Semester; s != nil {
+		data.Semester = &semesterItem{
+			ID:                   s.ID,
+			Name:                 s.Name,
+			MaxCredits:           s.MaxCredits,
+			RegistrationOpensAt:  s.RegistrationOpensAt,
+			RegistrationClosesAt: s.RegistrationClosesAt,
+			RegistrationOpen:     s.RegistrationOpen,
+		}
+	}
+	success(c, 200, data)
 }
 
 // Get godoc
 // @Summary     Chi tiết lớp học phần
-// @Description Trả về cả lớp đã hủy, với trạng thái status = cancelled.
+// @Description Trả về cả lớp đã hủy, với trạng thái status = cancelled. Kèm khoa, tên học kỳ và danh sách học phần tiên quyết (`prerequisites`); với sinh viên, mỗi học phần tiên quyết có thêm `passed` cho biết sinh viên đó đã đạt hay chưa.
 // @Tags        classes
 // @Produce     json
 // @Security    BearerAuth
@@ -183,7 +221,7 @@ func (h *ClassController) Get(c *gin.Context) {
 		return
 	}
 
-	view, err := h.classes.Get(c.Request.Context(), id)
+	view, err := h.classes.Get(c.Request.Context(), currentPrincipal(c), id)
 	if err != nil {
 		failWithError(c, err)
 		return
@@ -198,13 +236,24 @@ func (h *ClassController) Get(c *gin.Context) {
 			Room:        s.Room,
 		})
 	}
+	prerequisites := make([]prerequisiteItem, 0, len(view.Prerequisites))
+	for _, p := range view.Prerequisites {
+		prerequisites = append(prerequisites, prerequisiteItem{
+			CourseID:   p.CourseID,
+			CourseCode: p.CourseCode,
+			CourseName: p.CourseName,
+			Passed:     p.Passed,
+		})
+	}
 	success(c, 200, classDetailData{
 		ID:               view.ID,
 		CourseID:         view.CourseID,
 		CourseCode:       view.CourseCode,
 		CourseName:       view.CourseName,
 		Credits:          view.Credits,
+		Faculty:          view.Faculty,
 		SemesterID:       view.SemesterID,
+		SemesterName:     view.SemesterName,
 		ClassCode:        view.ClassCode,
 		LecturerName:     view.LecturerName,
 		MaxCapacity:      view.MaxCapacity,
@@ -212,6 +261,7 @@ func (h *ClassController) Get(c *gin.Context) {
 		Status:           view.Status,
 		RegistrationOpen: view.RegistrationOpen,
 		Schedules:        schedules,
+		Prerequisites:    prerequisites,
 	})
 }
 

@@ -149,6 +149,8 @@ sequenceDiagram
 
 Service kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết và giới hạn tín chỉ. Câu lệnh cập nhật sĩ số được mô tả trong ADR-02.
 
+Một yêu cầu `POST /api/registrations` có thể chứa nhiều lớp (`class_ids`). Sơ đồ trên mô tả xử lý của **một lớp**: Service lặp qua danh sách theo thứ tự gửi và chạy luồng này cho từng lớp trong một transaction riêng. Lớp bị từ chối chỉ rollback transaction của chính nó, các lớp đã commit trước đó được giữ lại. Controller gộp kết quả từng lớp vào một response `200`.
+
 Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở hữu và điều kiện hủy, sau đó cập nhật trạng thái đăng ký và sĩ số trong cùng transaction. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận. Khi đăng ký lại một lớp đã hủy, hệ thống cập nhật bản ghi đăng ký cũ thay vì tạo bản ghi trùng.
 
 ### 3.3. Tra cứu và quản trị

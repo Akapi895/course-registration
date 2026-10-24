@@ -58,6 +58,31 @@ func (s *RegistrationService) Register(ctx context.Context, p *Principal, classI
 	return reg, nil
 }
 
+// RegisterResult is the outcome for one class of a batch request. Exactly one
+// of Registration and Err is set.
+type RegisterResult struct {
+	ClassID      int64
+	Registration *repository.Registration
+	Err          error
+}
+
+// RegisterBatch registers the classes one by one, in the order given. Each
+// class runs in its own transaction, so a rejected class never undoes the
+// others, and rules such as the schedule and credit limit see the classes
+// that were already registered earlier in the same batch.
+func (s *RegistrationService) RegisterBatch(ctx context.Context, p *Principal, classIDs []int64) ([]RegisterResult, error) {
+	if err := requireStudent(p); err != nil {
+		return nil, err
+	}
+
+	results := make([]RegisterResult, 0, len(classIDs))
+	for _, classID := range classIDs {
+		reg, err := s.Register(ctx, p, classID)
+		results = append(results, RegisterResult{ClassID: classID, Registration: reg, Err: err})
+	}
+	return results, nil
+}
+
 // enroll runs inside the registration transaction. The student row is locked
 // first, so the rules below see every registration the student made before.
 func (s *RegistrationService) enroll(

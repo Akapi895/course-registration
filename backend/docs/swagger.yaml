@@ -77,6 +77,9 @@ definitions:
       enrolled:
         example: 42
         type: integer
+      faculty:
+        example: Công nghệ thông tin
+        type: string
       id:
         example: 10
         type: integer
@@ -86,6 +89,10 @@ definitions:
       max_capacity:
         example: 50
         type: integer
+      prerequisites:
+        items:
+          $ref: '#/definitions/controller.prerequisiteItem'
+        type: array
       registration_open:
         example: true
         type: boolean
@@ -96,6 +103,9 @@ definitions:
       semester_id:
         example: 2
         type: integer
+      semester_name:
+        example: Học kỳ 1 năm học 2026-2027
+        type: string
       status:
         example: active
         type: string
@@ -141,6 +151,11 @@ definitions:
         items:
           $ref: '#/definitions/controller.classItem'
         type: array
+      semester:
+        allOf:
+        - $ref: '#/definitions/controller.semesterItem'
+        description: Semester is null when no semester has opened for registration
+          yet.
     type: object
   controller.classListSuccessResponse:
     properties:
@@ -280,13 +295,80 @@ definitions:
         example: success
         type: string
     type: object
+  controller.prerequisiteItem:
+    properties:
+      course_code:
+        example: INT2211
+        type: string
+      course_id:
+        example: 4
+        type: integer
+      course_name:
+        example: Cơ sở dữ liệu
+        type: string
+      passed:
+        example: true
+        type: boolean
+    type: object
+  controller.registerData:
+    properties:
+      failed_count:
+        example: 2
+        type: integer
+      registered_count:
+        example: 3
+        type: integer
+      results:
+        items:
+          $ref: '#/definitions/controller.registerResultItem'
+        type: array
+    type: object
   controller.registerRequest:
+    properties:
+      class_ids:
+        example:
+        - 10
+        - 11
+        - 12
+        items:
+          type: integer
+        maxItems: 20
+        minItems: 1
+        type: array
+    required:
+    - class_ids
+    type: object
+  controller.registerResultItem:
     properties:
       class_id:
         example: 10
         type: integer
-    required:
-    - class_id
+      code:
+        example: CLASS_FULL
+        type: string
+      id:
+        example: 301
+        type: integer
+      message:
+        example: Lớp học phần đã đủ sĩ số
+        type: string
+      registered_at:
+        example: "2026-10-21T09:00:00+07:00"
+        type: string
+      status:
+        enum:
+        - registered
+        - failed
+        example: registered
+        type: string
+    type: object
+  controller.registerSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.registerData'
+      status:
+        example: success
+        type: string
     type: object
   controller.registeredClassItem:
     properties:
@@ -304,21 +386,6 @@ definitions:
         type: string
       credits:
         example: 3
-        type: integer
-      id:
-        example: 301
-        type: integer
-      registered_at:
-        example: "2026-10-21T09:00:00+07:00"
-        type: string
-      status:
-        example: registered
-        type: string
-    type: object
-  controller.registrationData:
-    properties:
-      class_id:
-        example: 10
         type: integer
       id:
         example: 301
@@ -361,14 +428,6 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/controller.registrationPeriodData'
-      status:
-        example: success
-        type: string
-    type: object
-  controller.registrationSuccessResponse:
-    properties:
-      data:
-        $ref: '#/definitions/controller.registrationData'
       status:
         example: success
         type: string
@@ -426,6 +485,27 @@ definitions:
     - end_period
     - room
     - start_period
+    type: object
+  controller.semesterItem:
+    properties:
+      id:
+        example: 2
+        type: integer
+      max_credits:
+        example: 24
+        type: integer
+      name:
+        example: Học kỳ 1 năm học 2026-2027
+        type: string
+      registration_closes_at:
+        example: "2026-11-19T00:00:00+07:00"
+        type: string
+      registration_open:
+        example: true
+        type: boolean
+      registration_opens_at:
+        example: "2026-10-13T00:00:00+07:00"
+        type: string
     type: object
   controller.studentData:
     properties:
@@ -650,8 +730,10 @@ paths:
       - auth
   /api/classes:
     get:
-      description: Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất
-        đã mở đăng ký. Trả về danh sách rỗng khi chưa có học kỳ nào mở đăng ký.
+      description: 'Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất
+        đã mở đăng ký, cùng thông tin học kỳ đó (`semester`: tên, giới hạn tín chỉ,
+        thời gian mở/đóng đăng ký). Khi chưa có học kỳ nào mở đăng ký, `semester`
+        là null và danh sách rỗng.'
       parameters:
       - description: Lọc theo khoa
         in: query
@@ -768,7 +850,10 @@ paths:
       tags:
       - classes
     get:
-      description: Trả về cả lớp đã hủy, với trạng thái status = cancelled.
+      description: Trả về cả lớp đã hủy, với trạng thái status = cancelled. Kèm khoa,
+        tên học kỳ và danh sách học phần tiên quyết (`prerequisites`); với sinh viên,
+        mỗi học phần tiên quyết có thêm `passed` cho biết sinh viên đó đã đạt hay
+        chưa.
       parameters:
       - description: ID lớp học phần
         in: path
@@ -925,10 +1010,17 @@ paths:
     post:
       consumes:
       - application/json
-      description: Chỉ sinh viên được đăng ký. Kiểm tra lớp, thời gian, đăng ký trùng,
-        trùng lịch, tiên quyết, tín chỉ và sĩ số trong một transaction.
+      description: 'Chỉ sinh viên được đăng ký. Gửi tối đa 20 lớp trong `class_ids`,
+        không trùng nhau. Các lớp được xử lý lần lượt theo thứ tự gửi, mỗi lớp trong
+        một transaction riêng: lớp đáp ứng điều kiện được ghi nhận, lớp bị từ chối
+        được trả lại kèm `code` (NOT_FOUND, CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED,
+        ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET, CREDIT_LIMIT_EXCEEDED
+        hoặc INTERNAL_ERROR) và `message`, không ảnh hưởng các lớp khác. Quy tắc trùng
+        lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trong cùng yêu
+        cầu. Yêu cầu hợp lệ luôn trả 200, kể cả khi mọi lớp đều bị từ chối; xem `registered_count`,
+        `failed_count` và `results`.'
       parameters:
-      - description: Lớp cần đăng ký
+      - description: Danh sách lớp cần đăng ký
         in: body
         name: body
         required: true
@@ -937,10 +1029,10 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/controller.registrationSuccessResponse'
+            $ref: '#/definitions/controller.registerSuccessResponse'
         "400":
           description: VALIDATION_ERROR
           schema:
@@ -953,22 +1045,13 @@ paths:
           description: FORBIDDEN
           schema:
             $ref: '#/definitions/controller.failResponse'
-        "404":
-          description: NOT_FOUND
-          schema:
-            $ref: '#/definitions/controller.failResponse'
-        "409":
-          description: CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED,
-            SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET hoặc CREDIT_LIMIT_EXCEEDED
-          schema:
-            $ref: '#/definitions/controller.failResponse'
         "500":
           description: INTERNAL_ERROR
           schema:
             $ref: '#/definitions/controller.failResponse'
       security:
       - BearerAuth: []
-      summary: Đăng ký lớp học phần
+      summary: Đăng ký một hoặc nhiều lớp học phần
       tags:
       - registrations
   /api/registrations/{id}:

@@ -147,7 +147,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký. Trả về danh sách rỗng khi chưa có học kỳ nào mở đăng ký.",
+                "description": "Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký, cùng thông tin học kỳ đó (` + "`" + `semester` + "`" + `: tên, giới hạn tín chỉ, thời gian mở/đóng đăng ký). Khi chưa có học kỳ nào mở đăng ký, ` + "`" + `semester` + "`" + ` là null và danh sách rỗng.",
                 "produces": [
                     "application/json"
                 ],
@@ -265,7 +265,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Trả về cả lớp đã hủy, với trạng thái status = cancelled.",
+                "description": "Trả về cả lớp đã hủy, với trạng thái status = cancelled. Kèm khoa, tên học kỳ và danh sách học phần tiên quyết (` + "`" + `prerequisites` + "`" + `); với sinh viên, mỗi học phần tiên quyết có thêm ` + "`" + `passed` + "`" + ` cho biết sinh viên đó đã đạt hay chưa.",
                 "produces": [
                     "application/json"
                 ],
@@ -563,7 +563,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Chỉ sinh viên được đăng ký. Kiểm tra lớp, thời gian, đăng ký trùng, trùng lịch, tiên quyết, tín chỉ và sĩ số trong một transaction.",
+                "description": "Chỉ sinh viên được đăng ký. Gửi tối đa 20 lớp trong ` + "`" + `class_ids` + "`" + `, không trùng nhau. Các lớp được xử lý lần lượt theo thứ tự gửi, mỗi lớp trong một transaction riêng: lớp đáp ứng điều kiện được ghi nhận, lớp bị từ chối được trả lại kèm ` + "`" + `code` + "`" + ` (NOT_FOUND, CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET, CREDIT_LIMIT_EXCEEDED hoặc INTERNAL_ERROR) và ` + "`" + `message` + "`" + `, không ảnh hưởng các lớp khác. Quy tắc trùng lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trong cùng yêu cầu. Yêu cầu hợp lệ luôn trả 200, kể cả khi mọi lớp đều bị từ chối; xem ` + "`" + `registered_count` + "`" + `, ` + "`" + `failed_count` + "`" + ` và ` + "`" + `results` + "`" + `.",
                 "consumes": [
                     "application/json"
                 ],
@@ -573,10 +573,10 @@ const docTemplate = `{
                 "tags": [
                     "registrations"
                 ],
-                "summary": "Đăng ký lớp học phần",
+                "summary": "Đăng ký một hoặc nhiều lớp học phần",
                 "parameters": [
                     {
-                        "description": "Lớp cần đăng ký",
+                        "description": "Danh sách lớp cần đăng ký",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -586,10 +586,10 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.registrationSuccessResponse"
+                            "$ref": "#/definitions/controller.registerSuccessResponse"
                         }
                     },
                     "400": {
@@ -606,18 +606,6 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "FORBIDDEN",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET hoặc CREDIT_LIMIT_EXCEEDED",
                         "schema": {
                             "$ref": "#/definitions/controller.failResponse"
                         }
@@ -982,6 +970,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 42
                 },
+                "faculty": {
+                    "type": "string",
+                    "example": "Công nghệ thông tin"
+                },
                 "id": {
                     "type": "integer",
                     "example": 10
@@ -993,6 +985,12 @@ const docTemplate = `{
                 "max_capacity": {
                     "type": "integer",
                     "example": 50
+                },
+                "prerequisites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.prerequisiteItem"
+                    }
                 },
                 "registration_open": {
                     "type": "boolean",
@@ -1007,6 +1005,10 @@ const docTemplate = `{
                 "semester_id": {
                     "type": "integer",
                     "example": 2
+                },
+                "semester_name": {
+                    "type": "string",
+                    "example": "Học kỳ 1 năm học 2026-2027"
                 },
                 "status": {
                     "type": "string",
@@ -1071,6 +1073,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/controller.classItem"
                     }
+                },
+                "semester": {
+                    "description": "Semester is null when no semester has opened for registration yet.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controller.semesterItem"
+                        }
+                    ]
                 }
             }
         },
@@ -1271,15 +1281,109 @@ const docTemplate = `{
                 }
             }
         },
+        "controller.prerequisiteItem": {
+            "type": "object",
+            "properties": {
+                "course_code": {
+                    "type": "string",
+                    "example": "INT2211"
+                },
+                "course_id": {
+                    "type": "integer",
+                    "example": 4
+                },
+                "course_name": {
+                    "type": "string",
+                    "example": "Cơ sở dữ liệu"
+                },
+                "passed": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "controller.registerData": {
+            "type": "object",
+            "properties": {
+                "failed_count": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "registered_count": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.registerResultItem"
+                    }
+                }
+            }
+        },
         "controller.registerRequest": {
             "type": "object",
             "required": [
-                "class_id"
+                "class_ids"
             ],
+            "properties": {
+                "class_ids": {
+                    "type": "array",
+                    "maxItems": 20,
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    },
+                    "example": [
+                        10,
+                        11,
+                        12
+                    ]
+                }
+            }
+        },
+        "controller.registerResultItem": {
+            "type": "object",
             "properties": {
                 "class_id": {
                     "type": "integer",
                     "example": 10
+                },
+                "code": {
+                    "type": "string",
+                    "example": "CLASS_FULL"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 301
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Lớp học phần đã đủ sĩ số"
+                },
+                "registered_at": {
+                    "type": "string",
+                    "example": "2026-10-21T09:00:00+07:00"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "registered",
+                        "failed"
+                    ],
+                    "example": "registered"
+                }
+            }
+        },
+        "controller.registerSuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.registerData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
                 }
             }
         },
@@ -1305,27 +1409,6 @@ const docTemplate = `{
                 "credits": {
                     "type": "integer",
                     "example": 3
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 301
-                },
-                "registered_at": {
-                    "type": "string",
-                    "example": "2026-10-21T09:00:00+07:00"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "registered"
-                }
-            }
-        },
-        "controller.registrationData": {
-            "type": "object",
-            "properties": {
-                "class_id": {
-                    "type": "integer",
-                    "example": 10
                 },
                 "id": {
                     "type": "integer",
@@ -1386,18 +1469,6 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/controller.registrationPeriodData"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "controller.registrationSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controller.registrationData"
                 },
                 "status": {
                     "type": "string",
@@ -1477,6 +1548,35 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 32767,
                     "example": 1
+                }
+            }
+        },
+        "controller.semesterItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "max_credits": {
+                    "type": "integer",
+                    "example": 24
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Học kỳ 1 năm học 2026-2027"
+                },
+                "registration_closes_at": {
+                    "type": "string",
+                    "example": "2026-11-19T00:00:00+07:00"
+                },
+                "registration_open": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "registration_opens_at": {
+                    "type": "string",
+                    "example": "2026-10-13T00:00:00+07:00"
                 }
             }
         },
