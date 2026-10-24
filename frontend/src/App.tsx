@@ -1,29 +1,34 @@
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, type ComponentType, type ReactElement } from 'react'
 import { useRoute, match, navigate, query } from './router'
-import { useSession } from './api'
-import { Toaster } from './ui'
+import { useAuth } from './AuthProvider'
+import { Button, ErrorNotice, Logo, Skeleton, Toaster } from './ui'
 import Layout from './Layout'
-import { ForgotPage, LoginPage, RegisterPage, StatusPage } from './pages/auth'
+import { RegistrationFinalization } from './flows'
+import { ForgotPage, LoginPage, StatusPage } from './pages/auth'
 import { AdminClassDetail, AdminClasses, AdminDashboard, AdminRegistrationPeriod, AdminStudentDetail, AdminStudents } from './pages/admin'
 import { ClassDetail, StudentClasses, StudentDashboard, StudentRegistrations, StudentSchedule } from './pages/student'
 
-const pub: Record<string, () => ReactElement> = { '/login': () => <LoginPage />, '/register': () => <RegisterPage />, '/forgot-password': () => <ForgotPage /> }
-const home = (role: string) => (role === 'admin' ? '/admin/dashboard' : '/student/dashboard')
+const publicPages: Record<string, ComponentType> = { '/login': LoginPage, '/forgot-password': ForgotPage }
+const home = (role: string) => role === 'admin' ? '/admin/dashboard' : '/student/dashboard'
 
 function Routes() {
   const path = useRoute()
-  const s = useSession()
+  const auth = useAuth()
   const p = path.split('?')[0]
   useEffect(() => {
-    if (p === '/' || p === '') navigate(s ? home(s.role) : '/login')
-    else if (!pub[p] && !s) navigate('/login?expired=1')
-    else if (pub[p] && s) navigate(home(s.role))
-  }, [p, s])
-  if (pub[p]) return pub[p]()
-  if (!s) return null
-  // Route guard by account role (the backend still enforces permissions on every API call).
+    if (auth.loading || auth.error) return
+    if (p === '/' || p === '') navigate(auth.user ? home(auth.user.role) : '/login')
+    else if (!publicPages[p] && !auth.user) navigate(auth.registrationNotice ? '/login?registered=1' : '/login?expired=1')
+    else if (publicPages[p] && auth.user) navigate(home(auth.user.role))
+  }, [p, auth.loading, auth.error, auth.user, auth.registrationNotice])
+  if (auth.loading) return <div role="status" aria-label="Đang xác thực" className="mx-auto max-w-xl space-y-4 p-10"><Logo /><Skeleton className="h-16" /></div>
+  if (auth.error) return <div className="mx-auto max-w-xl space-y-4 p-10"><ErrorNotice error={auth.error} retry={auth.refreshUser} /><Button variant="secondary" onClick={auth.clearSession}>Quay về đăng nhập</Button></div>
+  if (auth.user && auth.registrationNotice?.logoutPending && auth.registrationNotice.username === auth.user.username) return <RegistrationFinalization />
+  const PublicPage = publicPages[p]
+  if (PublicPage) return <PublicPage />
+  if (!auth.user) return null
   const area = p.startsWith('/admin') ? 'admin' : p.startsWith('/student') ? 'student' : null
-  if (area && area !== s.role) return <Layout title="Không có quyền" semester={false}><StatusPage code="403" /></Layout>
+  if (area && area !== auth.user.role) return <Layout title="Không có quyền"><StatusPage code="403" /></Layout>
   const routes: [string, (m: Record<string, string>) => ReactElement][] = [
     ['/student/dashboard', () => <StudentDashboard />],
     ['/student/classes', () => <StudentClasses />],
@@ -36,20 +41,11 @@ function Routes() {
     ['/admin/students', () => <AdminStudents />],
     ['/admin/students/:id', (m) => <AdminStudentDetail id={m.id} />],
     ['/admin/registration-period', () => <AdminRegistrationPeriod />],
-    ['/error/network', () => <Layout title="Lỗi kết nối" semester={false}><StatusPage code="network" /></Layout>],
   ]
-  for (const [pat, el] of routes) {
-    const m = match(pat, p)
-    if (m) return <div key={path}>{el(m)}</div>
+  for (const [pattern, render] of routes) {
+    const params = match(pattern, p)
+    if (params) return <div key={path}>{render(params)}</div>
   }
-  return <Layout title="Không tìm thấy" semester={false}><StatusPage code="404" /></Layout>
+  return <Layout title="Không tìm thấy"><StatusPage code="404" /></Layout>
 }
-
-export default function App() {
-  return (
-    <>
-      <Routes />
-      <Toaster />
-    </>
-  )
-}
+export default function App() { return <><Routes /><Toaster /></> }

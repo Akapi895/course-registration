@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import logo from './assets/logo.png'
-import { db, semStatus, setSemester, ui, useDb, type SemStatus } from './api'
+import { ApiError } from './http'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -67,20 +67,17 @@ export type Tone = keyof typeof tones
 export function Badge({ tone = 'gray', children }: { tone?: Tone; children: ReactNode }) {
   return <span className={cx('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset', tones[tone])}>{children}</span>
 }
-export function SemBadge({ s }: { s: SemStatus }) {
-  return s === 'open' ? <Badge tone="green">Đang mở</Badge> : s === 'upcoming' ? <Badge tone="orange">Chưa mở</Badge> : <Badge tone="gray">Đã đóng</Badge>
+export function seatState(c: { enrolled: number; max_capacity: number }) {
+  const left = c.max_capacity - c.enrolled
+  return left <= 0 ? 'full' : left / c.max_capacity <= 0.1 || left <= 3 ? 'almost' : 'open'
 }
-export function seatState(c: { enrolled: number; capacity: number }) {
-  const left = c.capacity - c.enrolled
-  return left <= 0 ? 'full' : left / c.capacity <= 0.1 || left <= 3 ? 'almost' : 'open'
-}
-export function Capacity({ c }: { c: { enrolled: number; capacity: number } }) {
-  const pct = Math.min(100, (c.enrolled / c.capacity) * 100)
+export function Capacity({ c }: { c: { enrolled: number; max_capacity: number } }) {
+  const pct = Math.min(100, (c.enrolled / c.max_capacity) * 100)
   const s = seatState(c)
   return (
     <div className="min-w-[72px]">
-      <div className="text-sm font-medium tabular-nums">{c.enrolled}/{c.capacity}</div>
-      <div className="mt-1 h-1.5 rounded-full bg-slate-100" role="progressbar" aria-valuenow={c.enrolled} aria-valuemax={c.capacity} aria-label="Sĩ số">
+      <div className="text-sm font-medium tabular-nums">{c.enrolled}/{c.max_capacity}</div>
+      <div className="mt-1 h-1.5 rounded-full bg-slate-100" role="progressbar" aria-valuenow={c.enrolled} aria-valuemax={c.max_capacity} aria-label="Sĩ số">
         <div className={cx('h-full rounded-full', s === 'full' ? 'bg-slate-400' : 'bg-primary')} style={{ width: pct + '%' }} />
       </div>
     </div>
@@ -229,11 +226,16 @@ export function Alert({ tone = 'info', title, children, action }: { tone?: 'info
   )
 }
 export const Skeleton = ({ className }: { className?: string }) => <div className={cx('skeleton rounded-lg', className)} />
-export function useLoading(ms = 450) {
-  const [l, setL] = useState(true)
-  useEffect(() => { const t = setTimeout(() => setL(false), ms); return () => clearTimeout(t) }, [])
-  return l
+export function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
+  return <Alert tone="error" title="Không thể hoàn tất yêu cầu" action={retry && <Button size="sm" variant="secondary" onClick={retry}>Thử lại</Button>}>
+    {error instanceof Error ? error.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.'}
+    {error instanceof ApiError && <p className="mt-1 text-xs">Mã lỗi: {error.code}</p>}
+  </Alert>
 }
+export function RequestStatus({ loading, error, retry }: { loading: boolean; error: unknown; retry: () => void }) {
+  return loading ? <div role="status" aria-label="Đang tải dữ liệu" className="space-y-3 p-5"><Skeleton className="h-12" /><Skeleton className="h-12" /></div> : error ? <ErrorNotice error={error} retry={retry} /> : null
+}
+export const fmtDT = (iso: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
 export function Empty({ title, text, action, icon }: { title: string; text?: string; action?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
@@ -270,17 +272,6 @@ export function CreditBar({ value, max }: { value: number; max: number }) {
         <span className="absolute right-0">Tối đa {max}</span>
       </div>
     </div>
-  )
-}
-export function SemesterSelect({ className }: { className?: string }) {
-  useDb()
-  return (
-    <label className={cx('flex items-center gap-2', className)}>
-      <span className="sr-only">Học kỳ</span>
-      <Select value={ui.semesterId} onChange={(e) => setSemester(e.target.value)} className="w-full sm:w-auto sm:min-w-[300px] sm:pr-10">
-        {db.semesters.map((s) => <option key={s.id} value={s.id}>{s.name}{semStatus(s) === 'open' ? ' · Đang mở' : ''}</option>)}
-      </Select>
-    </label>
   )
 }
 export function PageHeader({ title, desc, actions, crumbs }: { title: string; desc?: ReactNode; actions?: ReactNode; crumbs?: ReactNode }) {

@@ -1,0 +1,41 @@
+export const AUTH_EXPIRED = 'courseRegistration:auth-expired'
+let accessToken: string | null = null
+
+export class ApiError extends Error {
+  constructor(message: string, public code: string, public status = 0) { super(message) }
+}
+export const getAccessToken = () => accessToken
+export function setAccessToken(value: string | null) {
+  accessToken = value
+}
+export function tokenExpiresAt() {
+  try {
+    const payload = JSON.parse(atob((accessToken ?? '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : 0
+  } catch { return 0 }
+}
+
+export async function request<T>(path: string, options: { method?: string; body?: unknown; auth?: boolean; signal?: AbortSignal } = {}): Promise<T> {
+  const { method = 'GET', body, auth = true, signal } = options
+  const usedToken = auth ? accessToken : null
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (usedToken) headers.Authorization = `Bearer ${usedToken}`
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  let response: Response
+  try {
+    response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal })
+  } catch (error) {
+    if (signal?.aborted) throw error
+    throw new ApiError('Không thể kết nối tới máy chủ. Vui lòng thử lại.', 'NETWORK')
+  }
+  if (auth && response.status === 401 && accessToken === usedToken) {
+    window.dispatchEvent(new Event(AUTH_EXPIRED))
+  }
+  let envelope: { status?: string; data?: T & { code?: string; message?: string } }
+  try { envelope = await response.json() }
+  catch { throw new ApiError('Máy chủ trả về dữ liệu không hợp lệ. Kiểm tra kết nối API/proxy.', 'INVALID_RESPONSE', response.status) }
+  if (!response.ok || envelope.status !== 'success') {
+    throw new ApiError(envelope.data?.message || 'Yêu cầu bị từ chối.', envelope.data?.code || 'HTTP_ERROR', response.status)
+  }
+  return envelope.data as T
+}

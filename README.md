@@ -101,3 +101,23 @@ go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go -o docs
 ```
 
 `backend/docs/` là mã/tài liệu sinh tự động và đã được đóng gói trong binary. Kiến trúc và quy ước code: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1; schema: [docs/database-design.md](docs/database-design.md) và [docs/database.dbml](docs/database.dbml). Một số mô tả cũ trong tài liệu database được viết trước khi có API; dùng hướng dẫn khởi chạy backend tại README này.
+
+## 6. Chạy frontend với API thật
+
+Khởi chạy backend/database theo phần 2. Cần Node.js 22.12+ hoặc 24 để chạy Vite. Từ thư mục `frontend/`:
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+npm ci
+npm run typecheck
+npm run dev
+```
+
+Mở <http://localhost:5173>. Vite chuyển các request `/api` sang `API_PROXY_TARGET` trong `frontend/.env`, mặc định `http://127.0.0.1:8080`. Nếu backend dùng `PORT=8081`, đặt `API_PROXY_TARGET=http://127.0.0.1:8081`, rồi khởi động lại Vite. Không đưa `JWT_SECRET` vào frontend; giao diện chỉ gửi access token do API cấp.
+
+- Đăng nhập bằng tài khoản seed, không dùng tài khoản mock cũ. JWT chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Hồ sơ, lớp, đăng ký và thời khóa biểu đã lưu vẫn nằm ở backend.
+- Mỗi lần xác nhận đăng ký gửi đúng một lớp. Lỗi nghiệp vụ hiển thị từ backend và giữ phiên để thử lại. Sau thành công, giao diện gọi logout; nếu logout lỗi, chỉ thử logout lại, không gửi lại đăng ký.
+- Cooldown 20 phút tính từ đăng ký thành công hiện **chỉ áp dụng trên frontend theo tài khoản/trình duyệt**. Thông tin hoàn tất/cooldown được lưu trước logout để tải lại trang không gửi lại đăng ký. Nếu trình duyệt chặn storage, giao diện dùng trạng thái trong bộ nhớ và thông báo giới hạn lưu trữ. Backend chưa thực thi chặn login mới hoặc thu hồi mọi phiên; endpoint logout hiện chỉ thu hồi phiên đang gọi. Thời hạn JWT vẫn theo cấu hình backend.
+- Một lớp có nhiều buổi học, thứ `2…7`; không có nhóm LT/TH riêng. Admin được hủy mềm cả lớp có sinh viên. Các form dùng ID học phần/học kỳ/sinh viên đã biết vì Phase 1 chưa có API danh sách tương ứng; không dùng danh sách giả hoặc lịch sử đợt giả.
+
+`npm run build` tạo `frontend/dist/`; `npm run preview` phục vụ bản build tại cổng 4173, dùng cùng proxy phát triển. Compose hiện đóng gói backend/database; khi phục vụ frontend bằng máy chủ static khác, cần cấu hình tuyến `/api` tới backend.
