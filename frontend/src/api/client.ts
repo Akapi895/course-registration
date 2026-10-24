@@ -33,7 +33,7 @@ export async function request<T>(path: string, options: { method?: string; body?
   }
   let envelope: { status?: string; data?: T & { code?: string; message?: string } }
   try { envelope = await response.json() }
-  catch { throw new ApiError('Máy chủ trả về dữ liệu không hợp lệ. Kiểm tra kết nối API/proxy.', 'INVALID_RESPONSE', response.status) }
+  catch { throw new ApiError('Máy chủ trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'INVALID_RESPONSE', response.status) }
   if (!response.ok || envelope.status !== 'success') {
     throw new ApiError(envelope.data?.message || 'Yêu cầu bị từ chối.', envelope.data?.code || 'HTTP_ERROR', response.status)
   }

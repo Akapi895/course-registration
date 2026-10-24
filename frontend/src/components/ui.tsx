@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { AlertTriangle, CheckCircle2, Info, Loader2, X, XCircle, ChevronLeft, ChevronRight, Inbox } from 'lucide-react'
 import logo from '../assets/logo.png'
-import { ApiError } from '../api/client'
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
 
@@ -157,12 +156,12 @@ function useFocusTrap(open: boolean, onClose: () => void, closable: boolean) {
   }, [open])
   return ref
 }
-export function Modal({ open, onClose, title, children, footer, closable = true, size = 'md' }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; closable?: boolean; size?: 'md' | 'lg' }) {
+export function Modal({ open, onClose, title, children, footer, closable = true, size = 'md' }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; closable?: boolean; size?: 'md' | 'lg' | 'xl' }) {
   const ref = useFocusTrap(open, onClose, closable)
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 sm:items-center sm:p-4" onMouseDown={(e) => e.target === e.currentTarget && closable && onClose()}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className={cx('flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl outline-none sm:rounded-xl', size === 'lg' ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} className={cx('flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl outline-none sm:rounded-xl', size === 'xl' ? 'sm:max-w-5xl' : size === 'lg' ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
         <div className="flex items-center justify-between border-b border-line px-5 py-4">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button onClick={onClose} disabled={!closable} className="grid h-10 w-10 place-items-center rounded-lg text-muted hover:bg-slate-100 disabled:opacity-40" aria-label="Đóng"><X className="h-5 w-5" /></button>
@@ -226,10 +225,9 @@ export function Alert({ tone = 'info', title, children, action }: { tone?: 'info
   )
 }
 export const Skeleton = ({ className }: { className?: string }) => <div className={cx('skeleton rounded-lg', className)} />
-export function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
-  return <Alert tone="error" title="Không thể hoàn tất yêu cầu" action={retry && <Button size="sm" variant="secondary" onClick={retry}>Thử lại</Button>}>
+export function ErrorNotice({ error, retry, title = 'Không thể hoàn tất yêu cầu' }: { error: unknown; retry?: () => void; title?: string }) {
+  return <Alert tone="error" title={title} action={retry && <Button size="sm" variant="secondary" onClick={retry}>Thử lại</Button>}>
     {error instanceof Error ? error.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.'}
-    {error instanceof ApiError && <p className="mt-1 text-xs">Mã lỗi: {error.code}</p>}
   </Alert>
 }
 export function RequestStatus({ loading, error, retry }: { loading: boolean; error: unknown; retry: () => void }) {

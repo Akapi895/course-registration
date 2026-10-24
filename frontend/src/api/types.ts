@@ -31,12 +31,35 @@ export interface ClassSummary {
   max_capacity: number
   registration_open: boolean
 }
+/** Current semester returned with the class list. */
+export interface Semester {
+  id: number
+  name: string
+  max_credits: number
+  registration_opens_at: string
+  registration_closes_at: string
+  registration_open: boolean
+}
+export interface ClassList {
+  semester: Semester | null
+  classes: ClassSummary[]
+}
+/** `passed` is present only when a student asks, and tells whether that student passed the course. */
+export interface Prerequisite {
+  course_id: number
+  course_code: string
+  course_name: string
+  passed?: boolean
+}
 export interface ClassDetail extends ClassSummary {
   course_id: number
+  faculty: string
   semester_id: number
+  semester_name: string
   lecturer_name: string
   status: 'active' | 'cancelled'
   schedules: ClassSchedule[]
+  prerequisites: Prerequisite[]
 }
 export interface ClassUpdate {
   class_code: string
@@ -50,6 +73,15 @@ export interface Registration {
   class_id: number
   status: 'registered' | 'cancelled'
   registered_at: string
+}
+/** Outcome of one class in a POST /api/registrations request. */
+export type RegisterResult =
+  | { class_id: number; status: 'registered'; id: number; registered_at: string }
+  | { class_id: number; status: 'failed'; code: string; message: string }
+export interface RegisterBatch {
+  registered_count: number
+  failed_count: number
+  results: RegisterResult[]
 }
 export interface RegisteredClass extends Registration {
   class_code: string
