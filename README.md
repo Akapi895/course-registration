@@ -17,17 +17,18 @@ Nếu đã có `.env`, bổ sung các biến còn thiếu từ `.env.example`, g
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Database và tài khoản PostgreSQL; Compose dùng cùng thông tin cho API và các công cụ dữ liệu |
 | `POSTGRES_PORT` | Cổng PostgreSQL trên host, mặc định `5432`; kết nối giữa container luôn là `db:5432` |
 | `PORT` | Cổng API trên host, mặc định `8080`; API trong container luôn nghe cổng `8080` |
+| `FRONTEND_PORT` | Cổng giao diện trên host, mặc định `5173`; nginx trong container luôn nghe cổng `80` |
 | `DATABASE_URL` | URL khi chạy API trực tiếp trên host; Compose tự cấp URL dùng `db:5432`, không dùng giá trị host này |
 | `JWT_SECRET` | Khóa ký JWT; cần giữ nguyên để token hiện hành tiếp tục được xác thực sau khi khởi động lại |
 | `JWT_TTL`, `SESSION_TTL` | Thời hạn theo cú pháp Go, mặc định `1h` và `24h`; thời hạn phiên phải ít nhất bằng thời hạn JWT |
 | `REFERENCE_DATE`, `RANDOM_SEED` | Ngày neo và seed của dữ liệu mẫu, mặc định `2026-10-20` và `20261020` |
 
-Nếu cổng bị chiếm hoặc Windows không cho phép bind, đổi `PORT` (ví dụ `8081`) hoặc `POSTGRES_PORT` (máy local hiện dùng `55432`). Khi chạy API trên host, cập nhật cả `DATABASE_URL` cho khớp cổng và thông tin `POSTGRES_*`; password trong URL phải được URL-encode nếu có ký tự đặc biệt.
+Nếu cổng bị chiếm hoặc Windows không cho phép bind, đổi `PORT` (ví dụ `8081`), `FRONTEND_PORT` hoặc `POSTGRES_PORT` (máy local hiện dùng `55432`). Khi chạy API trên host, cập nhật cả `DATABASE_URL` cho khớp cổng và thông tin `POSTGRES_*`; password trong URL phải được URL-encode nếu có ký tự đặc biệt. Không chạy frontend Docker và Vite dev cùng lúc nếu cả hai dùng cổng `5173`.
 
 ## 2. Khởi chạy lần đầu với database mới
 
 ```powershell
-docker compose build backend seed
+docker compose build backend frontend seed
 docker compose up -d --wait db
 docker compose --profile tools run --rm migrate
 docker compose --profile tools run --rm seed
@@ -36,7 +37,7 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-Chỉ chuyển sang lệnh tiếp theo khi lệnh trước thành công. Compose chờ PostgreSQL healthy trước khi bật API; migrate/seed được chạy tường minh theo thứ tự trên. Kết quả cuối: `db` và `backend` đều `healthy`. Các công cụ `migrate`, `seed`, `verify`, `crawl` vẫn nằm trong profile `tools`; chúng không chạy khi khởi động ứng dụng bình thường.
+Chỉ chuyển sang lệnh tiếp theo khi lệnh trước thành công. Compose chờ PostgreSQL healthy trước khi bật API, và chờ API healthy trước khi bật giao diện. Migrate/seed được chạy tường minh theo thứ tự trên. Kết quả cuối: `db`, `backend` và `frontend` đều `healthy`. Các công cụ `migrate`, `seed`, `verify`, `crawl` vẫn nằm trong profile `tools`; chúng không chạy khi khởi động ứng dụng bình thường.
 
 Seed dùng catalog đã lưu, không cần crawl nguồn lại. Với fixture mặc định hiện tại, verify báo 102 tài khoản, 80 lớp, 104 đăng ký, 100 kết quả học phần và 0 phiên đăng nhập. Seed chỉ lặp lại được khi dữ liệu còn giống fixture. Sau login hoặc các thao tác API, seed/verify có thể từ chối vì dữ liệu đã đổi; verify fixture trước khi kiểm thử API.
 
@@ -44,8 +45,9 @@ Seed dùng catalog đã lưu, không cần crawl nguồn lại. Với fixture m�
 
 ## 3. Sử dụng và kiểm thử Swagger
 
-Với `PORT=8080`:
+Với `PORT=8080` và `FRONTEND_PORT=5173`:
 
+- Giao diện: <http://localhost:5173>.
 - Kiểm tra tiến trình API: <http://localhost:8080/health>.
 - Swagger UI: <http://localhost:8080/swagger/index.html>.
 - Đặc tả JSON: <http://localhost:8080/swagger/doc.json>.
@@ -61,12 +63,12 @@ Thời gian nghiệp vụ dùng đồng hồ thực, không dùng `REFERENCE_DAT
 ## 4. Dừng, khởi động lại và kiểm tra lỗi
 
 ```powershell
-docker compose logs backend db
+docker compose logs backend frontend db
 docker compose stop
 docker compose up -d --wait
 ```
 
-`docker compose down` gỡ container/network nhưng giữ volume. `docker compose down -v` xóa dữ liệu PostgreSQL; chỉ dùng khi chủ động bỏ database đó. Sau khi thay code backend, chạy `docker compose up -d --build --wait backend`. Khi thay dependency hoặc Dockerfile của công cụ dữ liệu, chạy lại `docker compose build seed`.
+`docker compose down` gỡ container/network nhưng giữ volume. `docker compose down -v` xóa dữ liệu PostgreSQL; chỉ dùng khi chủ động bỏ database đó. Sau khi thay code backend, chạy `docker compose up -d --build --wait backend`; sau khi thay code frontend, chạy `docker compose up -d --build --wait frontend`. Khi thay dependency hoặc Dockerfile của công cụ dữ liệu, chạy lại `docker compose build seed`.
 
 Có thể chỉ chạy database và công cụ như trước:
 
@@ -102,9 +104,24 @@ go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go -o docs
 
 `backend/docs/` là mã/tài liệu sinh tự động và đã được đóng gói trong binary. Kiến trúc và quy ước code: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1; schema: [docs/database-design.md](docs/database-design.md) và [docs/database.dbml](docs/database.dbml). Một số mô tả cũ trong tài liệu database được viết trước khi có API; dùng hướng dẫn khởi chạy backend tại README này.
 
-## 6. Chạy frontend với API thật
+## 6. Chạy frontend
 
-Khởi chạy backend/database theo phần 2. Cần Node.js 22.12+ hoặc 24 để chạy Vite. Từ thư mục `frontend/`:
+### Docker (khuyến nghị)
+
+Phần 2 đã build và khởi chạy cả frontend. Mở <http://localhost:5173> (hoặc `FRONTEND_PORT` trong `.env`). Container frontend dùng nginx phục vụ bản build tĩnh và chuyển `/api/*` tới `backend:8080`, nên không cần cài Node trên host và không cần `frontend/.env` khi chạy bằng Compose.
+
+```powershell
+docker compose ps
+docker compose logs frontend
+# Sau khi sửa code frontend:
+docker compose up -d --build --wait frontend
+```
+
+Đổi `FRONTEND_PORT` nếu cổng `5173` bị chiếm; cổng trong container luôn là `80`. Frontend chờ backend healthy rồi mới khởi động.
+
+### Phát triển với Vite (hot reload)
+
+Cần Node.js 22.12+ hoặc 24 và backend/database đang chạy. Dừng frontend Docker nếu dùng cùng cổng: `docker compose stop frontend`. Từ thư mục `frontend/`:
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
@@ -120,4 +137,4 @@ Mở <http://localhost:5173>. Vite chuyển các request `/api` sang `API_PROXY_
 - Cooldown 20 phút tính từ đăng ký thành công hiện **chỉ áp dụng trên frontend theo tài khoản/trình duyệt**. Thông tin hoàn tất/cooldown được lưu trước logout để tải lại trang không gửi lại đăng ký. Nếu trình duyệt chặn storage, giao diện dùng trạng thái trong bộ nhớ và thông báo giới hạn lưu trữ. Backend chưa thực thi chặn login mới hoặc thu hồi mọi phiên; endpoint logout hiện chỉ thu hồi phiên đang gọi. Thời hạn JWT vẫn theo cấu hình backend.
 - Một lớp có nhiều buổi học, thứ `2…7`; không có nhóm LT/TH riêng. Admin được hủy mềm cả lớp có sinh viên. Các form dùng ID học phần/học kỳ/sinh viên đã biết vì Phase 1 chưa có API danh sách tương ứng; không dùng danh sách giả hoặc lịch sử đợt giả.
 
-`npm run build` tạo `frontend/dist/`; `npm run preview` phục vụ bản build tại cổng 4173, dùng cùng proxy phát triển. Compose hiện đóng gói backend/database; khi phục vụ frontend bằng máy chủ static khác, cần cấu hình tuyến `/api` tới backend.
+`npm run build` tạo `frontend/dist/`; `npm run preview` phục vụ bản build tại cổng 4173, dùng cùng proxy phát triển. Docker dùng `frontend/Dockerfile` và `frontend/nginx.conf`; khi triển khai máy chủ static khác, cần cấu hình tuyến `/api` tới backend và fallback SPA về `index.html`.
