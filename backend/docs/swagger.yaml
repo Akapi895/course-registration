@@ -86,6 +86,9 @@ definitions:
       lecturer_name:
         example: Giảng viên A
         type: string
+      major:
+        example: Khoa học máy tính
+        type: string
       max_capacity:
         example: 50
         type: integer

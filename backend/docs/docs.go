@@ -982,6 +982,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Giảng viên A"
                 },
+                "major": {
+                    "type": "string",
+                    "example": "Khoa học máy tính"
+                },
                 "max_capacity": {
                     "type": "integer",
                     "example": 50

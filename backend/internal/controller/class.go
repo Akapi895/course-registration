@@ -80,6 +80,7 @@ type classDetailData struct {
 	CourseName       string             `json:"course_name" example:"Hệ điều hành"`
 	Credits          int                `json:"credits" example:"3"`
 	Faculty          string             `json:"faculty" example:"Công nghệ thông tin"`
+	Major            *string            `json:"major" example:"Khoa học máy tính"`
 	SemesterID       int64              `json:"semester_id" example:"2"`
 	SemesterName     string             `json:"semester_name" example:"Học kỳ 1 năm học 2026-2027"`
 	ClassCode        string             `json:"class_code" example:"INT3401-01"`
@@ -252,6 +253,7 @@ func (h *ClassController) Get(c *gin.Context) {
 		CourseName:       view.CourseName,
 		Credits:          view.Credits,
 		Faculty:          view.Faculty,
+		Major:            view.Major,
 		SemesterID:       view.SemesterID,
 		SemesterName:     view.SemesterName,
 		ClassCode:        view.ClassCode,

@@ -15,6 +15,7 @@ type Class struct {
 	CourseName   string
 	Credits      int
 	Faculty      string
+	Major        *string
 	SemesterID   int64
 	SemesterName string
 	ClassCode    string
@@ -54,7 +55,7 @@ type querier interface {
 }
 
 const classSelect = `
-	SELECT cc.id, cc.course_id, c.code, c.name, c.credits, c.faculty, cc.semester_id, s.name,
+	SELECT cc.id, cc.course_id, c.code, c.name, c.credits, c.faculty, c.major, cc.semester_id, s.name,
 	       cc.class_code, cc.lecturer_name, cc.max_capacity, cc.enrolled, cc.status
 	FROM course_classes cc
 	JOIN courses c ON c.id = cc.course_id
@@ -217,7 +218,7 @@ func schedulesOf(ctx context.Context, q querier, classID int64) ([]Schedule, err
 func scanClass(row pgx.Row) (Class, error) {
 	var c Class
 	err := row.Scan(
-		&c.ID, &c.CourseID, &c.CourseCode, &c.CourseName, &c.Credits, &c.Faculty, &c.SemesterID, &c.SemesterName,
+		&c.ID, &c.CourseID, &c.CourseCode, &c.CourseName, &c.Credits, &c.Faculty, &c.Major, &c.SemesterID, &c.SemesterName,
 		&c.ClassCode, &c.LecturerName, &c.MaxCapacity, &c.Enrolled, &c.Status,
 	)
 	return c, err

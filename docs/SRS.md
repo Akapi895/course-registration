@@ -69,7 +69,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. |
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
 | 4 | Danh sách lớp kèm thông tin học kỳ hiện tại (tên, thời gian mở/đóng đăng ký, giới hạn tín chỉ tối đa) để client hiển thị đợt đăng ký. |
-| 5 | Chi tiết lớp học phần kèm khoa, tên học kỳ và các học phần tiên quyết; với sinh viên, mỗi học phần tiên quyết cho biết sinh viên đó đã đạt hay chưa. |
+| 5 | Chi tiết lớp học phần kèm khoa, ngành, tên học kỳ và các học phần tiên quyết; với sinh viên, mỗi học phần tiên quyết cho biết sinh viên đó đã đạt hay chưa. |
 
 ### 3.3. Đăng ký và hủy học phần
 
