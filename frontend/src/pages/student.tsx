@@ -62,7 +62,7 @@ export function StudentDashboard() {
               {semester && <PeriodBanner semester={semester} />}
               <div className="grid gap-4 md:grid-cols-3">
                 <Stat label="Tổng tín chỉ đã đăng ký" value={cur} icon={<BookOpen className="h-5 w-5" />} sub={max ? (cur <= max ? `Tối đa ${max} tín chỉ` : 'Vượt mức tối đa') : undefined} />
-                <Stat label="Số học phần đã đăng ký" value={regs.length} icon={<Layers className="h-5 w-5" />} sub={semester?.name} />
+                <Stat label="Số học phần đã đăng ký" value={regs.length} icon={<Layers className="h-5 w-5" />} sub={semester?.name ? semester.name.replace(/\s*-\s*(đang mở|chưa mở|đã đóng)$/i, '') : undefined} />
                 {max ? <Card className="p-5"><p className="text-sm text-muted">Tiến độ tín chỉ</p><p className="mb-3 mt-1 text-2xl font-semibold tabular-nums">{cur}<span className="text-base font-normal text-muted">/{max}</span></p><CreditBar value={cur} max={max} /></Card>
                   : <Stat label="Buổi học mỗi tuần" value={week.length} icon={<CalendarDays className="h-5 w-5" />} />}
               </div>
@@ -249,7 +249,7 @@ export function StudentClasses() {
 
   return (
     <Layout title="Đăng ký học phần">
-      <PageHeader title="Đăng ký học phần" desc={ready && semester && <>Học kỳ: <b className="text-ink">{semester.name}</b> · Tổng tín chỉ hiện tại: <b className="text-ink">{cur}</b>/{semester.max_credits}</>} />
+      <PageHeader title="Đăng ký học phần" desc={ready && semester && <>Học kỳ: <b className="text-ink">{semester.name.replace(/\s*-\s*(đang mở|chưa mở|đã đóng)$/i, '')}</b> · Tổng tín chỉ hiện tại: <b className="text-ink">{cur}</b>/{semester.max_credits}</>} />
       {ready && semester && <div className="mb-6"><PeriodBanner semester={semester} /></div>}
       <Card className="mb-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
