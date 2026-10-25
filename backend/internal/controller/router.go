@@ -9,7 +9,6 @@ import (
 
 func NewRouter(
 	auth *service.AuthService,
-	students *service.StudentService,
 	classes *service.ClassService,
 	registrations *service.RegistrationService,
 	periods *service.RegistrationPeriodService,
@@ -22,7 +21,6 @@ func NewRouter(
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	authCtl := NewAuthController(auth)
-	studentCtl := NewStudentController(students)
 	classCtl := NewClassController(classes)
 	registrationCtl := NewRegistrationController(registrations)
 	scheduleCtl := NewScheduleController(registrations)
@@ -34,8 +32,6 @@ func NewRouter(
 	protected := api.Group("", AuthRequired(auth))
 	protected.POST("/auth/logout", authCtl.Logout)
 	protected.GET("/auth/me", authCtl.Me)
-	protected.GET("/students/:id", studentCtl.Get)
-	protected.PUT("/students/:id", studentCtl.Update)
 	protected.GET("/classes", classCtl.List)
 	protected.POST("/classes", classCtl.Create)
 	protected.GET("/classes/:id", classCtl.Get)

@@ -14,7 +14,9 @@ Tài liệu xác định các yêu cầu chức năng, quy tắc nghiệp vụ, 
 
 ### 1.2. Phạm vi hệ thống
 
-Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra cứu lớp học phần, quản lý thông tin sinh viên, đăng ký/hủy học phần, xem thời khóa biểu và quản trị lớp học phần.
+Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra cứu lớp học phần, đăng ký/hủy học phần, xem thời khóa biểu và quản trị lớp học phần.
+
+Theo điều chỉnh phạm vi ngày 2026-10-25, chức năng quản lý hồ sơ sinh viên và hai endpoint `GET`, `PUT /api/students/{id}` được gỡ bỏ. Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua `GET /api/auth/me`.
 
 ### 1.3. Đối tượng sử dụng
 
@@ -28,7 +30,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | Tác nhân | Mô tả | Chức năng chính |
 |---|---|---|
 | Sinh viên | Người dùng đăng ký học phần | Đăng nhập, tra cứu lớp, đăng ký/hủy học phần, xem thời khóa biểu |
-| Quản trị viên | Người dùng quản trị hệ thống | Tra cứu, cập nhật thông tin sinh viên; quản lý lớp học phần; cấu hình thời gian đăng ký |
+| Quản trị viên | Người dùng quản trị hệ thống | Quản lý lớp học phần; cấu hình thời gian đăng ký |
 
 ### 2.2. Ranh giới hệ thống
 
@@ -56,7 +58,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 3 | JWT chứa định danh, vai trò người dùng, mã phiên (`sid`) và thời gian hết hạn. |
 | 4 | Client gửi JWT trong header Authorization: `Bearer <token>` đối với các API yêu cầu xác thực. |
 | 5 | Hệ thống cung cấp API đăng xuất để thu hồi phiên đăng nhập hiện tại; client xóa JWT đang lưu sau khi gọi API đăng xuất. |
-| 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại. |
+| 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại, gồm `id`, `username`, `role`, `full_name`, `student_code`, `faculty`, `major`. Các trường thông tin sinh viên có thể là `null` khi không có dữ liệu. |
 | 7 | Hệ thống chỉ chấp nhận JWT khi phiên đăng nhập tương ứng còn hiệu lực và chưa bị thu hồi. |
 
 > Lưu ý: Phiên đăng nhập được lưu trong cơ sở dữ liệu. Trong Phase 1, Backend thu hồi phiên khi đăng xuất và từ chối JWT thuộc phiên đã thu hồi hoặc đã hết hạn.
@@ -65,7 +67,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 | STT | Mô tả |
 |---|---|
-| 1 | Trả về danh sách lớp học phần đang mở đăng ký. |
+| 1 | Trả về danh sách lớp học phần đang hoạt động (`active`) của học kỳ hiện tại; ngoài thời gian đăng ký vẫn cho phép tra cứu, nhưng không cho đăng ký/hủy. |
 | 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. |
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
 | 4 | Danh sách lớp kèm thông tin học kỳ hiện tại (tên, thời gian mở/đóng đăng ký, giới hạn tín chỉ tối đa) để client hiển thị đợt đăng ký. |
@@ -85,15 +87,7 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có; với đăng ký nhiều lớp, trả kết quả và lý do từ chối (nếu có) cho từng lớp. |
 | 9 | Khi đăng ký nhiều lớp, hệ thống xử lý lần lượt từng lớp theo thứ tự gửi: lớp đáp ứng điều kiện được ghi nhận, lớp không đáp ứng bị từ chối kèm lý do mà không ảnh hưởng các lớp khác. Yêu cầu vẫn hoàn tất khi chỉ một phần số lớp được ghi nhận. |
 
-### 3.4. Quản lý thông tin sinh viên
-
-| STT| Mô tả |
-|---|---|
-| 1 | Cho phép người dùng đủ quyền xem thông tin sinh viên theo mã định danh. |
-| 2 | Cho phép quản trị viên hoặc chính sinh viên cập nhật thông tin phù hợp với quyền được cấp. |
-| 3 | Kiểm tra quyền truy cập dữ liệu để ngăn việc xem hoặc sửa trái phép. |
-
-### 3.5. Quản trị lớp học phần
+### 3.4. Quản trị lớp học phần
 
 | STT | Mô tả |
 |---|---|
@@ -104,17 +98,18 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 | 5 | Các API quản trị từ chối request không đủ quyền. |
 | 6 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
 
-### 3.6. Luồng nghiệp vụ chính
+### 3.5. Luồng nghiệp vụ chính
 
-#### 3.6.1. Đăng nhập
+#### 3.5.1. Đăng nhập
 
 1. Người dùng gửi username và password tới API đăng nhập.
 2. Hệ thống kiểm tra thông tin xác thực.
 3. Nếu hợp lệ, hệ thống tạo JWT gắn với định danh và vai trò người dùng.
-4. Hệ thống trả token và thông tin cần thiết cho client.
-5. Client gửi token trong header của các request cần xác thực.
+4. Hệ thống trả `access_token` cho client.
+5. Client gửi token trong header `Authorization` để gọi `GET /api/auth/me`, lấy thông tin tài khoản và điều hướng theo vai trò.
+6. Client tiếp tục gửi token trong header của các request cần xác thực. Khoa và ngành đã lấy từ `/api/auth/me` được dùng để hiển thị thông tin sinh viên và lọc lớp theo ngành.
 
-#### 3.6.2. Đăng ký học phần
+#### 3.5.2. Đăng ký học phần
 
 1. Sinh viên đã đăng nhập gửi yêu cầu đăng ký một hoặc nhiều lớp học phần (tối đa 20 lớp, không trùng nhau).
 2. Hệ thống xác thực người dùng và kiểm tra dữ liệu yêu cầu; yêu cầu sai định dạng bị từ chối toàn bộ.
@@ -122,14 +117,14 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 4. Nếu lớp đáp ứng các điều kiện, hệ thống ghi nhận đăng ký và cập nhật sĩ số của lớp đó trong cùng giao dịch dữ liệu; nếu không, lớp bị từ chối với mã lỗi tương ứng và các lớp khác không bị ảnh hưởng.
 5. Hệ thống trả kết quả cho từng lớp (đã đăng ký hoặc bị từ chối kèm lý do) cùng số lớp thành công và số lớp bị từ chối. Ví dụ: gửi 5 lớp, 3 lớp thành công và 2 lớp hết chỗ thì 3 đăng ký vẫn được ghi nhận và 2 lớp còn lại được báo lỗi.
 
-#### 3.6.3. Tra cứu lớp học phần
+#### 3.5.3. Tra cứu lớp học phần
 
 1. Client yêu cầu danh sách lớp học phần đang mở, có thể kèm bộ lọc.
 2. Hệ thống trả về danh sách phù hợp.
 3. Client gửi yêu cầu xem chi tiết lớp theo mã lớp.
 4. Hệ thống trả thông tin lớp, giảng viên, phòng học, lịch học và sĩ số.
 
-#### 3.6.4. Quản trị lớp học phần
+#### 3.5.4. Quản trị lớp học phần
 
 1. Quản trị viên đăng nhập và được xác thực quyền.
 2. Quản trị viên gửi request tạo mới, cập nhật hoặc xóa/hủy lớp học phần.
@@ -157,11 +152,15 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 
 - API sử dụng phương thức HTTP theo nguyên tắc REST.
 - Dữ liệu trao đổi sử dụng định dạng JSON.
-- Tài liệu API sử dụng OpenAPI/Swagger, dự kiến truy cập tại `/swagger` hoặc `/docs`.
+- Swagger UI truy cập tại `/swagger/index.html`; tài liệu JSON tại `/swagger/doc.json` trên backend.
 - Endpoint được bảo vệ yêu cầu token trong header `Authorization: Bearer <token>`.
 - API phải trả mã trạng thái HTTP và thông báo lỗi nhất quán. Cấu trúc request và response của từng endpoint được mô tả trong `docs/api-design.md`.
 
 ### 5.2. Danh sách endpoint
+
+Hệ thống có **13 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn: 3 endpoint xác thực/người dùng, 2 endpoint tra cứu lớp, 4 endpoint đăng ký/thời khóa biểu và 4 endpoint quản trị. Tất cả nằm dưới `/api`; các route kỹ thuật tại §5.4 không tính vào số này.
+
+Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên đăng nhập còn hiệu lực. Với endpoint chỉ dành cho sinh viên hoặc quản trị viên, tài khoản khác vai trò bị từ chối với `403 FORBIDDEN`.
 
 #### 5.2.1. Xác thực và người dùng
 
@@ -169,38 +168,31 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 |---|---|---|---|
 | POST | `/api/auth/login` | Đăng nhập hệ thống, trả về JWT | Công khai |
 | POST | `/api/auth/logout` | Đăng xuất hệ thống và thu hồi phiên đăng nhập | Đã xác thực |
-| GET | `/api/auth/me` | Lấy thông tin người dùng hiện tại | Đã xác thực |
+| GET | `/api/auth/me` | Lấy thông tin tài khoản hiện tại, gồm khoa và ngành | Đã xác thực |
 
-#### 5.2.2. Quản lý sinh viên
-
-| Phương thức | Endpoint | Mô tả | Quyền truy cập |
-|---|---|---|---|
-| GET | `/api/students/{id}` | Xem thông tin chi tiết sinh viên | Quản trị viên hoặc sinh viên |
-| PUT | `/api/students/{id}` | Cập nhật thông tin sinh viên | Quản trị viên hoặc sinh viên |
-
-#### 5.2.3. Tra cứu lớp học phần
+#### 5.2.2. Tra cứu lớp học phần
 
 | Phương thức | Endpoint | Mô tả | Quyền truy cập |
 |---|---|---|---|
-| GET | `/api/classes` | Lấy danh sách lớp học phần đang mở đăng ký | Quản trị viên hoặc sinh viên |
+| GET | `/api/classes` | Lấy lớp `active` của học kỳ hiện tại và thông tin học kỳ; hỗ trợ lọc `faculty`, `major` | Quản trị viên hoặc sinh viên |
 | GET | `/api/classes/{id}` | Xem thông tin chi tiết lớp học phần | Quản trị viên hoặc sinh viên |
 
-#### 5.2.4. Đăng ký học phần và thời khóa biểu
+#### 5.2.3. Đăng ký học phần và thời khóa biểu
 
 | Phương thức | Endpoint | Mô tả | Quyền truy cập |
 |---|---|---|---|
 | POST | `/api/registrations` | Đăng ký một hoặc nhiều lớp học phần | Sinh viên |
 | GET | `/api/registrations` | Lấy danh sách lớp học phần đã đăng ký của sinh viên hiện tại | Sinh viên |
-| DELETE | `/api/registrations/{id}` | Hủy đăng ký lớp học phần | Sinh viên đã đăng ký |
+| DELETE | `/api/registrations/{id}` | Hủy đăng ký của chính mình; `{id}` là ID đăng ký | Sinh viên sở hữu đăng ký |
 | GET | `/api/schedules` | Lấy thời khóa biểu từ các lớp học phần đã đăng ký | Sinh viên |
 
-#### 5.2.5. Quản trị hệ thống
+#### 5.2.4. Quản trị hệ thống
 
 | Phương thức | Endpoint | Mô tả | Quyền truy cập |
 |---|---|---|---|
 | POST | `/api/classes` | Tạo lớp học phần mới | Quản trị viên |
 | PUT | `/api/classes/{id}` | Cập nhật thông tin lớp học phần | Quản trị viên |
-| DELETE | `/api/classes/{id}` | Xóa hoặc hủy lớp học phần | Quản trị viên |
+| DELETE | `/api/classes/{id}` | Hủy mềm lớp học phần và các đăng ký còn hiệu lực của lớp | Quản trị viên |
 | PUT | `/api/registration-period` | Cấu hình thời gian mở và đóng đăng ký học phần | Quản trị viên |
 
 ### 5.3. Yêu cầu dữ liệu request/response
@@ -208,6 +200,15 @@ Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra 
 - Request body và response body sử dụng JSON.
 - Mỗi API cần xác định trường dữ liệu, kiểu dữ liệu, trường bắt buộc và quy tắc validation.
 - Cấu trúc response, mã lỗi và ví dụ request/response phải được mô tả trong OpenAPI/Swagger.
+
+### 5.4. Route kỹ thuật
+
+| Phương thức | Đường dẫn | Mục đích | Quyền truy cập |
+|---|---|---|---|
+| GET | `/health` | Kiểm tra backend đang phản hồi, phục vụ healthcheck của Docker Compose | Công khai |
+| GET | `/swagger/*any` | Phục vụ Swagger UI, tài liệu OpenAPI và tài nguyên liên quan | Công khai |
+
+Các route này không phải API nghiệp vụ. `/health` trả `200` với `{ "status": "success", "data": {} }`; không thực hiện truy vấn kiểm tra cơ sở dữ liệu. Route Swagger trả định dạng tương ứng với tài nguyên được yêu cầu, không dùng envelope JSON nghiệp vụ.
 
 ## 6. Yêu cầu phi chức năng
 
@@ -266,7 +267,7 @@ Phase 1 ưu tiên hoàn thiện các chức năng cốt lõi, bảo đảm tính
 |---|---|
 | 1 | Đăng nhập hợp lệ trả JWT; thông tin đăng nhập không hợp lệ bị từ chối. |
 | 2 | Các API được bảo vệ từ chối yêu cầu thiếu token, token không hợp lệ, token thuộc phiên đã đăng xuất hoặc không đủ quyền truy cập. |
-| 3 | Sinh viên có thể xem và cập nhật thông tin cá nhân trong phạm vi được cấp quyền; quản trị viên có thể tra cứu và cập nhật thông tin sinh viên. |
+| 3 | Người dùng đọc được thông tin tài khoản của chính mình qua `GET /api/auth/me`; sinh viên nhận được khoa và ngành để hiển thị tổng quan và lọc lớp học phần. Không cung cấp chức năng quản lý hồ sơ sinh viên theo ID. |
 | 4 | Sinh viên tra cứu được danh sách và thông tin chi tiết các lớp học phần đang mở. |
 | 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng cho từng lớp được ghi nhận. |
 | 6 | Hệ thống từ chối đăng ký từng lớp khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ, kèm mã lỗi tương ứng cho lớp đó. |

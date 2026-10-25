@@ -35,6 +35,8 @@ type meData struct {
 	Role        string  `json:"role" example:"student"`
 	FullName    string  `json:"full_name" example:"Sinh viên giả lập 001"`
 	StudentCode *string `json:"student_code" example:"DEMO00001"`
+	Faculty     *string `json:"faculty" example:"Công nghệ thông tin"`
+	Major       *string `json:"major" example:"Công nghệ thông tin"`
 }
 
 type meSuccessResponse struct {
@@ -112,5 +114,7 @@ func (h *AuthController) Me(c *gin.Context) {
 		Role:        user.Role,
 		FullName:    user.FullName,
 		StudentCode: user.StudentCode,
+		Faculty:     user.Faculty,
+		Major:       user.Major,
 	})
 }

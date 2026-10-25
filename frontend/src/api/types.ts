@@ -5,16 +5,9 @@ export interface CurrentUser {
   role: Role
   full_name: string
   student_code: string | null
-}
-export interface StudentProfile {
-  id: number
-  full_name: string
-  student_code: string | null
   faculty: string | null
   major: string | null
 }
-export interface Student extends StudentProfile { username: string }
-export type StudentInput = Pick<StudentProfile, 'full_name' | 'faculty' | 'major'>
 export interface ClassSchedule {
   day_of_week: number
   start_period: number

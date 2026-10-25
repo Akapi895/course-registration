@@ -725,138 +725,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/api/students/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Sinh viên chỉ xem được tài khoản của chính mình. Admin xem được mọi sinh viên.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "students"
-                ],
-                "summary": "Xem thông tin sinh viên",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID tài khoản sinh viên",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/controller.studentSuccessResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "FORBIDDEN",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "INTERNAL_ERROR",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Thay thế họ tên, khoa và ngành. Sinh viên chỉ sửa được tài khoản của chính mình. Admin sửa được mọi sinh viên.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "students"
-                ],
-                "summary": "Cập nhật thông tin sinh viên",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID tài khoản sinh viên",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Thông tin cần cập nhật",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controller.updateStudentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/controller.studentProfileSuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "VALIDATION_ERROR",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "FORBIDDEN",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "NOT_FOUND",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "INTERNAL_ERROR",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -1251,6 +1119,10 @@ const docTemplate = `{
         "controller.meData": {
             "type": "object",
             "properties": {
+                "faculty": {
+                    "type": "string",
+                    "example": "Công nghệ thông tin"
+                },
                 "full_name": {
                     "type": "string",
                     "example": "Sinh viên giả lập 001"
@@ -1258,6 +1130,10 @@ const docTemplate = `{
                 "id": {
                     "type": "integer",
                     "example": 7
+                },
+                "major": {
+                    "type": "string",
+                    "example": "Công nghệ thông tin"
                 },
                 "role": {
                     "type": "string",
@@ -1584,84 +1460,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.studentData": {
-            "type": "object",
-            "properties": {
-                "faculty": {
-                    "type": "string",
-                    "example": "CNTT"
-                },
-                "full_name": {
-                    "type": "string",
-                    "example": "Sinh viên giả lập 001"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 7
-                },
-                "major": {
-                    "type": "string",
-                    "example": "Khoa học máy tính"
-                },
-                "student_code": {
-                    "type": "string",
-                    "example": "DEMO00001"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "student001"
-                }
-            }
-        },
-        "controller.studentProfileData": {
-            "type": "object",
-            "properties": {
-                "faculty": {
-                    "type": "string",
-                    "example": "CNTT"
-                },
-                "full_name": {
-                    "type": "string",
-                    "example": "Nguyễn Văn A"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 7
-                },
-                "major": {
-                    "type": "string",
-                    "example": "Khoa học máy tính"
-                },
-                "student_code": {
-                    "type": "string",
-                    "example": "DEMO00001"
-                }
-            }
-        },
-        "controller.studentProfileSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controller.studentProfileData"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "controller.studentSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controller.studentData"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
         "controller.timetableItem": {
             "type": "object",
             "properties": {
@@ -1749,26 +1547,6 @@ const docTemplate = `{
                 "semester_id": {
                     "type": "integer",
                     "example": 2
-                }
-            }
-        },
-        "controller.updateStudentRequest": {
-            "type": "object",
-            "required": [
-                "full_name"
-            ],
-            "properties": {
-                "faculty": {
-                    "type": "string",
-                    "example": "CNTT"
-                },
-                "full_name": {
-                    "type": "string",
-                    "example": "Nguyễn Văn A"
-                },
-                "major": {
-                    "type": "string",
-                    "example": "Khoa học máy tính"
                 }
             }
         }

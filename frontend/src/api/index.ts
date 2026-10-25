@@ -1,11 +1,9 @@
 import { request } from './client'
-import type { ClassCreate, ClassDetail, ClassList, ClassUpdate, CurrentUser, RegisterBatch, RegisteredClass, RegistrationPeriod, Student, StudentInput, StudentProfile, TimetableEntry } from './types'
+import type { ClassCreate, ClassDetail, ClassList, ClassUpdate, CurrentUser, RegisterBatch, RegisteredClass, RegistrationPeriod, TimetableEntry } from './types'
 
 export const login = (username: string, password: string, signal?: AbortSignal) => request<{ access_token: string }>('/api/auth/login', { method: 'POST', body: { username, password }, auth: false, signal })
 export const logout = () => request<Record<string, never>>('/api/auth/logout', { method: 'POST' })
 export const me = (signal?: AbortSignal) => request<CurrentUser>('/api/auth/me', { signal })
-export const getStudent = (id: number, signal?: AbortSignal) => request<Student>(`/api/students/${id}`, { signal })
-export const updateStudent = (id: number, body: StudentInput) => request<StudentProfile>(`/api/students/${id}`, { method: 'PUT', body })
 export const listClasses = (filters: { faculty?: string; major?: string } = {}, signal?: AbortSignal) => {
   const params = new URLSearchParams()
   if (filters.faculty?.trim()) params.set('faculty', filters.faculty.trim())

@@ -44,16 +44,6 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*User, error) 
 	return r.queryOne(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1`, id)
 }
 
-// UpdateProfile returns nil, nil when no student has the given id.
-func (r *UserRepository) UpdateProfile(ctx context.Context, id int64, fullName string, faculty, major *string) (*User, error) {
-	return r.queryOne(ctx,
-		`UPDATE users SET full_name = $2, faculty = $3, major = $4
-		 WHERE id = $1 AND role = 'student'
-		 RETURNING `+userColumns,
-		id, fullName, faculty, major,
-	)
-}
-
 func (r *UserRepository) queryOne(ctx context.Context, query string, args ...any) (*User, error) {
 	var u User
 	err := r.db.QueryRow(ctx, query, args...).Scan(

@@ -1,6 +1,6 @@
 # Hệ thống quản lý và đăng ký học phần — Phase 1
 
-Backend Go/Gin, PostgreSQL 16 và Swagger cho 15 endpoint trong [SRS](docs/SRS.md). Yêu cầu và hợp đồng API nằm tại [docs/SRS.md](docs/SRS.md) và [docs/api-design.md](docs/api-design.md).
+Backend Go/Gin, PostgreSQL 16 và Swagger cho 13 endpoint trong [SRS](docs/SRS.md). Yêu cầu và hợp đồng API nằm tại [docs/SRS.md](docs/SRS.md) và [docs/api-design.md](docs/api-design.md).
 
 ## 1. Chuẩn bị cấu hình
 
@@ -135,6 +135,7 @@ Mở <http://localhost:5173>. Vite chuyển các request `/api` sang `API_PROXY_
 - Đăng nhập bằng tài khoản seed, không dùng tài khoản mock cũ. JWT chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Hồ sơ, lớp, đăng ký và thời khóa biểu đã lưu vẫn nằm ở backend.
 - Mỗi lần xác nhận đăng ký gửi đúng một lớp. Lỗi nghiệp vụ hiển thị từ backend và giữ phiên để thử lại. Sau thành công, giao diện gọi logout; nếu logout lỗi, chỉ thử logout lại, không gửi lại đăng ký.
 - Cooldown 20 phút tính từ đăng ký thành công hiện **chỉ áp dụng trên frontend theo tài khoản/trình duyệt**. Thông tin hoàn tất/cooldown được lưu trước logout để tải lại trang không gửi lại đăng ký. Nếu trình duyệt chặn storage, giao diện dùng trạng thái trong bộ nhớ và thông báo giới hạn lưu trữ. Backend chưa thực thi chặn login mới hoặc thu hồi mọi phiên; endpoint logout hiện chỉ thu hồi phiên đang gọi. Thời hạn JWT vẫn theo cấu hình backend.
-- Một lớp có nhiều buổi học, thứ `2…7`; không có nhóm LT/TH riêng. Admin được hủy mềm cả lớp có sinh viên. Các form dùng ID học phần/học kỳ/sinh viên đã biết vì Phase 1 chưa có API danh sách tương ứng; không dùng danh sách giả hoặc lịch sử đợt giả.
+- Một lớp có nhiều buổi học, thứ `2…7`; không có nhóm LT/TH riêng. Admin được hủy mềm cả lớp có sinh viên. Các form dùng ID học phần/học kỳ đã biết vì Phase 1 chưa có API danh sách tương ứng; không dùng danh sách giả hoặc lịch sử đợt giả.
+- Không có trang quản lý sinh viên hoặc API hồ sơ theo ID. Thông tin khoa/ngành của người dùng hiện tại được lấy từ `GET /api/auth/me` để hiển thị tổng quan và lọc lớp theo ngành.
 
 `npm run build` tạo `frontend/dist/`; `npm run preview` phục vụ bản build tại cổng 4173, dùng cùng proxy phát triển. Docker dùng `frontend/Dockerfile` và `frontend/nginx.conf`; khi triển khai máy chủ static khác, cần cấu hình tuyến `/api` tới backend và fallback SPA về `index.html`.

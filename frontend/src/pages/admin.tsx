@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { ArrowLeft, Ban, CalendarClock, Eye, FilterX, ListChecks, Lock, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
+import { Ban, CalendarClock, Eye, FilterX, ListChecks, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import { ApiError } from '../api/client'
 import { ClassDetailModal } from '../components/ClassDetailModal'
 import { PeriodBanner } from '../components/PeriodBanner'
 import { Link, navigate, query, useRoute } from '../router'
-import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type RegistrationPeriod, type Student } from '../api/types'
+import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type RegistrationPeriod } from '../api/types'
 import { useRequest } from '../hooks/useRequest'
 import { Alert, Badge, Button, Capacity, Card, Empty, Field, Input, Modal, PageHeader, Pagination, RequestStatus, Select, Stat, Table, Td, seatState, toast } from '../components/ui'
 
@@ -36,7 +36,6 @@ export function AdminDashboard() {
       <PageHeader title="Tổng quan" desc="Số liệu của học kỳ hiện tại"
         actions={<>
           <Button onClick={() => navigate('/admin/classes?new=1')}><Plus className="h-4 w-4" />Tạo lớp học phần</Button>
-          <Button variant="secondary" onClick={() => navigate('/admin/students')}><Search className="h-4 w-4" />Tra cứu sinh viên</Button>
           <Button variant="secondary" onClick={() => navigate('/admin/registration-period')}><CalendarClock className="h-4 w-4" />Cấu hình đợt đăng ký</Button>
         </>} />
       <RequestStatus {...resource} retry={resource.reload} />
@@ -254,87 +253,6 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
       </Card>
       {creating && <ClassForm onClose={closeCreate} onSaved={(id) => { setCreating(false); resource.reload(); admin.show(id) }} />}
       {admin.modal}
-    </Layout>
-  )
-}
-
-// ---------------- Students ----------------
-export function AdminStudents() {
-  const [id, setId] = useState('')
-  const [err, setErr] = useState('')
-  const submit = (e: FormEvent) => {
-    e.preventDefault()
-    if (!positiveInt(id)) return setErr('Nhập mã tài khoản hợp lệ (số nguyên dương).')
-    setErr(''); navigate(`/admin/students/${Number(id)}`)
-  }
-  return (
-    <Layout title="Quản lý sinh viên">
-      <PageHeader title="Quản lý sinh viên" desc="Tra cứu hồ sơ sinh viên theo mã tài khoản" />
-      <Card>
-        <form onSubmit={submit} noValidate className="space-y-2 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <label className="relative flex-1"><span className="sr-only">Mã tài khoản sinh viên</span><Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><Input id="student-lookup-id" type="number" min={1} step={1} value={id} onChange={(e) => { setId(e.target.value); setErr('') }} error={err} placeholder="Mã tài khoản sinh viên (ID)" className="pl-10" /></label>
-            <Button type="submit"><Search className="h-4 w-4" />Tra cứu</Button>
-          </div>
-          {err ? <p id="student-lookup-id-err" className="text-[13px] text-red-600">{err}</p> : <p className="text-[13px] text-muted">Nhập mã tài khoản của sinh viên để xem và cập nhật họ tên.</p>}
-        </form>
-      </Card>
-    </Layout>
-  )
-}
-
-function StudentForm({ s, onSaved }: { s: Student; onSaved: () => void }) {
-  const [name, setName] = useState(s.full_name)
-  const [err, setErr] = useState('')
-  const [formErr, setFormErr] = useState('')
-  const [busy, setBusy] = useState(false)
-  const dirty = name.trim() !== s.full_name
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
-    if (busy) return
-    setFormErr('')
-    if (!name.trim()) return setErr('Vui lòng nhập họ và tên.')
-    if (name.trim().length < 3) return setErr('Họ và tên phải có ít nhất 3 ký tự.')
-    setErr(''); setBusy(true)
-    try {
-      // The endpoint takes the whole profile; faculty and major are sent back unchanged.
-      await api.updateStudent(s.id, { full_name: name.trim(), faculty: s.faculty, major: s.major })
-      setName(name.trim()); toast('Đã lưu hồ sơ sinh viên.'); onSaved()
-    } catch (x) { setFormErr(friendly(x)) } finally { setBusy(false) }
-  }
-  const ro = (fid: string, label: string, v: string) => <Field id={fid} label={label} hint="Chỉ đọc theo phân quyền hiện tại"><Input id={fid} value={v} readOnly disabled /></Field>
-  return (
-    <Card title="Thông tin hồ sơ" className="max-w-3xl">
-      <form onSubmit={save} noValidate className="space-y-5 p-5">
-        {formErr && <Alert tone="error" title="Không thể lưu">{formErr}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2"><Field id="sd-name" label="Họ và tên" required error={err}><Input id="sd-name" value={name} onChange={(e) => setName(e.target.value)} error={err} /></Field></div>
-          {ro('sd-code', 'Mã số sinh viên', s.student_code ?? '—')}
-          {ro('sd-user', 'Tên đăng nhập', s.username)}
-          {ro('sd-fac', 'Khoa', s.faculty ?? '—')}
-          {ro('sd-major', 'Ngành', s.major ?? '—')}
-          {ro('sd-role', 'Vai trò', 'Sinh viên')}
-        </div>
-        <p className="flex items-center gap-1.5 text-[13px] text-muted"><Lock className="h-3.5 w-3.5" />Trường định danh, vai trò và thông tin đào tạo không thể chỉnh sửa.</p>
-        <div className="flex flex-col-reverse justify-end gap-2 border-t border-line pt-5 sm:flex-row">
-          <Button variant="secondary" disabled={!dirty || busy} onClick={() => { setName(s.full_name); setErr(''); setFormErr('') }}>Hủy</Button>
-          <Button type="submit" loading={busy} disabled={!dirty}>Lưu thay đổi</Button>
-        </div>
-      </form>
-    </Card>
-  )
-}
-
-export function AdminStudentDetail({ id }: { id: string }) {
-  const resource = useRequest(useCallback((signal: AbortSignal) => api.getStudent(Number(id), signal), [id]))
-  const s = resource.data
-  const crumbs = <><Link to="/admin/students" className="hover:text-primary">Quản lý sinh viên</Link> <span aria-hidden>/</span> {s?.student_code ?? 'Hồ sơ'}</>
-  return (
-    <Layout title="Hồ sơ sinh viên">
-      <PageHeader crumbs={crumbs} title={s?.full_name ?? 'Hồ sơ sinh viên'} desc={s ? [s.student_code, s.faculty, s.major].filter(Boolean).join(' · ') : undefined}
-        actions={<Button variant="secondary" onClick={() => navigate('/admin/students')}><ArrowLeft className="h-4 w-4" />Danh sách</Button>} />
-      {!s && <RequestStatus {...resource} retry={resource.reload} />}
-      {s && <StudentForm s={s} onSaved={resource.reload} />}
     </Layout>
   )
 }

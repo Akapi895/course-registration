@@ -2,15 +2,39 @@
 
 Tài liệu này cụ thể hóa SRS §5.2 cho Phase 1. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `database.dbml`, không thay đổi trong tài liệu này.
 
-## Bảng endpoint
+## Phạm vi và phân quyền
+
+Hiện có **13 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn. Danh sách dưới đây tương ứng với router backend và Swagger; `/health` và `/swagger/*any` là các route kỹ thuật, không tính vào 13 endpoint.
+
+| STT | Nhóm | Phương thức | Endpoint | Quyền truy cập |
+|---|---|---|---|---|
+| 1 | Xác thực và người dùng | POST | `/api/auth/login` | Công khai |
+| 2 | Xác thực và người dùng | POST | `/api/auth/logout` | Sinh viên hoặc quản trị viên |
+| 3 | Xác thực và người dùng | GET | `/api/auth/me` | Sinh viên hoặc quản trị viên |
+| 4 | Tra cứu lớp học phần | GET | `/api/classes` | Sinh viên hoặc quản trị viên |
+| 5 | Tra cứu lớp học phần | GET | `/api/classes/{id}` | Sinh viên hoặc quản trị viên |
+| 6 | Đăng ký học phần và thời khóa biểu | POST | `/api/registrations` | Chỉ sinh viên |
+| 7 | Đăng ký học phần và thời khóa biểu | GET | `/api/registrations` | Chỉ sinh viên, xem đăng ký của chính mình |
+| 8 | Đăng ký học phần và thời khóa biểu | DELETE | `/api/registrations/{id}` | Chỉ sinh viên sở hữu đăng ký |
+| 9 | Đăng ký học phần và thời khóa biểu | GET | `/api/schedules` | Chỉ sinh viên, xem thời khóa biểu của chính mình |
+| 10 | Quản trị hệ thống | POST | `/api/classes` | Chỉ quản trị viên |
+| 11 | Quản trị hệ thống | PUT | `/api/classes/{id}` | Chỉ quản trị viên |
+| 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
+| 13 | Quản trị hệ thống | PUT | `/api/registration-period` | Chỉ quản trị viên |
+
+Mọi endpoint trừ đăng nhập yêu cầu `Authorization: Bearer <access_token>` và phiên đăng nhập còn hiệu lực. Quản trị viên không được đăng ký/hủy học phần thay sinh viên hoặc truy cập các API đăng ký/thời khóa biểu dành riêng cho sinh viên.
+
+Hai endpoint `GET /api/students/{id}` và `PUT /api/students/{id}` đã được gỡ bỏ; không có API danh sách/tìm kiếm sinh viên. Thông tin tài khoản hiện tại được đọc qua `GET /api/auth/me`.
+
+## Hợp đồng request/response
+
+Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được xác định tại bảng trên. Response lỗi trong bảng là ví dụ, các mã lỗi và ghi chú bên dưới mô tả thêm các trường hợp từ chối.
 
 | Feature | Mô tả | Endpoint | Method | Request Body | Response Body | Response Fail | Auth |
 |---|---|---|---|---|---|---|---|
 | Xác thực và người dùng | Đăng nhập | /api/auth/login | POST | `{ "username": "sv001", "password": "<password>" }` | `200` `{ "status": "success", "data": { "access_token": "<jwt>" } }` | `401` `{ "status": "fail", "data": { "code": "INVALID_CREDENTIALS", "message": "Sai tên đăng nhập hoặc mật khẩu" } }` | none |
 | Xác thực và người dùng | Đăng xuất và thu hồi phiên | /api/auth/logout | POST | — | `200` `{ "status": "success", "data": {} }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
-| Xác thực và người dùng | Lấy thông tin người dùng hiện tại | /api/auth/me | GET | — | `200` `{ "status": "success", "data": { "id": 7, "username": "sv001", "role": "student", "full_name": "Nguyễn Văn A", "student_code": "SV001" } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
-| Quản lý sinh viên | Xem thông tin sinh viên (chính mình hoặc admin) | /api/students/{id} | GET | — | `200` `{ "status": "success", "data": { "id": 7, "username": "sv001", "full_name": "Nguyễn Văn A", "student_code": "SV001", "faculty": "CNTT", "major": "Khoa học máy tính" } }` | `403` `{ "status": "fail", "data": { "code": "FORBIDDEN", "message": "Bạn không có quyền truy cập dữ liệu này" } }` | required |
-| Quản lý sinh viên | Cập nhật sinh viên (chính mình hoặc admin) | /api/students/{id} | PUT | `{ "full_name": "Nguyễn Văn A", "faculty": "CNTT", "major": "Khoa học máy tính" }` | `200` `{ "status": "success", "data": { "id": 7, "full_name": "Nguyễn Văn A", "student_code": "SV001", "faculty": "CNTT", "major": "Khoa học máy tính" } }` | `400` `{ "status": "fail", "data": { "code": "VALIDATION_ERROR", "message": "Trường không được phép cập nhật: student_code" } }` | required |
+| Xác thực và người dùng | Lấy thông tin người dùng hiện tại | /api/auth/me | GET | — | `200` `{ "status": "success", "data": { "id": 7, "username": "sv001", "role": "student", "full_name": "Nguyễn Văn A", "student_code": "SV001", "faculty": "CNTT", "major": "Khoa học máy tính" } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Tra cứu lớp học phần | Lấy danh sách lớp học phần đang mở | /api/classes | GET | — | `200` `{ "status": "success", "data": { "semester": { "id": 2, "name": "Học kỳ 1 năm học 2026-2027", "max_credits": 24, "registration_opens_at": "2026-10-13T00:00:00+07:00", "registration_closes_at": "2026-11-19T00:00:00+07:00", "registration_open": true }, "classes": [ { "id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "enrolled": 42, "max_capacity": 50, "registration_open": true } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Tra cứu lớp học phần | Chi tiết lớp học phần | /api/classes/{id} | GET | — | `200` `{ "status": "success", "data": { "id": 10, "course_id": 5, "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "faculty": "Công nghệ thông tin", "major": "Khoa học máy tính", "semester_id": 2, "semester_name": "Học kỳ 1 năm học 2026-2027", "class_code": "INT3401-01", "lecturer_name": "Giảng viên A", "max_capacity": 50, "enrolled": 42, "status": "active", "registration_open": true, "schedules": [ { "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ], "prerequisites": [ { "course_id": 4, "course_code": "INT2211", "course_name": "Cơ sở dữ liệu", "passed": true } ] } }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy dữ liệu" } }` | required |
 | Đăng ký học phần và thời khóa biểu | Đăng ký một hoặc nhiều lớp học phần cho tài khoản hiện tại; xử lý từng lớp, lớp hợp lệ được ghi nhận, lớp bị từ chối được báo lại | /api/registrations | POST | `{ "class_ids": [10, 11, 12, 13, 14] }` | `200` `{ "status": "success", "data": { "registered_count": 3, "failed_count": 2, "results": [ { "class_id": 10, "status": "registered", "id": 301, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 11, "status": "registered", "id": 302, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 12, "status": "registered", "id": 303, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 13, "status": "failed", "code": "CLASS_FULL", "message": "Lớp học phần đã đủ sĩ số" }, { "class_id": 14, "status": "failed", "code": "SCHEDULE_CONFLICT", "message": "Lớp bị trùng lịch với học phần đã đăng ký" } ] } }` | `400` `{ "status": "fail", "data": { "code": "VALIDATION_ERROR", "message": "Danh sách lớp bị trùng" } }` | required |
@@ -21,6 +45,31 @@ Tài liệu này cụ thể hóa SRS §5.2 cho Phase 1. Nếu có mâu thuẫn, 
 | Quản trị hệ thống | Cập nhật các trường được phép sửa của lớp | /api/classes/{id} | PUT | `{ "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60, "schedules": [ { "day_of_week": 3, "start_period": 4, "end_period": 6, "room": "A2-302" } ] }` | `200` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60 } }` | `409` `{ "status": "fail", "data": { "code": "SCHEDULE_LOCKED", "message": "Không thể sửa lịch học khi lớp đã có sinh viên đăng ký" } }` | required |
 | Quản trị hệ thống | Hủy lớp học phần (không xóa vật lý) | /api/classes/{id} | DELETE | — | `200` `{ "status": "success", "data": { "id": 10, "status": "cancelled" } }` | `409` `{ "status": "fail", "data": { "code": "CLASS_CANCELLED", "message": "Lớp học phần đã bị hủy" } }` | required |
 | Quản trị hệ thống | Cập nhật thời gian đăng ký cho học kỳ | /api/registration-period | PUT | `{ "semester_id": 2, "registration_opens_at": "2026-11-01T00:00:00+07:00", "registration_closes_at": "2026-11-14T23:59:59+07:00" }` | `200` `{ "status": "success", "data": { "semester_id": 2, "registration_opens_at": "2026-11-01T00:00:00+07:00", "registration_closes_at": "2026-11-14T23:59:59+07:00" } }` | `400` `{ "status": "fail", "data": { "code": "VALIDATION_ERROR", "message": "Thời gian đóng đăng ký phải sau thời gian mở đăng ký" } }` | required |
+
+## Thông tin tài khoản hiện tại
+
+`POST /api/auth/login` chỉ trả `access_token`. Sau đăng nhập, frontend gọi `GET /api/auth/me` với token đó để lấy dữ liệu sau:
+
+| Trường trong `data` | Kiểu dữ liệu | Ý nghĩa |
+|---|---|---|
+| `id` | integer | ID tài khoản hiện tại |
+| `username` | string | Tên đăng nhập |
+| `role` | string | `student` hoặc `admin` |
+| `full_name` | string | Họ và tên |
+| `student_code` | string hoặc null | Mã sinh viên; `null` với quản trị viên |
+| `faculty` | string hoặc null | Khoa của người dùng, nếu có |
+| `major` | string hoặc null | Ngành của người dùng, nếu có |
+
+Endpoint chỉ trả thông tin của tài khoản gắn với JWT, không nhận ID tài khoản đích. Frontend dùng `faculty`, `major` để hiển thị tổng quan và lọc lớp theo ngành; không cần gọi API hồ sơ riêng. Response không chứa mật khẩu hoặc `password_hash`.
+
+## Route kỹ thuật
+
+| Phương thức | Đường dẫn | Xác thực | Kết quả |
+|---|---|---|---|
+| GET | `/health` | Không yêu cầu | `200` `{ "status": "success", "data": {} }`; phục vụ healthcheck backend, không truy vấn kiểm tra cơ sở dữ liệu |
+| GET | `/swagger/*any` | Không yêu cầu | Swagger UI tại `/swagger/index.html`, tài liệu JSON tại `/swagger/doc.json` và các tài nguyên liên quan; không dùng envelope nghiệp vụ |
+
+Các đường dẫn này truy cập trên backend. Proxy frontend hiện chỉ chuyển tiếp `/api/`, nên truy cập Swagger trực tiếp qua cổng backend.
 
 ## Mã lỗi
 
@@ -48,7 +97,7 @@ Tài liệu này cụ thể hóa SRS §5.2 cho Phase 1. Nếu có mâu thuẫn, 
 ## Ghi chú
 
 - Frontend xử lý lỗi theo `data.code`. `data.message` chỉ là câu mô tả để hiển thị.
-- Mọi endpoint trừ login cần header `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR`. Phase 1 không có refresh token.
+- Mọi endpoint nghiệp vụ trừ login cần header `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR` tùy trường hợp. Các route kỹ thuật không yêu cầu token. Phase 1 không có refresh token.
 - `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp đáp ứng điều kiện được ghi nhận (`status: "registered"`, kèm `id` và `registered_at`); lớp bị từ chối có `status: "failed"` kèm `code` và `message` mà không ảnh hưởng các lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trước đó trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
 - Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Client dựa vào `results[].status`, `registered_count` và `failed_count`, không dựa vào HTTP status để biết kết quả từng lớp. Đăng ký thành công một phần vẫn được tính là hoàn tất cho các lớp đã ghi nhận.
@@ -56,8 +105,9 @@ Tài liệu này cụ thể hóa SRS §5.2 cho Phase 1. Nếu có mâu thuẫn, 
 - `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `REGISTRATION_NOT_ACTIVE`, `REGISTRATION_CLOSED`.
 - `PUT /api/classes/{id}` có thể trả: `CLASS_CANCELLED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED`, `CONFLICT`, `VALIDATION_ERROR`.
 - Login sai username hoặc password đều trả cùng một mã và message.
-- `GET` và `PUT /api/students/{id}`: chỉ truy cập được tài khoản của chính mình. `PUT` chỉ nhận `full_name`, `faculty`, `major`.
+- `GET /api/auth/me` trả thêm `faculty`, `major` (có thể `null`) để frontend hiển thị khoa/ngành và lọc lớp học phần. Không cung cấp hai endpoint hồ sơ `GET`, `PUT /api/students/{id}` trong phạm vi hiện tại.
 - `GET /api/classes`: không nhận `semester_id`, luôn trả lớp `active` của học kỳ hiện tại (học kỳ có `registration_opens_at` mới nhất không sau thời điểm hiện tại). Query `faculty`, `major` là tùy chọn.
+- `GET /api/classes` vẫn trả danh sách để tra cứu sau khi đóng đăng ký; `registration_open = false` không đồng nghĩa lớp bị loại khỏi danh sách.
 - `registration_open`: `true` khi thời điểm hiện tại nằm trong khoảng đăng ký của học kỳ, tức từ `registration_opens_at` đến `registration_closes_at`.
 - `GET /api/classes/{id}` trả thêm `faculty` (khoa của học phần), `major` (ngành của học phần; `null` với học phần chung của nhiều ngành), `semester_name` và `prerequisites` (các học phần tiên quyết, sắp theo `course_code`; mảng rỗng nếu không có). `passed` trong mỗi phần tử chỉ có khi người gọi là sinh viên: `true` nếu sinh viên đó đã đạt học phần (`course_results.passed`), `false` nếu chưa; quản trị viên không nhận `passed`. Đây chỉ là thông tin tham khảo; việc kiểm tra tiên quyết khi đăng ký vẫn do `POST /api/registrations` thực hiện.
 - `GET /api/classes` trả thêm `data.semester`: học kỳ hiện tại mà các lớp thuộc về (`id`, `name`, `max_credits`, `registration_opens_at`, `registration_closes_at`, `registration_open`). Client dùng để hiển thị khung đợt đăng ký và mức tín chỉ tối đa. `semester` là `null` và `classes` rỗng khi chưa có học kỳ nào mở đăng ký. `semester` không phụ thuộc bộ lọc `faculty`, `major`, nên vẫn có khi bộ lọc không khớp lớp nào.
@@ -65,5 +115,6 @@ Tài liệu này cụ thể hóa SRS §5.2 cho Phase 1. Nếu có mâu thuẫn, 
 - `PUT /api/classes/{id}`: không đổi `course_id`, `semester_id`. `max_capacity` không nhỏ hơn `enrolled`. Khi `enrolled > 0` không sửa được `schedules`.
 - `DELETE /api/classes/{id}`: hủy mềm. Các đăng ký `registered` của lớp chuyển sang `cancelled`, `enrolled = 0`.
 - `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình.
-- Học kỳ, học phần và kết quả học tập không có API, lấy từ dữ liệu seed.
+- `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ; không nhận ID sinh viên đích. Client tự lọc theo học kỳ nếu cần.
+- Không có API danh mục học kỳ, học phần hoặc kết quả học tập; các dữ liệu này lấy từ seed. `PUT /api/registration-period` chỉ cấu hình thời gian đăng ký của học kỳ đã tồn tại.
 - `auth_sessions.refresh_token_hash` là NOT NULL nhưng Phase 1 không dùng.

@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -41,4 +42,13 @@ func bindJSON(c *gin.Context, allowed map[string]bool, req any) bool {
 		return false
 	}
 	return true
+}
+
+func parseID(c *gin.Context) (int64, bool) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		fail(c, 404, "NOT_FOUND", "Không tìm thấy dữ liệu")
+		return 0, false
+	}
+	return id, true
 }

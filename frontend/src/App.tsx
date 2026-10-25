@@ -4,7 +4,7 @@ import { useAuth } from './auth/AuthProvider'
 import { Logo, Skeleton, Toaster } from './components/ui'
 import Layout from './components/Layout'
 import { ForgotPage, LoginPage, StatusPage } from './pages/auth'
-import { AdminClasses, AdminDashboard, AdminRegistrationPeriod, AdminStudentDetail, AdminStudents } from './pages/admin'
+import { AdminClasses, AdminDashboard, AdminRegistrationPeriod } from './pages/admin'
 import { StudentClasses, StudentDashboard, StudentRegistrations } from './pages/student'
 import { StudentSchedule } from './pages/schedule'
 
@@ -36,8 +36,6 @@ function Routes() {
     ['/student/schedule', () => <StudentSchedule />],
     ['/admin/dashboard', () => <AdminDashboard />],
     ['/admin/classes', () => <AdminClasses isNew={!!query(path).get('new')} />],
-    ['/admin/students', () => <AdminStudents />],
-    ['/admin/students/:id', (m) => <AdminStudentDetail id={m.id} />],
     ['/admin/registration-period', () => <AdminRegistrationPeriod />],
     ['/error/network', () => <Layout title="Lỗi kết nối"><StatusPage code="network" /></Layout>],
   ]

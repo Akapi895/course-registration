@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { LayoutDashboard, BookPlus, ListChecks, CalendarDays, Menu, LogOut, ChevronDown, X, Timer, School, Users, CalendarClock, Loader2 } from 'lucide-react'
+import { LayoutDashboard, BookPlus, ListChecks, CalendarDays, Menu, LogOut, ChevronDown, X, Timer, School, CalendarClock, Loader2 } from 'lucide-react'
 import { Link, navigate, useRoute } from '../router'
 import { useAuth } from '../auth/AuthProvider'
 import { tokenExpiresAt } from '../api/client'
@@ -14,7 +14,6 @@ const studentMenu = [
 const adminMenu = [
   ['/admin/dashboard', 'Tổng quan', LayoutDashboard],
   ['/admin/classes', 'Quản lý lớp học phần', School],
-  ['/admin/students', 'Quản lý sinh viên', Users],
   ['/admin/registration-period', 'Cấu hình đợt đăng ký', CalendarClock],
 ] as const
 

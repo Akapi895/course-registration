@@ -38,12 +38,11 @@ func main() {
 	registrations := repository.NewRegistrationRepository(pool)
 
 	auth := service.NewAuthService(cfg, users, sessions)
-	students := service.NewStudentService(users)
 	classService := service.NewClassService(classes, semesters)
 	registrationService := service.NewRegistrationService(registrations, classes, semesters)
 	periods := service.NewRegistrationPeriodService(semesters)
 
-	r := controller.NewRouter(auth, students, classService, registrationService, periods)
+	r := controller.NewRouter(auth, classService, registrationService, periods)
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}

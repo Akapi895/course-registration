@@ -41,14 +41,9 @@ function Fetch<T>({ r, skeleton, children }: { r: { data?: T; loading: boolean; 
 
 export function StudentDashboard() {
   const { user } = useAuth()
-  const uid = user!.id
   const detail = useClassDetail()
-  const resource = useRequest(useCallback(async (signal: AbortSignal) => {
-    const [term, me] = await Promise.all([loadTerm(signal), api.getStudent(uid, signal).catch((e) => { if (signal.aborted) throw e; return null })])
-    return { ...term, me }
-  }, [uid]))
-  const me = resource.data?.me
-  const desc = [`MSSV ${me?.student_code ?? user!.student_code ?? '—'}`, me?.faculty, me?.major && `Ngành ${me.major}`].filter(Boolean).join(' · ')
+  const resource = useRequest(loadTerm)
+  const desc = [`MSSV ${user!.student_code ?? '—'}`, user!.faculty, user!.major && `Ngành ${user!.major}`].filter(Boolean).join(' · ')
   return (
     <Layout title="Tổng quan">
       <PageHeader title={`Xin chào, ${user!.full_name}`} desc={desc}
@@ -110,14 +105,12 @@ type Scope = 'major' | 'all'
 type BatchItem = { c: ClassSummary; status: 'pending' | 'ok' | 'fail'; msg?: string }
 
 /** "Theo ngành" = the student's own program plus the shared courses; "Toàn trường" = everything. */
-async function loadClasses(scope: Scope, studentId: number, signal: AbortSignal) {
+async function loadClasses(scope: Scope, major: string | null, signal: AbortSignal) {
   // The unfiltered list also tells which classes belong to the current semester, whatever the scope.
   const everything = await api.listClasses({}, signal)
   const term = { semester: everything.semester, termIds: new Set(everything.classes.map((c) => c.id)) }
-  if (scope === 'all') return { ...term, classes: everything.classes }
-  const me = await api.getStudent(studentId, signal)
-  if (!me.major) return { ...term, classes: everything.classes }
-  const [own, shared] = await Promise.all([api.listClasses({ major: me.major }, signal), api.listClasses({ faculty: SHARED }, signal)])
+  if (scope === 'all' || !major) return { ...term, classes: everything.classes }
+  const [own, shared] = await Promise.all([api.listClasses({ major }, signal), api.listClasses({ faculty: SHARED }, signal)])
   const seen = new Set<number>()
   const classes = [...own.classes, ...shared.classes].filter((c) => !seen.has(c.id) && seen.add(c.id)).sort((a, b) => a.class_code.localeCompare(b.class_code, 'vi', { numeric: true }))
   return { ...term, classes }
@@ -125,7 +118,7 @@ async function loadClasses(scope: Scope, studentId: number, signal: AbortSignal)
 
 export function StudentClasses() {
   const { user } = useAuth()
-  const uid = user!.id
+  const major = user!.major
   const detail = useClassDetail()
   const locked = useSessionLocked()
   const [q, setQ] = useState('')
@@ -137,9 +130,9 @@ export function StudentClasses() {
   const [batch, setBatch] = useState<BatchItem[] | null>(null)
   const [running, setRunning] = useState(false)
   const resource = useRequest(useCallback(async (signal: AbortSignal) => {
-    const [loaded, regs] = await Promise.all([loadClasses(scope, uid, signal), api.listRegistrations(signal)])
+    const [loaded, regs] = await Promise.all([loadClasses(scope, major, signal), api.listRegistrations(signal)])
     return { semester: loaded.semester, classes: loaded.classes, regs: regs.registrations.filter((r) => r.status === 'registered' && loaded.termIds.has(r.class_id)) }
-  }, [scope, uid]))
+  }, [scope, major]))
   const ready = !!resource.data && !resource.loading && !resource.error
   const semester = resource.data?.semester
   const classes = resource.data?.classes ?? []
