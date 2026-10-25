@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+services:
+  - type: web
+    name: course-registration-demo
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: develop
+    dockerfilePath: ./deployment/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: course-registration-demo-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_TTL
+        value: 1h
+      - key: SESSION_TTL
+        value: 24h
+      - key: GIN_MODE
+        value: release
+
+databases:
+  - name: course-registration-demo-db
+    plan: free
+    region: singapore
+    postgresMajorVersion: "16"
+    databaseName: course_registration
+    user: course_app
+    ipAllowList: []

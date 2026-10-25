@@ -69,7 +69,7 @@ Endpoint chỉ trả thông tin của tài khoản gắn với JWT, không nhậ
 | GET | `/health` | Không yêu cầu | `200` `{ "status": "success", "data": {} }`; phục vụ healthcheck backend, không truy vấn kiểm tra cơ sở dữ liệu |
 | GET | `/swagger/*any` | Không yêu cầu | Swagger UI tại `/swagger/index.html`, tài liệu JSON tại `/swagger/doc.json` và các tài nguyên liên quan; không dùng envelope nghiệp vụ |
 
-Các đường dẫn này truy cập trên backend. Proxy frontend hiện chỉ chuyển tiếp `/api/`, nên truy cập Swagger trực tiếp qua cổng backend.
+Các đường dẫn này truy cập trên backend. Khi chạy Compose với nginx frontend, proxy chỉ chuyển tiếp `/api/`, nên truy cập Swagger trực tiếp qua cổng backend. Cấu hình Render trong `deployment/` phục vụ frontend và backend cùng một Web Service, nên Swagger truy cập trên cùng domain của giao diện.
 
 ## Mã lỗi
 

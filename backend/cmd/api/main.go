@@ -43,6 +43,11 @@ func main() {
 	periods := service.NewRegistrationPeriodService(semesters)
 
 	r := controller.NewRouter(auth, classService, registrationService, periods)
+	if cfg.FrontendDir != "" {
+		if err := controller.ServeFrontend(r, cfg.FrontendDir); err != nil {
+			log.Fatal(err)
+		}
+	}
 	if err := r.Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}

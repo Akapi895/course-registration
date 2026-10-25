@@ -16,6 +16,7 @@ type Config struct {
 	JWTSecret   string
 	JWTTTL      time.Duration
 	SessionTTL  time.Duration
+	FrontendDir string
 }
 
 // Load reads the settings from the environment. A .env file in the current or
@@ -28,6 +29,7 @@ func Load() (*Config, error) {
 		Port:        getEnv("PORT", "8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		JWTSecret:   os.Getenv("JWT_SECRET"),
+		FrontendDir: os.Getenv("FRONTEND_DIR"),
 	}
 
 	if cfg.DatabaseURL == "" {
