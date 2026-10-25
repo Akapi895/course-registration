@@ -24,12 +24,6 @@ type ClassFilter struct {
 	Major   *string
 }
 
-// ClassView is a class with its registration state derived from the semester window.
-type ClassView struct {
-	repository.Class
-	RegistrationOpen bool
-}
-
 // ClassInput is the editable part of a class, shared by create and update.
 type ClassInput struct {
 	ClassCode    string
@@ -55,7 +49,7 @@ type SemesterView struct {
 type CurrentClasses struct {
 	// Semester is nil when no semester has opened for registration yet.
 	Semester *SemesterView
-	Classes  []ClassView
+	Classes  []repository.Class
 }
 
 // ListCurrent returns the active classes of the current semester and the
@@ -68,7 +62,7 @@ func (s *ClassService) ListCurrent(ctx context.Context, filter ClassFilter) (*Cu
 		return nil, err
 	}
 	if semester == nil {
-		return &CurrentClasses{Classes: []ClassView{}}, nil
+		return &CurrentClasses{Classes: []repository.Class{}}, nil
 	}
 
 	classes, err := s.classes.ListActiveBySemester(ctx, semester.ID, filter.Faculty, filter.Major)
@@ -77,11 +71,7 @@ func (s *ClassService) ListCurrent(ctx context.Context, filter ClassFilter) (*Cu
 	}
 
 	open := isRegistrationOpen(*semester, now)
-	views := make([]ClassView, 0, len(classes))
-	for _, c := range classes {
-		views = append(views, ClassView{Class: c, RegistrationOpen: open})
-	}
-	return &CurrentClasses{Semester: &SemesterView{Semester: *semester, RegistrationOpen: open}, Classes: views}, nil
+	return &CurrentClasses{Semester: &SemesterView{Semester: *semester, RegistrationOpen: open}, Classes: classes}, nil
 }
 
 // PrerequisiteView is a prerequisite course. Passed is set only when the caller
@@ -93,7 +83,7 @@ type PrerequisiteView struct {
 
 // ClassDetail is a class with the prerequisites of its course.
 type ClassDetail struct {
-	ClassView
+	repository.Class
 	Prerequisites []PrerequisiteView
 }
 
@@ -104,14 +94,6 @@ func (s *ClassService) Get(ctx context.Context, p *Principal, classID int64) (*C
 	}
 	if class == nil {
 		return nil, ErrNotFound
-	}
-
-	semester, err := s.semesters.FindByID(ctx, class.SemesterID)
-	if err != nil {
-		return nil, err
-	}
-	if semester == nil {
-		return nil, fmt.Errorf("class %d refers to missing semester %d", class.ID, class.SemesterID)
 	}
 
 	var studentID *int64
@@ -133,7 +115,7 @@ func (s *ClassService) Get(ctx context.Context, p *Principal, classID int64) (*C
 	}
 
 	return &ClassDetail{
-		ClassView:     ClassView{Class: *class, RegistrationOpen: isRegistrationOpen(*semester, time.Now())},
+		Class:         *class,
 		Prerequisites: prerequisites,
 	}, nil
 }

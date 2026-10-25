@@ -63,16 +63,6 @@ type registrationListSuccessResponse struct {
 	Data   registrationListData `json:"data"`
 }
 
-type cancelData struct {
-	ID     int64  `json:"id" example:"301"`
-	Status string `json:"status" example:"cancelled"`
-}
-
-type cancelSuccessResponse struct {
-	Status string     `json:"status" example:"success"`
-	Data   cancelData `json:"data"`
-}
-
 // Register godoc
 // @Summary     Đăng ký một hoặc nhiều lớp học phần
 // @Description Chỉ sinh viên được đăng ký. Gửi tối đa 20 lớp trong `class_ids`, không trùng nhau. Các lớp được xử lý lần lượt theo thứ tự gửi, mỗi lớp trong một transaction riêng: lớp đáp ứng điều kiện được ghi nhận, lớp bị từ chối được trả lại kèm `code` (NOT_FOUND, CLASS_CANCELLED, CLASS_FULL, REGISTRATION_CLOSED, ALREADY_REGISTERED, SCHEDULE_CONFLICT, PREREQUISITE_NOT_MET, CREDIT_LIMIT_EXCEEDED hoặc INTERNAL_ERROR) và `message`, không ảnh hưởng các lớp khác. Quy tắc trùng lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trong cùng yêu cầu. Yêu cầu hợp lệ luôn trả 200, kể cả khi mọi lớp đều bị từ chối; xem `registered_count`, `failed_count` và `results`.
@@ -166,7 +156,7 @@ func (h *RegistrationController) List(c *gin.Context) {
 // @Produce     json
 // @Security    BearerAuth
 // @Param       id path int true "ID đăng ký"
-// @Success     200 {object} cancelSuccessResponse
+// @Success     200 {object} emptySuccessResponse
 // @Failure     401 {object} failResponse "UNAUTHORIZED hoặc SESSION_REVOKED"
 // @Failure     403 {object} failResponse "FORBIDDEN"
 // @Failure     404 {object} failResponse "NOT_FOUND"
@@ -183,5 +173,5 @@ func (h *RegistrationController) Cancel(c *gin.Context) {
 		failWithError(c, err)
 		return
 	}
-	success(c, 200, cancelData{ID: id, Status: "cancelled"})
+	success(c, 200, struct{}{})
 }

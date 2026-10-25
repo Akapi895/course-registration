@@ -25,12 +25,13 @@ Với PostgreSQL, phần kiểm tra chỗ trống và phần tăng sĩ số có 
 UPDATE course_classes
 SET enrolled = enrolled + 1
 WHERE id = $1
+  AND status = 'active'
   AND enrolled < max_capacity;
 ```
 
-Nếu câu lệnh ảnh hưởng một dòng, chỗ đó đã thuộc về sinh viên. Nếu ảnh hưởng không dòng nào, lớp đã đầy và hệ thống trả lỗi. PostgreSQL khóa dòng khi hai cập nhật chạm vào cùng một chỗ, câu lệnh đến sau đợi đến phiên mình rồi đánh giá lại điều kiện với dữ liệu mới. Nhờ vậy, không thể có hai request cùng vượt qua điều kiện để giành một chỗ duy nhất.
+Nếu câu lệnh ảnh hưởng một dòng, transaction đã giữ được một chỗ. Nếu ảnh hưởng không dòng nào, service đọc trạng thái để phân biệt lớp đã hủy với lớp đầy. PostgreSQL khóa dòng khi hai cập nhật chạm vào cùng một chỗ, câu lệnh đến sau đợi đến phiên mình rồi đánh giá lại điều kiện với dữ liệu mới. Nhờ vậy, không thể có hai request cùng vượt qua điều kiện để giành một chỗ duy nhất.
 
-Toàn bộ luồng đăng ký — ghi bản ghi đăng ký và tăng sĩ số — bọc trong một transaction, hoặc cùng thành công hoặc cùng quay lại, nên hai bên dữ liệu không bao giờ lệch nhau.
+Với từng lớp, ghi bản ghi đăng ký và tăng sĩ số bọc trong một transaction, hoặc cùng thành công hoặc cùng quay lại. Khi đăng ký nhiều lớp, mỗi lớp dùng một transaction riêng; lỗi của một lớp không hoàn tác các lớp đã ghi nhận.
 
 ### Ràng buộc toàn vẹn do database giữ
 

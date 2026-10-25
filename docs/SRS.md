@@ -98,6 +98,8 @@ Theo điều chỉnh phạm vi ngày 2026-10-25, chức năng quản lý hồ s�
 | 5 | Các API quản trị từ chối request không đủ quyền. |
 | 6 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
 
+Form tạo lớp và cấu hình thời gian đăng ký tự lấy `semester.id` từ API danh sách lớp, hiển thị tên học kỳ ở trường chỉ đọc; chưa cho gửi khi đang tải, tải lỗi hoặc chưa có học kỳ. Form sửa lớp giữ học kỳ của chính lớp đó.
+
 ### 3.5. Luồng nghiệp vụ chính
 
 #### 3.5.1. Đăng nhập
@@ -119,9 +121,9 @@ Theo điều chỉnh phạm vi ngày 2026-10-25, chức năng quản lý hồ s�
 
 #### 3.5.3. Tra cứu lớp học phần
 
-1. Client yêu cầu danh sách lớp học phần đang mở, có thể kèm bộ lọc.
+1. Client yêu cầu danh sách lớp học phần đang hoạt động của học kỳ hiện tại, có thể kèm bộ lọc khoa/ngành.
 2. Hệ thống trả về danh sách phù hợp.
-3. Client gửi yêu cầu xem chi tiết lớp theo mã lớp.
+3. Client gửi yêu cầu xem chi tiết lớp theo ID lớp học phần.
 4. Hệ thống trả thông tin lớp, giảng viên, phòng học, lịch học và sĩ số.
 
 #### 3.5.4. Quản trị lớp học phần
@@ -200,6 +202,8 @@ Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên �
 - Request body và response body sử dụng JSON.
 - Mỗi API cần xác định trường dữ liệu, kiểu dữ liệu, trường bắt buộc và quy tắc validation.
 - Cấu trúc response, mã lỗi và ví dụ request/response phải được mô tả trong OpenAPI/Swagger.
+- `registration_open` chỉ trả ở thông tin học kỳ (`data.semester`) của danh sách lớp, không lặp trên từng lớp hoặc chi tiết lớp. Client dùng trạng thái này để hiển thị và khóa/mở thao tác theo thời gian; backend vẫn kiểm tra nghiệp vụ khi nhận yêu cầu đăng ký/hủy.
+- Hai endpoint `DELETE /api/classes/{id}` và `DELETE /api/registrations/{id}` trả `200` với `{ "status": "success", "data": {} }` khi hủy thành công.
 
 ### 5.4. Route kỹ thuật
 
@@ -268,7 +272,7 @@ Phase 1 ưu tiên hoàn thiện các chức năng cốt lõi, bảo đảm tính
 | 1 | Đăng nhập hợp lệ trả JWT; thông tin đăng nhập không hợp lệ bị từ chối. |
 | 2 | Các API được bảo vệ từ chối yêu cầu thiếu token, token không hợp lệ, token thuộc phiên đã đăng xuất hoặc không đủ quyền truy cập. |
 | 3 | Người dùng đọc được thông tin tài khoản của chính mình qua `GET /api/auth/me`; sinh viên nhận được khoa và ngành để hiển thị tổng quan và lọc lớp học phần. Không cung cấp chức năng quản lý hồ sơ sinh viên theo ID. |
-| 4 | Sinh viên tra cứu được danh sách và thông tin chi tiết các lớp học phần đang mở. |
+| 4 | Sinh viên tra cứu được danh sách lớp học phần đang hoạt động của học kỳ hiện tại và thông tin chi tiết lớp theo ID, kể cả khi đã đóng đăng ký. |
 | 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng cho từng lớp được ghi nhận. |
 | 6 | Hệ thống từ chối đăng ký từng lớp khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ, kèm mã lỗi tương ứng cho lớp đó. |
 | 7 | Sinh viên xem được danh sách lớp học phần đã đăng ký và thời khóa biểu của mình. |

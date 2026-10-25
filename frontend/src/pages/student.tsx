@@ -184,7 +184,7 @@ export function StudentClasses() {
   const row = (c: ClassSummary) => {
     const mine = registered.has(c.id)
     const full = isFull(c)
-    const can = canAct && !mine && !full && c.registration_open
+    const can = canAct && !mine && !full
     const sel = !!picked[c.id]
     return (
       <tr key={c.id} onClick={(e) => { if (can && !(e.target as HTMLElement).closest('input,a,button')) toggle(c) }}

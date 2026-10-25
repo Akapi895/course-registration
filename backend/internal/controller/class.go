@@ -25,14 +25,13 @@ func NewClassController(classes *service.ClassService) *ClassController {
 }
 
 type classItem struct {
-	ID               int64  `json:"id" example:"10"`
-	ClassCode        string `json:"class_code" example:"INT3401-01"`
-	CourseCode       string `json:"course_code" example:"INT3401"`
-	CourseName       string `json:"course_name" example:"Hệ điều hành"`
-	Credits          int    `json:"credits" example:"3"`
-	Enrolled         int    `json:"enrolled" example:"42"`
-	MaxCapacity      int    `json:"max_capacity" example:"50"`
-	RegistrationOpen bool   `json:"registration_open" example:"true"`
+	ID          int64  `json:"id" example:"10"`
+	ClassCode   string `json:"class_code" example:"INT3401-01"`
+	CourseCode  string `json:"course_code" example:"INT3401"`
+	CourseName  string `json:"course_name" example:"Hệ điều hành"`
+	Credits     int    `json:"credits" example:"3"`
+	Enrolled    int    `json:"enrolled" example:"42"`
+	MaxCapacity int    `json:"max_capacity" example:"50"`
 }
 
 // semesterItem is the semester the listed classes belong to, so clients can
@@ -74,23 +73,22 @@ type prerequisiteItem struct {
 }
 
 type classDetailData struct {
-	ID               int64              `json:"id" example:"10"`
-	CourseID         int64              `json:"course_id" example:"5"`
-	CourseCode       string             `json:"course_code" example:"INT3401"`
-	CourseName       string             `json:"course_name" example:"Hệ điều hành"`
-	Credits          int                `json:"credits" example:"3"`
-	Faculty          string             `json:"faculty" example:"Công nghệ thông tin"`
-	Major            *string            `json:"major" example:"Khoa học máy tính"`
-	SemesterID       int64              `json:"semester_id" example:"2"`
-	SemesterName     string             `json:"semester_name" example:"Học kỳ 1 năm học 2026-2027"`
-	ClassCode        string             `json:"class_code" example:"INT3401-01"`
-	LecturerName     string             `json:"lecturer_name" example:"Giảng viên A"`
-	MaxCapacity      int                `json:"max_capacity" example:"50"`
-	Enrolled         int                `json:"enrolled" example:"42"`
-	Status           string             `json:"status" example:"active"`
-	RegistrationOpen bool               `json:"registration_open" example:"true"`
-	Schedules        []scheduleItem     `json:"schedules"`
-	Prerequisites    []prerequisiteItem `json:"prerequisites"`
+	ID            int64              `json:"id" example:"10"`
+	CourseID      int64              `json:"course_id" example:"5"`
+	CourseCode    string             `json:"course_code" example:"INT3401"`
+	CourseName    string             `json:"course_name" example:"Hệ điều hành"`
+	Credits       int                `json:"credits" example:"3"`
+	Faculty       string             `json:"faculty" example:"Công nghệ thông tin"`
+	Major         *string            `json:"major" example:"Khoa học máy tính"`
+	SemesterID    int64              `json:"semester_id" example:"2"`
+	SemesterName  string             `json:"semester_name" example:"Học kỳ 1 năm học 2026-2027"`
+	ClassCode     string             `json:"class_code" example:"INT3401-01"`
+	LecturerName  string             `json:"lecturer_name" example:"Giảng viên A"`
+	MaxCapacity   int                `json:"max_capacity" example:"50"`
+	Enrolled      int                `json:"enrolled" example:"42"`
+	Status        string             `json:"status" example:"active"`
+	Schedules     []scheduleItem     `json:"schedules"`
+	Prerequisites []prerequisiteItem `json:"prerequisites"`
 }
 
 type classDetailSuccessResponse struct {
@@ -145,16 +143,6 @@ type classUpdatedSuccessResponse struct {
 	Data   classUpdatedData `json:"data"`
 }
 
-type classCancelData struct {
-	ID     int64  `json:"id" example:"10"`
-	Status string `json:"status" example:"cancelled"`
-}
-
-type classCancelSuccessResponse struct {
-	Status string          `json:"status" example:"success"`
-	Data   classCancelData `json:"data"`
-}
-
 // List godoc
 // @Summary     Danh sách lớp học phần đang mở
 // @Description Trả về các lớp active của học kỳ hiện tại, tức học kỳ mới nhất đã mở đăng ký, cùng thông tin học kỳ đó (`semester`: tên, giới hạn tín chỉ, thời gian mở/đóng đăng ký). Khi chưa có học kỳ nào mở đăng ký, `semester` là null và danh sách rỗng.
@@ -180,14 +168,13 @@ func (h *ClassController) List(c *gin.Context) {
 	items := make([]classItem, 0, len(current.Classes))
 	for _, v := range current.Classes {
 		items = append(items, classItem{
-			ID:               v.ID,
-			ClassCode:        v.ClassCode,
-			CourseCode:       v.CourseCode,
-			CourseName:       v.CourseName,
-			Credits:          v.Credits,
-			Enrolled:         v.Enrolled,
-			MaxCapacity:      v.MaxCapacity,
-			RegistrationOpen: v.RegistrationOpen,
+			ID:          v.ID,
+			ClassCode:   v.ClassCode,
+			CourseCode:  v.CourseCode,
+			CourseName:  v.CourseName,
+			Credits:     v.Credits,
+			Enrolled:    v.Enrolled,
+			MaxCapacity: v.MaxCapacity,
 		})
 	}
 	data := classListData{Classes: items}
@@ -247,23 +234,22 @@ func (h *ClassController) Get(c *gin.Context) {
 		})
 	}
 	success(c, 200, classDetailData{
-		ID:               view.ID,
-		CourseID:         view.CourseID,
-		CourseCode:       view.CourseCode,
-		CourseName:       view.CourseName,
-		Credits:          view.Credits,
-		Faculty:          view.Faculty,
-		Major:            view.Major,
-		SemesterID:       view.SemesterID,
-		SemesterName:     view.SemesterName,
-		ClassCode:        view.ClassCode,
-		LecturerName:     view.LecturerName,
-		MaxCapacity:      view.MaxCapacity,
-		Enrolled:         view.Enrolled,
-		Status:           view.Status,
-		RegistrationOpen: view.RegistrationOpen,
-		Schedules:        schedules,
-		Prerequisites:    prerequisites,
+		ID:            view.ID,
+		CourseID:      view.CourseID,
+		CourseCode:    view.CourseCode,
+		CourseName:    view.CourseName,
+		Credits:       view.Credits,
+		Faculty:       view.Faculty,
+		Major:         view.Major,
+		SemesterID:    view.SemesterID,
+		SemesterName:  view.SemesterName,
+		ClassCode:     view.ClassCode,
+		LecturerName:  view.LecturerName,
+		MaxCapacity:   view.MaxCapacity,
+		Enrolled:      view.Enrolled,
+		Status:        view.Status,
+		Schedules:     schedules,
+		Prerequisites: prerequisites,
 	})
 }
 
@@ -345,7 +331,7 @@ func (h *ClassController) Update(c *gin.Context) {
 // @Produce     json
 // @Security    BearerAuth
 // @Param       id path int true "ID lớp học phần"
-// @Success     200 {object} classCancelSuccessResponse
+// @Success     200 {object} emptySuccessResponse
 // @Failure     401 {object} failResponse "UNAUTHORIZED hoặc SESSION_REVOKED"
 // @Failure     403 {object} failResponse "FORBIDDEN"
 // @Failure     404 {object} failResponse "NOT_FOUND"
@@ -362,7 +348,7 @@ func (h *ClassController) Cancel(c *gin.Context) {
 		failWithError(c, err)
 		return
 	}
-	success(c, 200, classCancelData{ID: id, Status: "cancelled"})
+	success(c, 200, struct{}{})
 }
 
 func optionalQuery(c *gin.Context, key string) *string {

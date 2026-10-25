@@ -416,7 +416,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.classCancelSuccessResponse"
+                            "$ref": "#/definitions/controller.emptySuccessResponse"
                         }
                     },
                     "401": {
@@ -647,7 +647,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.cancelSuccessResponse"
+                            "$ref": "#/definitions/controller.emptySuccessResponse"
                         }
                     },
                     "401": {
@@ -728,56 +728,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "controller.cancelData": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "example": 301
-                },
-                "status": {
-                    "type": "string",
-                    "example": "cancelled"
-                }
-            }
-        },
-        "controller.cancelSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controller.cancelData"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
-        "controller.classCancelData": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "status": {
-                    "type": "string",
-                    "example": "cancelled"
-                }
-            }
-        },
-        "controller.classCancelSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controller.classCancelData"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
         "controller.classCreatedData": {
             "type": "object",
             "properties": {
@@ -864,10 +814,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/controller.prerequisiteItem"
                     }
                 },
-                "registration_open": {
-                    "type": "boolean",
-                    "example": true
-                },
                 "schedules": {
                     "type": "array",
                     "items": {
@@ -930,10 +876,6 @@ const docTemplate = `{
                 "max_capacity": {
                     "type": "integer",
                     "example": 50
-                },
-                "registration_open": {
-                    "type": "boolean",
-                    "example": true
                 }
             }
         },

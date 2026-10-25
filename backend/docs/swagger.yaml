@@ -1,39 +1,5 @@
 basePath: /
 definitions:
-  controller.cancelData:
-    properties:
-      id:
-        example: 301
-        type: integer
-      status:
-        example: cancelled
-        type: string
-    type: object
-  controller.cancelSuccessResponse:
-    properties:
-      data:
-        $ref: '#/definitions/controller.cancelData'
-      status:
-        example: success
-        type: string
-    type: object
-  controller.classCancelData:
-    properties:
-      id:
-        example: 10
-        type: integer
-      status:
-        example: cancelled
-        type: string
-    type: object
-  controller.classCancelSuccessResponse:
-    properties:
-      data:
-        $ref: '#/definitions/controller.classCancelData'
-      status:
-        example: success
-        type: string
-    type: object
   controller.classCreatedData:
     properties:
       class_code:
@@ -96,9 +62,6 @@ definitions:
         items:
           $ref: '#/definitions/controller.prerequisiteItem'
         type: array
-      registration_open:
-        example: true
-        type: boolean
       schedules:
         items:
           $ref: '#/definitions/controller.scheduleItem'
@@ -144,9 +107,6 @@ definitions:
       max_capacity:
         example: 50
         type: integer
-      registration_open:
-        example: true
-        type: boolean
     type: object
   controller.classListData:
     properties:
@@ -763,7 +723,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controller.classCancelSuccessResponse'
+            $ref: '#/definitions/controller.emptySuccessResponse'
         "401":
           description: UNAUTHORIZED hoặc SESSION_REVOKED
           schema:
@@ -1010,7 +970,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controller.cancelSuccessResponse'
+            $ref: '#/definitions/controller.emptySuccessResponse'
         "401":
           description: UNAUTHORIZED hoặc SESSION_REVOKED
           schema:

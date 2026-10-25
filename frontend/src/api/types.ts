@@ -22,7 +22,6 @@ export interface ClassSummary {
   credits: number
   enrolled: number
   max_capacity: number
-  registration_open: boolean
 }
 /** Current semester returned with the class list. */
 export interface Semester {

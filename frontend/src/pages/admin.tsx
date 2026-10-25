@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { Ban, CalendarClock, Eye, FilterX, ListChecks, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import { ApiError } from '../api/client'
 import { ClassDetailModal } from '../components/ClassDetailModal'
 import { PeriodBanner } from '../components/PeriodBanner'
-import { Link, navigate, query, useRoute } from '../router'
-import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type RegistrationPeriod } from '../api/types'
+import { Link, navigate } from '../router'
+import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type RegistrationPeriod, type Semester } from '../api/types'
 import { useRequest } from '../hooks/useRequest'
 import { Alert, Badge, Button, Capacity, Card, Empty, Field, Input, Modal, PageHeader, Pagination, RequestStatus, Select, Stat, Table, Td, seatState, toast } from '../components/ui'
 
@@ -46,7 +46,7 @@ export function AdminDashboard() {
             <Stat label="Tổng lượt đăng ký" value={list.reduce((n, c) => n + c.enrolled, 0)} icon={<ListChecks className="h-5 w-5" />} sub="Tổng sĩ số các lớp" />
             <Stat label="Số lớp đầy" value={full} icon={<Ban className="h-5 w-5" />} />
           </div>
-          <PeriodBanner semester={resource.data?.semester} title="Đợt đăng ký hiện tại" open={list.some((c) => c.registration_open)} />
+          <PeriodBanner semester={resource.data?.semester} title="Đợt đăng ký hiện tại" />
           <Card title="Lớp gần đầy và đã đầy" action={<Link to="/admin/classes" className="text-sm font-medium text-primary hover:underline">Quản lý lớp</Link>}>
             {near.length === 0 ? <Empty title="Chưa có lớp gần đầy" /> : (
               <Table head={['Mã lớp', 'Học phần', 'Sĩ số', 'Trạng thái']} minWidth={600}>
@@ -72,10 +72,10 @@ export function AdminDashboard() {
 type ScheduleForm = { day_of_week: string; start_period: string; end_period: string; room: string }
 const blankSession = (): ScheduleForm => ({ day_of_week: '2', start_period: '1', end_period: '3', room: '' })
 
-function ClassForm({ existing, onClose, onSaved }: { existing?: ClassDetail; onClose: () => void; onSaved: (id: number) => void }) {
+function ClassForm({ existing, semester, onClose, onSaved }: { existing?: ClassDetail; semester: Pick<Semester, 'id' | 'name'>; onClose: () => void; onSaved: (id: number) => void }) {
   const locked = !!existing && existing.enrolled > 0
   const [f, setF] = useState(() => ({
-    course_id: existing ? String(existing.course_id) : '', semester_id: existing ? String(existing.semester_id) : '',
+    course_id: existing ? String(existing.course_id) : '',
     class_code: existing?.class_code ?? '', lecturer_name: existing?.lecturer_name ?? '', max_capacity: String(existing?.max_capacity ?? 40),
     schedules: existing ? existing.schedules.map((s) => ({ day_of_week: String(s.day_of_week), start_period: String(s.start_period), end_period: String(s.end_period), room: s.room })) : [blankSession()],
   }))
@@ -89,7 +89,6 @@ function ClassForm({ existing, onClose, onSaved }: { existing?: ClassDetail; onC
     const er: Record<string, string> = {}
     if (!existing) {
       if (!positiveInt(f.course_id)) er.course_id = 'Nhập mã học phần hợp lệ.'
-      if (!positiveInt(f.semester_id)) er.semester_id = 'Nhập mã học kỳ hợp lệ.'
     }
     if (!f.class_code.trim()) er.class_code = 'Vui lòng nhập mã lớp.'
     if (!f.lecturer_name.trim()) er.lecturer_name = 'Vui lòng nhập tên giảng viên.'
@@ -109,7 +108,7 @@ function ClassForm({ existing, onClose, onSaved }: { existing?: ClassDetail; onC
     const body: ClassUpdate = { class_code: f.class_code.trim(), lecturer_name: f.lecturer_name.trim(), max_capacity: cap, schedules }
     setBusy(true)
     try {
-      const result = existing ? await api.updateClass(existing.id, body) : await api.createClass({ ...body, course_id: Number(f.course_id), semester_id: Number(f.semester_id) })
+      const result = existing ? await api.updateClass(existing.id, body) : await api.createClass({ ...body, course_id: Number(f.course_id), semester_id: semester.id })
       toast(existing ? `Đã cập nhật lớp ${body.class_code}.` : `Đã tạo lớp ${body.class_code}.`)
       onSaved(result.id)
     } catch (x) {
@@ -125,7 +124,7 @@ function ClassForm({ existing, onClose, onSaved }: { existing?: ClassDetail; onC
         {e.form && <Alert tone="error" title="Không thể lưu">{e.form}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="cf-course" label="Mã học phần (ID)" required error={e.course_id} hint="Mã của học phần đã có trong hệ thống."><Input id="cf-course" type="number" min={1} step={1} value={f.course_id} disabled={!!existing} onChange={(x) => setF({ ...f, course_id: x.target.value })} error={e.course_id} /></Field>
-          <Field id="cf-sem" label="Mã học kỳ (ID)" required error={e.semester_id} hint="Mã của học kỳ tổ chức lớp."><Input id="cf-sem" type="number" min={1} step={1} value={f.semester_id} disabled={!!existing} onChange={(x) => setF({ ...f, semester_id: x.target.value })} error={e.semester_id} /></Field>
+          <Field id="cf-sem" label="Học kỳ" hint={existing ? 'Học kỳ của lớp, không thể thay đổi.' : 'Tự động chọn học kỳ hiện tại từ hệ thống.'}><Input id="cf-sem" value={semester.name} readOnly /></Field>
           <Field id="cf-code" label="Mã lớp" required error={e.class_code} hint="Duy nhất trong học kỳ, VD: INT2211 3"><Input id="cf-code" value={f.class_code} onChange={(x) => setF({ ...f, class_code: x.target.value })} error={e.class_code} /></Field>
           <Field id="cf-lec" label="Giảng viên" required error={e.lecturer_name}><Input id="cf-lec" value={f.lecturer_name} onChange={(x) => setF({ ...f, lecturer_name: x.target.value })} error={e.lecturer_name} /></Field>
           <Field id="cf-cap" label="Sức chứa tối đa" required error={e.max_capacity} hint={existing ? `Đã đăng ký: ${existing.enrolled} — do hệ thống tính, không sửa trực tiếp` : 'Số đã đăng ký do hệ thống tự tính'}><Input id="cf-cap" type="number" min={1} step={1} value={f.max_capacity} onChange={(x) => setF({ ...f, max_capacity: x.target.value })} error={e.max_capacity} /></Field>
@@ -156,7 +155,7 @@ function ClassForm({ existing, onClose, onSaved }: { existing?: ClassDetail; onC
 /** Loads one class on demand so the list itself never needs per-row detail requests. */
 function EditClass({ id, onClose, onSaved }: { id: number; onClose: () => void; onSaved: (id: number) => void }) {
   const resource = useRequest(useCallback((signal: AbortSignal) => api.getClass(id, signal), [id]))
-  if (resource.data && !resource.loading) return <ClassForm existing={resource.data} onClose={onClose} onSaved={onSaved} />
+  if (resource.data && !resource.loading) return <ClassForm existing={resource.data} semester={{ id: resource.data.semester_id, name: resource.data.semester_name }} onClose={onClose} onSaved={onSaved} />
   return <Modal open title="Chỉnh sửa lớp học phần" onClose={onClose}><RequestStatus {...resource} retry={resource.reload} /></Modal>
 }
 
@@ -251,7 +250,12 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
           <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
         </>)}
       </Card>
-      {creating && <ClassForm onClose={closeCreate} onSaved={(id) => { setCreating(false); resource.reload(); admin.show(id) }} />}
+      {creating && (resource.loading || resource.error || !resource.data?.semester
+        ? <Modal open title="Tạo lớp học phần" onClose={closeCreate}>
+          <RequestStatus {...resource} retry={resource.reload} />
+          {!resource.loading && !resource.error && <Empty title="Chưa có học kỳ hiện tại" text="Hệ thống chưa xác định được học kỳ hiện tại. Chưa thể tạo lớp học phần." />}
+        </Modal>
+        : <ClassForm semester={resource.data.semester} onClose={closeCreate} onSaved={(id) => { setCreating(false); resource.reload(); admin.show(id) }} />)}
       {admin.modal}
     </Layout>
   )
@@ -264,27 +268,25 @@ const periodBadge = (opens: string, closes: string) => {
 }
 
 export function AdminRegistrationPeriod() {
-  const presetSemester = query(useRoute()).get('semester_id') ?? ''
-  const [semesterId, setSemesterId] = useState(presetSemester)
+  const resource = useRequest(useCallback((signal: AbortSignal) => api.listClasses({}, signal), []))
+  const semester = resource.data?.semester
   const [o, setO] = useState('')
   const [c, setC] = useState('')
   const [saved, setSaved] = useState<RegistrationPeriod | null>(null)
   const [e, setE] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
-  useEffect(() => { if (presetSemester) setSemesterId(presetSemester) }, [presetSemester])
   const dirty = saved
-    ? semesterId !== String(saved.semester_id) || o !== toLocal(saved.registration_opens_at) || c !== toLocal(saved.registration_closes_at)
+    ? semester?.id !== saved.semester_id || o !== toLocal(saved.registration_opens_at) || c !== toLocal(saved.registration_closes_at)
     : !!(o || c)
   const preview = o && c && c > o ? periodBadge(fromLocal(o), fromLocal(c)) : null
   const reset = () => {
-    if (saved) { setSemesterId(String(saved.semester_id)); setO(toLocal(saved.registration_opens_at)); setC(toLocal(saved.registration_closes_at)) } else { setO(''); setC('') }
+    if (saved) { setO(toLocal(saved.registration_opens_at)); setC(toLocal(saved.registration_closes_at)) } else { setO(''); setC('') }
     setE({})
   }
   const submit = async (ev: FormEvent) => {
     ev.preventDefault()
-    if (busy) return
+    if (busy || resource.loading || resource.error || !semester) return
     const er: Record<string, string> = {}
-    if (!positiveInt(semesterId)) er.semester = 'Nhập mã học kỳ hợp lệ.'
     if (!o) er.open = 'Vui lòng chọn thời điểm mở.'
     if (!c) er.close = 'Vui lòng chọn thời điểm đóng.'
     else if (o && c <= o) er.close = 'Thời điểm mở phải trước thời điểm đóng.'
@@ -292,7 +294,7 @@ export function AdminRegistrationPeriod() {
     if (Object.keys(er).length) return
     setBusy(true)
     try {
-      const result = await api.updateRegistrationPeriod({ semester_id: Number(semesterId), registration_opens_at: fromLocal(o), registration_closes_at: fromLocal(c) })
+      const result = await api.updateRegistrationPeriod({ semester_id: semester.id, registration_opens_at: fromLocal(o), registration_closes_at: fromLocal(c) })
       setSaved(result); toast('Đã cập nhật thời gian đăng ký.')
     } catch (x) { setE({ form: friendly(x) }) } finally { setBusy(false) }
   }
@@ -303,9 +305,10 @@ export function AdminRegistrationPeriod() {
         {saved && <PeriodBanner title="Thời gian đăng ký vừa lưu" open={Date.now() >= +new Date(saved.registration_opens_at) && Date.now() <= +new Date(saved.registration_closes_at)} opensAt={saved.registration_opens_at} closesAt={saved.registration_closes_at} />}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Card title="Thời gian đăng ký của học kỳ">
-            <form onSubmit={submit} noValidate className="space-y-5 p-5">
+            <RequestStatus {...resource} retry={resource.reload} />
+            {!resource.loading && !resource.error && (semester ? <form onSubmit={submit} noValidate className="space-y-5 p-5">
               {e.form && <Alert tone="error" title="Không thể lưu">{e.form}</Alert>}
-              <Field id="rp-sem" label="Mã học kỳ (ID)" required error={e.semester} hint="Mã của học kỳ cần cấu hình thời gian đăng ký."><Input id="rp-sem" type="number" min={1} step={1} value={semesterId} onChange={(x) => { setSemesterId(x.target.value) }} error={e.semester} /></Field>
+              <Field id="rp-sem" label="Học kỳ" hint="Tự động chọn học kỳ hiện tại từ hệ thống."><Input id="rp-sem" value={semester.name} readOnly /></Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field id="rp-open" label="Thời điểm mở đăng ký" required error={e.open}><Input id="rp-open" type="datetime-local" value={o} onChange={(x) => setO(x.target.value)} error={e.open} /></Field>
                 <Field id="rp-close" label="Thời điểm đóng đăng ký" required error={e.close}><Input id="rp-close" type="datetime-local" value={c} onChange={(x) => setC(x.target.value)} error={e.close} /></Field>
@@ -315,7 +318,7 @@ export function AdminRegistrationPeriod() {
                 <Button variant="secondary" disabled={busy || !dirty} onClick={reset}>Hủy</Button>
                 <Button type="submit" loading={busy} disabled={!dirty}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</Button>
               </div>
-            </form>
+            </form> : <Empty title="Chưa có học kỳ hiện tại" text="Hệ thống chưa xác định được học kỳ hiện tại. Chưa thể cấu hình thời gian đăng ký." />)}
           </Card>
           <Card title="Ảnh hưởng tới sinh viên" className="h-fit">
             <ul className="list-disc space-y-2 py-5 pl-10 pr-5 text-sm text-muted">
