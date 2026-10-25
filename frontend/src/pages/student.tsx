@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { BookOpen, CalendarDays, CheckCircle2, ChevronDown, FilterX, Gauge, Layers, Loader2, Lock, Search, XCircle } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
@@ -69,7 +69,12 @@ export function StudentDashboard() {
               <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
                 <Card title="Học phần đã đăng ký gần đây" action={<Link to="/student/registrations" className="text-sm font-medium text-primary hover:underline">Xem tất cả</Link>}>
                   {recent.length === 0 ? <Empty title="Chưa có học phần nào" text="Bạn chưa đăng ký học phần nào trong học kỳ này." action={<Button onClick={() => navigate('/student/classes')}>Tìm lớp học phần</Button>} /> : (
-                    <Table head={['Học phần', 'Lớp', 'TC', 'Đăng ký lúc']} minWidth={600}>
+                    <Table head={[
+                      { label: 'Học phần', className: 'w-auto' },
+                      { label: 'Lớp', className: 'w-44' },
+                      { label: 'TC', className: 'w-16' },
+                      { label: 'Đăng ký lúc', className: 'w-44' },
+                    ]} minWidth={600}>
                       {recent.slice(0, 5).map((r) => (
                         <tr key={r.id} className="hover:bg-slate-50">
                           <Td><button type="button" onClick={() => detail.show(r.class_id)} className="text-left font-medium text-primary hover:underline">{r.course_name}</button><div className="text-xs text-muted">{r.course_code}</div></Td>
@@ -123,6 +128,12 @@ export function StudentClasses() {
   const locked = useSessionLocked()
   const [q, setQ] = useState('')
   const [scope, setScope] = useState<Scope>('major')
+  const [classesByScope, setClassesByScope] = useState<Partial<Record<Scope, ClassSummary[]>>>({})
+  const [classesLoading, setClassesLoading] = useState(false)
+  const scopeRef = useRef(scope)
+  scopeRef.current = scope
+  const scopeAbortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => scopeAbortRef.current?.abort(), [])
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   // Ticked classes, by class id. Each one is submitted as its own registration request.
@@ -130,12 +141,39 @@ export function StudentClasses() {
   const [batch, setBatch] = useState<BatchItem[] | null>(null)
   const [running, setRunning] = useState(false)
   const resource = useRequest(useCallback(async (signal: AbortSignal) => {
-    const [loaded, regs] = await Promise.all([loadClasses(scope, major, signal), api.listRegistrations(signal)])
+    const [loaded, regs] = await Promise.all([loadClasses(scopeRef.current, major, signal), api.listRegistrations(signal)])
     return { semester: loaded.semester, classes: loaded.classes, regs: regs.registrations.filter((r) => r.status === 'registered' && loaded.termIds.has(r.class_id)) }
-  }, [scope, major]))
-  const ready = !!resource.data && !resource.loading && !resource.error
+  }, [major]))
+  useEffect(() => {
+    if (resource.data?.classes) {
+      setClassesByScope((prev) => ({ ...prev, [scopeRef.current]: resource.data!.classes }))
+    }
+  }, [resource.data])
+
+  const onScopeChange = async (nextScope: Scope) => {
+    setScope(nextScope)
+    setPage(1)
+    if (classesByScope[nextScope]) return
+    scopeAbortRef.current?.abort()
+    const controller = new AbortController()
+    scopeAbortRef.current = controller
+    setClassesLoading(true)
+    try {
+      const res = await loadClasses(nextScope, major, controller.signal)
+      if (!controller.signal.aborted) {
+        setClassesByScope((prev) => ({ ...prev, [nextScope]: res.classes }))
+        setClassesLoading(false)
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        setClassesLoading(false)
+      }
+    }
+  }
+
+  const ready = !!resource.data && !resource.error
   const semester = resource.data?.semester
-  const classes = resource.data?.classes ?? []
+  const classes = classesByScope[scope] ?? resource.data?.classes ?? []
   const regs = resource.data?.regs ?? []
   const registered = new Set(regs.map((r) => r.class_id))
   const open = !!semester?.registration_open
@@ -155,7 +193,14 @@ export function StudentClasses() {
   const pickList = Object.values(picked)
   const pickedCredits = pickList.reduce((n, c) => n + c.credits, 0)
   const filtered = !!q || !!status || scope !== 'major'
-  const reset = () => { setQ(''); setScope('major'); setStatus(''); setPage(1) }
+  const reset = () => {
+    setQ('')
+    setStatus('')
+    setPage(1)
+    if (scope !== 'major') {
+      onScopeChange('major')
+    }
+  }
   const toggle = (c: ClassSummary) => setPicked((p) => { const n = { ...p }; if (n[c.id]) delete n[c.id]; else n[c.id] = c; return n })
 
   // One request carries every ticked class; each class is accepted or rejected on its own.
@@ -179,7 +224,7 @@ export function StudentClasses() {
     if (items.every((x) => x.status === 'ok')) markSubmitted()
   }
   const okCount = batch?.filter((b) => b.status === 'ok').length ?? 0
-  const closeBatch = () => { setBatch(null); resource.reload() }
+  const closeBatch = () => { setBatch(null); setClassesByScope({}); resource.reload() }
 
   const row = (c: ClassSummary) => {
     const mine = registered.has(c.id)
@@ -213,7 +258,7 @@ export function StudentClasses() {
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder="Mã học phần, tên học phần hoặc mã lớp" className="pl-10" />
           </label>
-          <PillToggle label="Phạm vi" value={scope} onChange={(v) => { setScope(v); setPage(1) }} options={[{ value: 'major', label: 'Theo ngành' }, { value: 'all', label: 'Toàn trường' }] as const} />
+          <PillToggle label="Phạm vi" value={scope} onChange={onScopeChange} options={[{ value: 'major', label: 'Theo ngành' }, { value: 'all', label: 'Toàn trường' }] as const} />
           <Select aria-label="Trạng thái" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }} className="lg:w-48"><option value="">Mọi trạng thái</option><option value="registered">Đã đăng ký</option><option value="unregistered">Chưa đăng ký</option></Select>
           <Button variant="ghost" onClick={reset} disabled={!filtered}><FilterX className="h-4 w-4" />Xóa bộ lọc</Button>
         </div>
@@ -222,17 +267,26 @@ export function StudentClasses() {
       {ready && semester && !open && <div className="mb-4"><Alert tone="info" title="Không trong thời gian đăng ký">Hiện không trong thời gian đăng ký học phần. Bạn chỉ có thể xem danh sách lớp.</Alert></div>}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 text-sm">
-          <span><b>{list.length}</b> lớp học phần</span>
+          <span><b>{classesLoading ? '…' : list.length}</b> lớp học phần</span>
           <span className="flex items-center gap-4 text-muted"><span className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded bg-emerald-200 ring-1 ring-emerald-500" />Đã đăng ký</span><span className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded bg-slate-200" />Không thể chọn</span></span>
         </div>
-        <Fetch r={resource} skeleton={<div className="space-y-3 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>}>
-          {() => list.length === 0 ? (
-            <Empty title="Không tìm thấy lớp phù hợp" text="Thử từ khóa khác hoặc xóa bộ lọc." action={<Button variant="secondary" onClick={reset}>Xóa bộ lọc</Button>} icon={<Search className="h-6 w-6" />} />
-          ) : <>
-            <Table head={[<span className="sr-only">Chọn</span>, 'Mã lớp', 'Tên học phần', 'TC', 'Sĩ số', 'Trạng thái']} minWidth={760}>{shown.map(row)}</Table>
-            <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
-          </>}
-        </Fetch>
+        {resource.error ? (
+          <ErrorNotice error={resource.error} retry={resource.reload} />
+        ) : !ready || resource.loading || classesLoading ? (
+          <div className="space-y-3 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : list.length === 0 ? (
+          <Empty title="Không tìm thấy lớp phù hợp" text="Thử từ khóa khác hoặc xóa bộ lọc." action={<Button variant="secondary" onClick={reset}>Xóa bộ lọc</Button>} icon={<Search className="h-6 w-6" />} />
+        ) : <>
+          <Table head={[
+            { label: <span className="sr-only">Chọn</span>, className: 'w-12' },
+            { label: 'Mã lớp', className: 'w-44' },
+            { label: 'Tên học phần', className: 'w-auto' },
+            { label: 'TC', className: 'w-16' },
+            { label: 'Sĩ số', className: 'w-36' },
+            { label: 'Trạng thái', className: 'w-40' },
+          ]} minWidth={760}>{shown.map(row)}</Table>
+          <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
+        </>}
       </Card>
       {ready && canAct && (
         <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-lg">
@@ -325,6 +379,7 @@ export function StudentRegistrations() {
             </Card>
           </> }}
         </Fetch>
+
       </div>
       {flow.modal}
       {detail.modal}

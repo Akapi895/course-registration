@@ -49,7 +49,12 @@ export function AdminDashboard() {
           <PeriodBanner semester={resource.data?.semester} title="Đợt đăng ký hiện tại" />
           <Card title="Lớp gần đầy và đã đầy" action={<Link to="/admin/classes" className="text-sm font-medium text-primary hover:underline">Quản lý lớp</Link>}>
             {near.length === 0 ? <Empty title="Chưa có lớp gần đầy" /> : (
-              <Table head={['Mã lớp', 'Học phần', 'Sĩ số', 'Trạng thái']} minWidth={600}>
+              <Table head={[
+                { label: 'Mã lớp', className: 'w-44' },
+                { label: 'Học phần', className: 'w-auto' },
+                { label: 'Sĩ số', className: 'w-36' },
+                { label: 'Trạng thái', className: 'w-36' },
+              ]} minWidth={600}>
                 {near.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50">
                     <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => admin.show(c.id)} className="text-primary hover:underline">{c.class_code}</button></Td>
@@ -232,7 +237,13 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
         </div>
         <RequestStatus {...resource} retry={resource.reload} />
         {!resource.loading && !resource.error && (list.length === 0 ? <Empty title="Không có lớp phù hợp" text="Thử thay đổi từ khóa hoặc bộ lọc." /> : <>
-          <Table head={['Mã lớp', 'Học phần', 'TC', 'Sĩ số', 'Thao tác']} minWidth={720}>
+          <Table head={[
+            { label: 'Mã lớp', className: 'w-44' },
+            { label: 'Học phần', className: 'w-auto' },
+            { label: 'TC', className: 'w-16' },
+            { label: 'Sĩ số', className: 'w-36' },
+            { label: 'Thao tác', className: 'w-36' },
+          ]} minWidth={720}>
             {list.slice((pg - 1) * size, pg * size).map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
                 <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => admin.show(c.id)} className="text-primary hover:underline">{c.class_code}</button></Td>

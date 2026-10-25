@@ -96,13 +96,29 @@ export function Card({ children, className, title, action }: { children: ReactNo
     </section>
   )
 }
-export function Table({ head, children, minWidth = 800 }: { head: ReactNode[]; children: ReactNode; minWidth?: number }) {
+type TableHeadItem = ReactNode | { label: ReactNode; className?: string }
+
+export function Table({ head, children, minWidth = 800, fixed }: { head: TableHeadItem[]; children: ReactNode; minWidth?: number; fixed?: boolean }) {
+  const isFixed = fixed ?? head.some((h) => h !== null && typeof h === 'object' && 'className' in h && Boolean((h as { className?: string }).className))
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm" style={{ minWidth }}>
+      <table className={cx('w-full text-left text-sm', isFixed && 'table-fixed')} style={{ minWidth }}>
+        {isFixed && (
+          <colgroup>
+            {head.map((h, i) => {
+              const cls = h !== null && typeof h === 'object' && 'className' in h ? (h as { className?: string }).className : undefined
+              return <col key={i} className={cls} />
+            })}
+          </colgroup>
+        )}
         <thead>
           <tr className="border-b border-line bg-slate-50/70 text-xs uppercase tracking-wide text-muted">
-            {head.map((h, i) => <th key={i} scope="col" className="px-4 py-3 font-semibold">{h}</th>)}
+            {head.map((h, i) => {
+              const isObj = h !== null && typeof h === 'object' && 'label' in h
+              const label = isObj ? (h as { label: ReactNode }).label : h
+              const cls = isObj ? (h as { className?: string }).className : undefined
+              return <th key={i} scope="col" className={cx('px-4 py-3 font-semibold', cls)}>{label}</th>
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-line">{children}</tbody>
