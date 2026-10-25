@@ -25,10 +25,10 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 px-5 py-5">
-        <Logo size={48} />
-        <div className="leading-tight">
-          <p className="text-xs text-muted">Trường Đại học Công nghệ</p>
-          <p className="text-[15px] font-semibold">Cổng đăng ký học phần</p>
+        <Logo size={44} />
+        <div className="min-w-0 leading-tight">
+          <p className="whitespace-nowrap text-xs text-muted">Trường Đại học Công nghệ</p>
+          <p className="whitespace-nowrap text-[15px] font-semibold">Cổng đăng ký học phần</p>
         </div>
       </div>
       <p className="px-6 pb-2 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{isAdmin ? 'Quản trị' : 'Sinh viên'}</p>
@@ -104,9 +104,9 @@ export default function Layout({ title, children }: { title: string; children: R
   const [drawer, setDrawer] = useState(false)
   const [error, setError] = useState<unknown>(null)
   return (
-    <div className="min-h-screen lg:pl-[248px]">
+    <div className="min-h-screen lg:pl-[264px]">
       <a href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus() }} className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-lg focus:bg-white focus:p-3">Bỏ qua đến nội dung</a>
-      <aside className="fixed inset-y-0 left-0 hidden w-[248px] border-r border-line bg-white lg:block"><Sidebar /></aside>
+      <aside className="fixed inset-y-0 left-0 hidden w-[264px] border-r border-line bg-white lg:block"><Sidebar /></aside>
       <Drawer open={drawer} onClose={() => setDrawer(false)}>
         <button className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-lg hover:bg-slate-100" onClick={() => setDrawer(false)} aria-label="Đóng menu"><X className="h-5 w-5" /></button>
         <Sidebar onNav={() => setDrawer(false)} />
