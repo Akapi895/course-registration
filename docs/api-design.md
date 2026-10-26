@@ -1,6 +1,6 @@
-# Thiết kế API (Phase 1)
+# Thiết kế API
 
-Tài liệu này cụ thể hóa SRS §5.2 cho Phase 1. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `database.dbml`, không thay đổi trong tài liệu này.
+Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `database.dbml` và được mô tả trong `database-design.md`.
 
 ## Phạm vi và phân quyền
 
@@ -76,10 +76,11 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 | Mã lỗi | HTTP | Khi nào xảy ra |
 |---|---|---|
 | `VALIDATION_ERROR` | 400 | Dữ liệu sai định dạng, thiếu tham số, gửi trường không được phép, hoặc thời gian không hợp lệ |
-| `UNAUTHORIZED` | 401 | Chưa đăng nhập, thiếu token, token sai chữ ký, hết hạn JWT hoặc claim không hợp lệ |
+| `UNAUTHORIZED` | 401 | Chưa đăng nhập, thiếu token, token sai chữ ký, hết hạn JWT, claim không hợp lệ hoặc `role` trong JWT không khớp vai trò hiện tại |
 | `INVALID_CREDENTIALS` | 401 | Sai username hoặc password |
-| `LOGIN_COOLDOWN` | 429 | Đúng thông tin đăng nhập nhưng tài khoản đang chờ sau khi hết phiên; có `Retry-After`, `data.retry_after` và `data.login_allowed_at` |
-| `SESSION_REVOKED` | 401 | Token đúng nhưng phiên đã bị thu hồi (đã đăng xuất) hoặc đã hết hạn |
+| `ALREADY_LOGGED_IN` | 409 | Đúng thông tin đăng nhập nhưng tài khoản đang có một phiên hoạt động trên thiết bị hoặc tab bất kỳ; không tạo phiên khác |
+| `LOGIN_COOLDOWN` | 429 | Đúng thông tin đăng nhập nhưng chưa qua 20 phút kể từ lúc phiên gần nhất kết thúc; có `Retry-After`, `data.retry_after` và `data.login_allowed_at` |
+| `SESSION_REVOKED` | 401 | Token còn đúng chữ ký nhưng phiên tương ứng đã chủ động đăng xuất hoặc không còn hoạt động (hết hạn trong database) |
 | `FORBIDDEN` | 403 | Đã đăng nhập nhưng không đủ quyền |
 | `NOT_FOUND` | 404 | Tài nguyên không tồn tại hoặc không thuộc người dùng hiện tại |
 | `CONFLICT` | 409 | Trùng dữ liệu duy nhất, ví dụ `class_code` đã có trong học kỳ |
@@ -98,7 +99,7 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 ## Ghi chú
 
 - Frontend xử lý lỗi theo `data.code`. `data.message` chỉ là câu mô tả để hiển thị.
-- Mọi endpoint nghiệp vụ trừ login cần header `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR` tùy trường hợp. Các route kỹ thuật không yêu cầu token. Phase 1 không có refresh token.
+- Mọi endpoint nghiệp vụ trừ login cần header `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR` tùy trường hợp. Các route kỹ thuật không yêu cầu token. Hệ thống không phát hành refresh token.
 - `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp đáp ứng điều kiện được ghi nhận (`status: "registered"`, kèm `id` và `registered_at`); lớp bị từ chối có `status: "failed"` kèm `code` và `message` mà không ảnh hưởng các lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trước đó trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
 - Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Kết quả từng lớp nằm trong `results[].status`; `registered_count` và `failed_count` là số lượng tổng hợp, không dựa vào HTTP status để biết kết quả từng lớp. Đăng ký thành công một phần vẫn được tính là hoàn tất cho các lớp đã ghi nhận.
@@ -114,10 +115,15 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 - `GET /api/classes/{id}` trả thêm `faculty` (khoa của học phần), `major` (ngành của học phần; `null` với học phần chung của nhiều ngành), `semester_name` và `prerequisites` (các học phần tiên quyết, sắp theo `course_code`; mảng rỗng nếu không có). `passed` trong mỗi phần tử chỉ có khi người gọi là sinh viên: `true` nếu sinh viên đó đã đạt học phần (`course_results.passed`), `false` nếu chưa; quản trị viên không nhận `passed`. Đây chỉ là thông tin tham khảo; việc kiểm tra tiên quyết khi đăng ký vẫn do `POST /api/registrations` thực hiện.
 - `GET /api/classes` trả thêm `data.semester`: học kỳ hiện tại mà các lớp thuộc về (`id`, `name`, `max_credits`, `registration_opens_at`, `registration_closes_at`, `registration_open`). Client dùng để hiển thị khung đợt đăng ký và mức tín chỉ tối đa. `semester` là `null` và `classes` rỗng khi chưa có học kỳ nào mở đăng ký. `semester` không phụ thuộc bộ lọc `faculty`, `major`, nên vẫn có khi bộ lọc không khớp lớp nào.
 - `MAX_CREDITS` là cấu hình runtime tùy chọn, số nguyên dương tối đa 2147483647. Khi được đặt, API dùng giá trị này thay giới hạn lưu trong từng học kỳ cho cả `data.semester.max_credits` và kiểm tra `CREDIT_LIMIT_EXCEEDED`; bỏ trống thì dùng database. Không cập nhật cột `semesters.max_credits` hoặc yêu cầu seed lại khi đổi cấu hình.
-- `JWT_TTL` và `SESSION_TTL` mặc định cùng `20m` và phải bằng nhau; nếu bỏ trống `SESSION_TTL` thì theo `JWT_TTL`. `expires_at` lưu đúng mốc `exp` của token. Frontend đọc `exp` để hiển thị thời gian còn lại, lưu token trong `sessionStorage` và gọi `/api/auth/me` khi reload; `401`, logout hoặc hết hạn xóa phiên cục bộ, kể cả đang chỉ xem.
-- `POST /api/auth/login` xác thực mật khẩu trước khi kiểm tra cooldown. Nếu phiên trước đã hết hạn và chưa đến `expires_at + LOGIN_COOLDOWN`, trả `429` với `{ "status": "fail", "data": { "code": "LOGIN_COOLDOWN", "message": "Tài khoản đang trong thời gian chờ đăng nhập lại", "retry_after": 720, "login_allowed_at": "2026-10-26T03:40:00Z" } }` và header `Retry-After: 720`. `retry_after` làm tròn lên theo giây; `login_allowed_at` là mốc RFC 3339 theo backend. Sai mật khẩu vẫn trả `401 INVALID_CREDENTIALS`.
-- Cooldown áp dụng cho cả sinh viên/admin, theo tài khoản và tính cả các phiên đã logout; đổi tab/trình duyệt không bỏ qua được kiểm tra. Mỗi lần đăng nhập thành công tạo `sid` mới nhưng nếu cửa sổ cũ còn hiệu lực thì giữ nguyên mốc hết hạn. Logout chỉ thu hồi `sid` hiện tại, không xóa hoặc kéo dài cửa sổ. TTL mới chỉ áp dụng khi mở cửa sổ mới; đổi `LOGIN_COOLDOWN` thay đổi khoảng chờ được backend tính ở lần kiểm tra tiếp theo.
-- Frontend lưu đếm ngược theo username trong `sessionStorage` sau phản hồi cooldown, khóa submit cho username đó và khôi phục đếm ngược khi reload. Đồng hồ frontend chỉ phục vụ hiển thị; backend luôn kiểm tra lại.
+- JWT sử dụng HS256, chứa `sub` (ID người dùng), `role` (`student`/`admin`), `sid` (`auth_sessions.id`), `iat` và `exp`. Backend xác minh chữ ký, thuật toán và thời hạn; tìm phiên theo `sid`, đối chiếu `sub` với `auth_sessions.user_id`, so khớp `exp` với `auth_sessions.expires_at` và kiểm tra `role` với vai trò hiện tại trong `users` trước khi phân quyền.
+- `JWT_TTL` và `SESSION_TTL` mặc định cùng `20m` và phải bằng nhau; nếu bỏ trống `SESSION_TTL` thì theo `JWT_TTL`. Mỗi phiên có `expires_at = created_at + JWT_TTL`; giá trị `exp` của JWT khớp `expires_at` ở độ chính xác giây. `LOGIN_COOLDOWN` mặc định `20m`.
+- **Đăng nhập khi phiên còn hoạt động:** Sau khi xác thực username/password, nếu phiên gần nhất của tài khoản có `logged_out_at IS NULL` và thời gian hiện tại nhỏ hơn `expires_at`, trả `409` với `{ "status": "fail", "data": { "code": "ALREADY_LOGGED_IN", "message": "Tài khoản đang đăng nhập trên một phiên khác" } }`. Không tạo phiên mới, không thu hồi phiên cũ và không gia hạn `expires_at`. Quy tắc áp dụng xuyên thiết bị.
+- **Đăng nhập khi còn cooldown:** Nếu phiên gần nhất đã kết thúc tại `COALESCE(logged_out_at, expires_at)` nhưng chưa đủ `LOGIN_COOLDOWN`, trả `429` với `{ "status": "fail", "data": { "code": "LOGIN_COOLDOWN", "message": "Tài khoản đang trong thời gian chờ đăng nhập lại", "retry_after": 720, "login_allowed_at": "2026-10-26T03:25:00Z" } }` và header `Retry-After: 720`. Ví dụ user logout lúc 10:05 UTC+7, thử login lúc 10:13 thì còn 12 phút và được phép login lại lúc 10:25 UTC+7. `retry_after` làm tròn lên theo giây, `login_allowed_at` ở định dạng RFC 3339. Sai thông tin đăng nhập luôn trả `401 INVALID_CREDENTIALS` trước khi kiểm tra phiên.
+- **Đăng nhập thành công:** Nếu không có phiên trước, hoặc đã qua cooldown, backend tạo một `auth_sessions` mới với `sid` khác và trả `access_token`. Đọc phiên gần nhất, kiểm tra điều kiện và tạo phiên phải nằm trong cùng transaction có khóa bản ghi `users` để chặn hai request đồng thời tạo hai phiên hoạt động.
+- **Logout chủ động:** `POST /api/auth/logout` dùng `sid` của JWT đã xác thực, ghi `logged_out_at = NOW()` một lần nếu phiên còn hoạt động (`logged_out_at IS NULL AND expires_at > NOW()`); không xóa bản ghi và không sửa `expires_at`. JWT cũ bị từ chối ngay. Nếu phiên đã hết hạn, không ghi `logged_out_at` muộn hơn `expires_at`.
+- **Hết hạn tự động:** Sau `expires_at`, backend luôn từ chối session ngay cả khi không có request logout; `logged_out_at` để `NULL`. Frontend đọc `exp`, tự xóa JWT trong `sessionStorage` và điều hướng tới trang đăng nhập khi hết giờ; khi reload, tab trở lại hoặc nhận `401`, frontend cũng kiểm tra lại token. Không gọi API logout đã hết hạn chỉ để ghi thời gian kết thúc; đóng tab không được coi là logout chủ động ở backend.
+- **Cooldown:** Mốc được login lại là `COALESCE(logged_out_at, expires_at) + LOGIN_COOLDOWN`, tính theo phiên gần nhất của tài khoản. Logout sớm 10:05 cho phép login từ 10:25; hết hạn lúc 10:20 cho phép login từ 10:40. Không có cột `cooldown_until`, `status`, `revoked_at` hoặc `refresh_token_hash` trong `auth_sessions`.
+- Frontend lưu đếm ngược theo username trong `sessionStorage` sau phản hồi `LOGIN_COOLDOWN`, khóa submit cho username đó và khôi phục đếm ngược khi reload. Đồng hồ frontend chỉ phục vụ hiển thị; backend luôn kiểm tra lại.
 - Frontend tự lấy `data.semester.id` làm `semester_id` khi tạo lớp hoặc cấu hình thời gian đăng ký của học kỳ hiện tại; chỉ hiển thị tên học kỳ ở trường chỉ đọc, không yêu cầu admin nhập ID. Khi đang tải, tải lỗi hoặc `semester` là `null`, chưa cho gửi các form này. Form sửa lớp hiển thị học kỳ từ chi tiết lớp, không thay bằng học kỳ hiện tại. Không dùng tham số URL để ghi đè học kỳ.
 - `POST /api/classes`: `class_code` duy nhất trong học kỳ. `course_id`, `semester_id` phải tồn tại.
 - `PUT /api/classes/{id}`: không đổi `course_id`, `semester_id`. `max_capacity` không nhỏ hơn `enrolled`. Khi `enrolled > 0` không sửa được `schedules`.
@@ -126,4 +132,4 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 - Hai endpoint DELETE trên trả `200` với `{ "status": "success", "data": {} }` khi hủy thành công, không trả lại `data.id` hoặc `data.status`. ID đối tượng đã có trong request; trạng thái hủy được lưu ở cơ sở dữ liệu, các response đọc vẫn giữ trường trạng thái nghiệp vụ khi có.
 - `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ; không nhận ID sinh viên đích. Client tự lọc theo học kỳ nếu cần.
 - Không có API danh mục học kỳ, học phần hoặc kết quả học tập; các dữ liệu này lấy từ seed. `PUT /api/registration-period` chỉ cấu hình thời gian đăng ký của học kỳ đã tồn tại.
-- `auth_sessions.refresh_token_hash` là NOT NULL; khi đăng nhập backend lưu SHA-256 của chuỗi ngẫu nhiên không trả cho client để đáp ứng schema. Phase 1 không dùng giá trị này trong một luồng refresh token.
+- Bảng `auth_sessions` có năm cột: `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`; chỉ mục ghép (`user_id`, `created_at`) hỗ trợ truy vấn phiên gần nhất. `POST /api/auth/login` chỉ trả JWT, không trả refresh token.

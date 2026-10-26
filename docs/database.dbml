@@ -109,13 +109,13 @@ Table registrations {
 Table auth_sessions {
   id uuid [pk, default: `gen_random_uuid()`]
   user_id bigint [not null]
-  refresh_token_hash text [not null]
+
   created_at timestamptz [not null, default: `now()`]
   expires_at timestamptz [not null]
-  revoked_at timestamptz
+  logged_out_at timestamptz
 
   indexes {
-    user_id
+    (user_id, created_at)
   }
 }
 
