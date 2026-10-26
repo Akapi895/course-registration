@@ -76,7 +76,7 @@ Trước khi mở HTTP server, `start.py` kiểm tra migration và trạng thái
 
 Thao tác đăng nhập, đăng ký/hủy và quản trị được lưu trong PostgreSQL, tồn tại qua restart, cold start và redeploy của Web Service. Thay `REFERENCE_DATE` không đặt lại dữ liệu đã nạp. Database trống mới sẽ kích hoạt lại quy trình khởi tạo.
 
-Fixture gồm `student001`–`student100`, `admin1`, `admin2`, dùng chung mật khẩu `DemoUET@123`. Học kỳ demo đang mở có khoảng đăng ký từ ngày neo −7 đến +30 ngày. Thời gian đăng ký sau đó được quản lý qua `PUT /api/registration-period`; không tự gia hạn khi ứng dụng khởi động lại.
+Fixture gồm `student001`–`student100`, `admin1`, `admin2`, dùng chung mật khẩu `DemoUET@123`. Học kỳ demo đang mở có khoảng đăng ký từ ngày neo −7 đến +30 ngày. Không có API đổi thời gian đăng ký; muốn đổi phải seed lại hoặc sửa bảng `semesters`. Ứng dụng không tự gia hạn khi ứng dụng khởi động lại.
 
 Dữ liệu demo được chia sẻ giữa các phiên truy cập. Không có chức năng reset toàn bộ database qua giao diện.
 

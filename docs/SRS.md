@@ -30,7 +30,7 @@ Theo điều chỉnh phạm vi ngày 2026-10-25, chức năng quản lý hồ s�
 | Tác nhân | Mô tả | Chức năng chính |
 |---|---|---|
 | Sinh viên | Người dùng đăng ký học phần | Đăng nhập, tra cứu lớp, đăng ký/hủy học phần, xem thời khóa biểu |
-| Quản trị viên | Người dùng quản trị hệ thống | Quản lý lớp học phần; cấu hình thời gian đăng ký |
+| Quản trị viên | Người dùng quản trị hệ thống | Quản lý lớp học phần |
 
 ### 2.2. Ranh giới hệ thống
 
@@ -104,9 +104,8 @@ Frontend lưu token và trạng thái hiển thị trong `sessionStorage`; khôi
 | 3 | Quản trị viên có thể xóa hoặc hủy lớp học phần theo chính sách đã thống nhất. |
 | 4 | Hệ thống kiểm tra dữ liệu đầu vào trước khi lưu. |
 | 5 | Các API quản trị từ chối request không đủ quyền. |
-| 6 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
 
-Form tạo lớp và cấu hình thời gian đăng ký tự lấy `semester.id` từ API danh sách lớp, hiển thị tên học kỳ ở trường chỉ đọc; chưa cho gửi khi đang tải, tải lỗi hoặc chưa có học kỳ. Form sửa lớp giữ học kỳ của chính lớp đó.
+Form tạo lớp tự lấy `semester.id` từ API danh sách lớp, hiển thị tên học kỳ ở trường chỉ đọc; chưa cho gửi khi đang tải, tải lỗi hoặc chưa có học kỳ. Form sửa lớp giữ học kỳ của chính lớp đó.
 
 ### 3.5. Luồng nghiệp vụ chính
 
@@ -146,12 +145,12 @@ Form tạo lớp và cấu hình thời gian đăng ký tự lấy `semester.id`
 | STT | Quy tắc | Mô tả |
 |---|---|---|
 | 1 | Giới hạn sĩ số | Không chấp nhận đăng ký nếu số lượng đã đăng ký đạt `max_capacity`. |
-| 2 | Thời gian đăng ký | Chỉ cho phép đăng ký/hủy trong khoảng thời gian do quản trị viên cấu hình. |
+| 2 | Thời gian đăng ký | Chỉ cho phép đăng ký/hủy trong khoảng thời gian đăng ký của học kỳ (cấu hình trong dữ liệu học kỳ, không có API chỉnh sửa; thay đổi từ 2026-10-26). |
 | 3 | Không trùng lịch | Từ chối đăng ký lớp học phần có lịch học trùng với các lớp đã đăng ký trong cùng học kỳ. |
 | 4 | Không đăng ký trùng | Sinh viên chỉ được đăng ký một lần đối với cùng một lớp học phần trong mỗi học kỳ. |
 | 5 | Điều kiện tiên quyết | Sinh viên phải đáp ứng các yêu cầu về học phần tiên quyết trước khi đăng ký. |
 | 6 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau đăng ký không được vượt mức tối đa theo quy định. Backend dùng `MAX_CREDITS` nếu được cấu hình, nếu không dùng giới hạn của học kỳ trong database; frontend hiển thị cùng mức từ API. |
-| 7 | Thời gian đăng ký hợp lệ | Thời điểm mở đăng ký phải trước thời điểm đóng đăng ký. |
+| 7 | Thời gian đăng ký hợp lệ | Thời điểm mở đăng ký phải trước thời điểm đóng đăng ký; ràng buộc bởi CHECK trong cơ sở dữ liệu. |
 | 8 | Quyền sở hữu đăng ký | Sinh viên chỉ được phép xem và hủy các đăng ký học phần của chính mình. |
 | 9 | Kiểm tra dữ liệu lớp | Thông tin lớp học phần khi tạo mới hoặc cập nhật phải đáp ứng các ràng buộc dữ liệu đã quy định. |
 | 10 | Đăng ký nhiều lớp | Mỗi yêu cầu đăng ký gồm 1 đến 20 lớp khác nhau. Các quy tắc 1–6 áp dụng riêng cho từng lớp; lớp bị từ chối không làm mất các lớp đã được ghi nhận trong cùng yêu cầu. |
@@ -168,7 +167,7 @@ Form tạo lớp và cấu hình thời gian đăng ký tự lấy `semester.id`
 
 ### 5.2. Danh sách endpoint
 
-Hệ thống có **13 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn: 3 endpoint xác thực/người dùng, 2 endpoint tra cứu lớp, 4 endpoint đăng ký/thời khóa biểu và 4 endpoint quản trị. Tất cả nằm dưới `/api`; các route kỹ thuật tại §5.4 không tính vào số này.
+Hệ thống có **12 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn: 3 endpoint xác thực/người dùng, 2 endpoint tra cứu lớp, 4 endpoint đăng ký/thời khóa biểu và 3 endpoint quản trị. Tất cả nằm dưới `/api`; các route kỹ thuật tại §5.4 không tính vào số này.
 
 Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên đăng nhập còn hiệu lực. Với endpoint chỉ dành cho sinh viên hoặc quản trị viên, tài khoản khác vai trò bị từ chối với `403 FORBIDDEN`.
 
@@ -203,7 +202,6 @@ Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên �
 | POST | `/api/classes` | Tạo lớp học phần mới | Quản trị viên |
 | PUT | `/api/classes/{id}` | Cập nhật thông tin lớp học phần | Quản trị viên |
 | DELETE | `/api/classes/{id}` | Hủy mềm lớp học phần và các đăng ký còn hiệu lực của lớp | Quản trị viên |
-| PUT | `/api/registration-period` | Cấu hình thời gian mở và đóng đăng ký học phần | Quản trị viên |
 
 ### 5.3. Yêu cầu dữ liệu request/response
 
@@ -286,7 +284,7 @@ Tài liệu tập trung vào các chức năng nghiệp vụ, kiểm soát truy 
 | 7 | Sinh viên xem được danh sách lớp học phần đã đăng ký và thời khóa biểu của mình. |
 | 8 | Sinh viên chỉ có thể hủy đăng ký thuộc về mình khi đáp ứng điều kiện nghiệp vụ; hủy thành công cập nhật trạng thái đăng ký và sĩ số tương ứng. |
 | 9 | Quản trị viên có thể tạo, cập nhật và xóa/hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
-| 10 | Quản trị viên có thể cấu hình thời gian mở và đóng đăng ký học phần. |
+| 10 | _Đã loại bỏ ngày 2026-10-26: không còn chức năng cấu hình thời gian đăng ký._ |
 | 11 | OpenAPI/Swagger hoạt động và mô tả đầy đủ các endpoint được triển khai. |
 | 12 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
 | 13 | Yêu cầu đăng ký nhiều lớp ghi nhận các lớp hợp lệ và trả lý do từ chối cho các lớp còn lại; một số lớp bị từ chối không làm mất các lớp đã được ghi nhận. Yêu cầu có danh sách rỗng, trùng lớp hoặc quá 20 lớp bị từ chối toàn bộ. |

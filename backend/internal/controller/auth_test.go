@@ -98,8 +98,7 @@ func newAuthHarness(t *testing.T) *authHarness {
 	gin.SetMode(gin.TestMode)
 	router := NewRouter(service.NewAuthService(cfg, users, sessions),
 		service.NewClassService(classes, semesters, 0),
-		service.NewRegistrationService(registrations, classes, semesters, 0),
-		service.NewRegistrationPeriodService(semesters))
+		service.NewRegistrationService(registrations, classes, semesters, 0))
 	return &authHarness{db: db, router: router, cfg: cfg}
 }
 

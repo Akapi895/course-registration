@@ -1,12 +1,12 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Ban, CalendarClock, Eye, FilterX, ListChecks, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
+import { Ban, Eye, FilterX, ListChecks, Pencil, Plus, School, Search, Trash2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import { ApiError } from '../api/client'
 import { ClassDetailModal } from '../components/ClassDetailModal'
 import { PeriodBanner } from '../components/PeriodBanner'
 import { Link, navigate } from '../router'
-import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type RegistrationPeriod, type Semester } from '../api/types'
+import { DAYS, type ClassDetail, type ClassSummary, type ClassUpdate, type Semester } from '../api/types'
 import { useRequest } from '../hooks/useRequest'
 import { Alert, Badge, Button, Capacity, Card, Empty, Field, Input, Modal, PageHeader, Pagination, RequestStatus, Select, Stat, Table, Td, seatState, toast } from '../components/ui'
 
@@ -18,9 +18,6 @@ const FACULTIES: Record<string, string[]> = {
 }
 const allMajors = Object.values(FACULTIES).flat()
 const DAY_OPTIONS = [2, 3, 4, 5, 6, 7]
-// datetime-local values are always interpreted in Vietnam time (UTC+7), regardless of the browser timezone.
-const toLocal = (iso: string) => new Date(+new Date(iso) + 7 * 3600000).toISOString().slice(0, 16)
-const fromLocal = (s: string) => new Date(s + ':00+07:00').toISOString()
 const friendly = (e: unknown) => (e instanceof Error ? e.message : 'Không thể kết nối. Vui lòng thử lại.')
 const positiveInt = (v: string) => { const n = Number(v); return Number.isSafeInteger(n) && n > 0 }
 
@@ -36,8 +33,7 @@ export function AdminDashboard() {
       <PageHeader title="Tổng quan" desc="Số liệu của học kỳ hiện tại"
         actions={<>
           <Button onClick={() => navigate('/admin/classes?new=1')}><Plus className="h-4 w-4" />Tạo lớp học phần</Button>
-          <Button variant="secondary" onClick={() => navigate('/admin/registration-period')}><CalendarClock className="h-4 w-4" />Cấu hình đợt đăng ký</Button>
-        </>} />
+                  </>} />
       <RequestStatus {...resource} retry={resource.reload} />
       {resource.data && !resource.loading && !resource.error && (
         <div className="space-y-6">
@@ -268,77 +264,6 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
         </Modal>
         : <ClassForm semester={resource.data.semester} onClose={closeCreate} onSaved={(id) => { setCreating(false); resource.reload(); admin.show(id) }} />)}
       {admin.modal}
-    </Layout>
-  )
-}
-
-// ---------------- Registration period ----------------
-const periodBadge = (opens: string, closes: string) => {
-  const now = Date.now()
-  return now < +new Date(opens) ? <Badge tone="orange">Chưa mở</Badge> : now > +new Date(closes) ? <Badge>Đã đóng</Badge> : <Badge tone="green">Đang mở</Badge>
-}
-
-export function AdminRegistrationPeriod() {
-  const resource = useRequest(useCallback((signal: AbortSignal) => api.listClasses({}, signal), []))
-  const semester = resource.data?.semester
-  const [o, setO] = useState('')
-  const [c, setC] = useState('')
-  const [saved, setSaved] = useState<RegistrationPeriod | null>(null)
-  const [e, setE] = useState<Record<string, string>>({})
-  const [busy, setBusy] = useState(false)
-  const dirty = saved
-    ? semester?.id !== saved.semester_id || o !== toLocal(saved.registration_opens_at) || c !== toLocal(saved.registration_closes_at)
-    : !!(o || c)
-  const preview = o && c && c > o ? periodBadge(fromLocal(o), fromLocal(c)) : null
-  const reset = () => {
-    if (saved) { setO(toLocal(saved.registration_opens_at)); setC(toLocal(saved.registration_closes_at)) } else { setO(''); setC('') }
-    setE({})
-  }
-  const submit = async (ev: FormEvent) => {
-    ev.preventDefault()
-    if (busy || resource.loading || resource.error || !semester) return
-    const er: Record<string, string> = {}
-    if (!o) er.open = 'Vui lòng chọn thời điểm mở.'
-    if (!c) er.close = 'Vui lòng chọn thời điểm đóng.'
-    else if (o && c <= o) er.close = 'Thời điểm mở phải trước thời điểm đóng.'
-    setE(er)
-    if (Object.keys(er).length) return
-    setBusy(true)
-    try {
-      const result = await api.updateRegistrationPeriod({ semester_id: semester.id, registration_opens_at: fromLocal(o), registration_closes_at: fromLocal(c) })
-      setSaved(result); toast('Đã cập nhật thời gian đăng ký.')
-    } catch (x) { setE({ form: friendly(x) }) } finally { setBusy(false) }
-  }
-  return (
-    <Layout title="Cấu hình đợt đăng ký">
-      <PageHeader title="Cấu hình đợt đăng ký" desc="Thời gian theo múi giờ Việt Nam (UTC+7)" />
-      <div className="space-y-6">
-        {saved && <PeriodBanner title="Thời gian đăng ký vừa lưu" open={Date.now() >= +new Date(saved.registration_opens_at) && Date.now() <= +new Date(saved.registration_closes_at)} opensAt={saved.registration_opens_at} closesAt={saved.registration_closes_at} />}
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-          <Card title="Thời gian đăng ký của học kỳ">
-            <RequestStatus {...resource} retry={resource.reload} />
-            {!resource.loading && !resource.error && (semester ? <form onSubmit={submit} noValidate className="space-y-5 p-5">
-              {e.form && <Alert tone="error" title="Không thể lưu">{e.form}</Alert>}
-              <Field id="rp-sem" label="Học kỳ" hint="Tự động chọn học kỳ hiện tại từ hệ thống."><Input id="rp-sem" value={semester.name} readOnly /></Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="rp-open" label="Thời điểm mở đăng ký" required error={e.open}><Input id="rp-open" type="datetime-local" value={o} onChange={(x) => setO(x.target.value)} error={e.open} /></Field>
-                <Field id="rp-close" label="Thời điểm đóng đăng ký" required error={e.close}><Input id="rp-close" type="datetime-local" value={c} onChange={(x) => setC(x.target.value)} error={e.close} /></Field>
-              </div>
-              {preview && <p className="flex items-center gap-2 text-sm text-muted">Trạng thái sau khi lưu: {preview}</p>}
-              <div className="flex flex-col-reverse justify-end gap-2 border-t border-line pt-5 sm:flex-row">
-                <Button variant="secondary" disabled={busy || !dirty} onClick={reset}>Hủy</Button>
-                <Button type="submit" loading={busy} disabled={!dirty}>{busy ? 'Đang lưu…' : 'Lưu thay đổi'}</Button>
-              </div>
-            </form> : <Empty title="Chưa có học kỳ hiện tại" text="Hệ thống chưa xác định được học kỳ hiện tại. Chưa thể cấu hình thời gian đăng ký." />)}
-          </Card>
-          <Card title="Ảnh hưởng tới sinh viên" className="h-fit">
-            <ul className="list-disc space-y-2 py-5 pl-10 pr-5 text-sm text-muted">
-              <li>Trong thời gian đăng ký: sinh viên được đăng ký và hủy đăng ký.</li>
-              <li>Ngoài thời gian đăng ký: vẫn xem được học phần đã đăng ký và thời khóa biểu; đăng ký/hủy bị khóa kèm lý do.</li>
-            </ul>
-          </Card>
-        </div>
-      </div>
     </Layout>
   )
 }

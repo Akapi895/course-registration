@@ -407,26 +407,6 @@ definitions:
         example: success
         type: string
     type: object
-  controller.registrationPeriodData:
-    properties:
-      registration_closes_at:
-        example: "2026-11-14T23:59:59+07:00"
-        type: string
-      registration_opens_at:
-        example: "2026-11-01T00:00:00+07:00"
-        type: string
-      semester_id:
-        example: 2
-        type: integer
-    type: object
-  controller.registrationPeriodSuccessResponse:
-    properties:
-      data:
-        $ref: '#/definitions/controller.registrationPeriodData'
-      status:
-        example: success
-        type: string
-    type: object
   controller.scheduleItem:
     properties:
       day_of_week:
@@ -551,22 +531,6 @@ definitions:
     - lecturer_name
     - max_capacity
     - schedules
-    type: object
-  controller.updateRegistrationPeriodRequest:
-    properties:
-      registration_closes_at:
-        example: "2026-11-14T23:59:59+07:00"
-        type: string
-      registration_opens_at:
-        example: "2026-11-01T00:00:00+07:00"
-        type: string
-      semester_id:
-        example: 2
-        type: integer
-    required:
-    - registration_closes_at
-    - registration_opens_at
-    - semester_id
     type: object
 info:
   contact: {}
@@ -885,47 +849,6 @@ paths:
       summary: Cập nhật lớp học phần (admin)
       tags:
       - classes
-  /api/registration-period:
-    put:
-      consumes:
-      - application/json
-      description: Đặt thời điểm mở và đóng đăng ký. Thời điểm đóng phải sau thời
-        điểm mở.
-      parameters:
-      - description: Học kỳ và khung thời gian đăng ký
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/controller.updateRegistrationPeriodRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/controller.registrationPeriodSuccessResponse'
-        "400":
-          description: VALIDATION_ERROR
-          schema:
-            $ref: '#/definitions/controller.failResponse'
-        "401":
-          description: UNAUTHORIZED hoặc SESSION_REVOKED
-          schema:
-            $ref: '#/definitions/controller.failResponse'
-        "403":
-          description: FORBIDDEN
-          schema:
-            $ref: '#/definitions/controller.failResponse'
-        "500":
-          description: INTERNAL_ERROR
-          schema:
-            $ref: '#/definitions/controller.failResponse'
-      security:
-      - BearerAuth: []
-      summary: Cấu hình thời gian đăng ký của học kỳ (admin)
-      tags:
-      - registration-period
   /api/registrations:
     get:
       description: Trả về toàn bộ đăng ký đang hiệu lực (status = registered) của

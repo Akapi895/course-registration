@@ -46,18 +46,6 @@ func (r *SemesterRepository) FindByID(ctx context.Context, id int64) (*Semester,
 	)
 }
 
-// UpdateRegistrationPeriod reports false when the semester does not exist.
-func (r *SemesterRepository) UpdateRegistrationPeriod(ctx context.Context, id int64, opensAt, closesAt time.Time) (bool, error) {
-	tag, err := r.db.Exec(ctx,
-		`UPDATE semesters SET registration_opens_at = $2, registration_closes_at = $3 WHERE id = $1`,
-		id, opensAt, closesAt,
-	)
-	if err != nil {
-		return false, translateError(err)
-	}
-	return tag.RowsAffected() == 1, nil
-}
-
 func (r *SemesterRepository) queryOne(ctx context.Context, query string, args ...any) (*Semester, error) {
 	var s Semester
 	err := r.db.QueryRow(ctx, query, args...).Scan(

@@ -471,69 +471,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/registration-period": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Đặt thời điểm mở và đóng đăng ký. Thời điểm đóng phải sau thời điểm mở.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "registration-period"
-                ],
-                "summary": "Cấu hình thời gian đăng ký của học kỳ (admin)",
-                "parameters": [
-                    {
-                        "description": "Học kỳ và khung thời gian đăng ký",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controller.updateRegistrationPeriodRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/controller.registrationPeriodSuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "VALIDATION_ERROR",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "UNAUTHORIZED hoặc SESSION_REVOKED",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "FORBIDDEN",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "INTERNAL_ERROR",
-                        "schema": {
-                            "$ref": "#/definitions/controller.failResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/registrations": {
             "get": {
                 "security": [
@@ -1325,35 +1262,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controller.registrationPeriodData": {
-            "type": "object",
-            "properties": {
-                "registration_closes_at": {
-                    "type": "string",
-                    "example": "2026-11-14T23:59:59+07:00"
-                },
-                "registration_opens_at": {
-                    "type": "string",
-                    "example": "2026-11-01T00:00:00+07:00"
-                },
-                "semester_id": {
-                    "type": "integer",
-                    "example": 2
-                }
-            }
-        },
-        "controller.registrationPeriodSuccessResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/controller.registrationPeriodData"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
         "controller.scheduleItem": {
             "type": "object",
             "properties": {
@@ -1523,28 +1431,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/controller.scheduleRequest"
                     }
-                }
-            }
-        },
-        "controller.updateRegistrationPeriodRequest": {
-            "type": "object",
-            "required": [
-                "registration_closes_at",
-                "registration_opens_at",
-                "semester_id"
-            ],
-            "properties": {
-                "registration_closes_at": {
-                    "type": "string",
-                    "example": "2026-11-14T23:59:59+07:00"
-                },
-                "registration_opens_at": {
-                    "type": "string",
-                    "example": "2026-11-01T00:00:00+07:00"
-                },
-                "semester_id": {
-                    "type": "integer",
-                    "example": 2
                 }
             }
         }

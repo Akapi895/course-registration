@@ -66,7 +66,6 @@ var failures = []failure{
 	{service.ErrRegistrationNotActive, 409, "REGISTRATION_NOT_ACTIVE", "Đăng ký không ở trạng thái đã đăng ký"},
 	{service.ErrInvalidReference, 400, "VALIDATION_ERROR", "Dữ liệu tham chiếu không tồn tại"},
 	{service.ErrInvalidSchedule, 400, "VALIDATION_ERROR", "Tiết kết thúc phải lớn hơn hoặc bằng tiết bắt đầu"},
-	{service.ErrInvalidRegistrationPeriod, 400, "VALIDATION_ERROR", "Thời gian đóng đăng ký phải sau thời gian mở đăng ký"},
 }
 
 func success(c *gin.Context, status int, data any) {

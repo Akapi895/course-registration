@@ -40,9 +40,8 @@ func main() {
 	auth := service.NewAuthService(cfg, users, sessions)
 	classService := service.NewClassService(classes, semesters, cfg.MaxCredits)
 	registrationService := service.NewRegistrationService(registrations, classes, semesters, cfg.MaxCredits)
-	periods := service.NewRegistrationPeriodService(semesters)
 
-	r := controller.NewRouter(auth, classService, registrationService, periods)
+	r := controller.NewRouter(auth, classService, registrationService)
 	if cfg.FrontendDir != "" {
 		if err := controller.ServeFrontend(r, cfg.FrontendDir); err != nil {
 			log.Fatal(err)

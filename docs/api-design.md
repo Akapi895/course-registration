@@ -4,7 +4,7 @@ Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn
 
 ## Phạm vi và phân quyền
 
-Hiện có **13 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn. Danh sách dưới đây tương ứng với router backend và Swagger; `/health` và `/swagger/*any` là các route kỹ thuật, không tính vào 13 endpoint.
+Hiện có **12 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn. Danh sách dưới đây tương ứng với router backend và Swagger; `/health` và `/swagger/*any` là các route kỹ thuật, không tính vào 12 endpoint.
 
 | STT | Nhóm | Phương thức | Endpoint | Quyền truy cập |
 |---|---|---|---|---|
@@ -20,7 +20,6 @@ Hiện có **13 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP 
 | 10 | Quản trị hệ thống | POST | `/api/classes` | Chỉ quản trị viên |
 | 11 | Quản trị hệ thống | PUT | `/api/classes/{id}` | Chỉ quản trị viên |
 | 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
-| 13 | Quản trị hệ thống | PUT | `/api/registration-period` | Chỉ quản trị viên |
 
 Mọi endpoint trừ đăng nhập yêu cầu `Authorization: Bearer <access_token>` và phiên đăng nhập còn hiệu lực. Quản trị viên không được đăng ký/hủy học phần thay sinh viên hoặc truy cập các API đăng ký/thời khóa biểu dành riêng cho sinh viên.
 
@@ -44,7 +43,6 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | Quản trị hệ thống | Tạo lớp học phần kèm lịch học | /api/classes | POST | `{ "course_id": 5, "semester_id": 2, "class_code": "INT3401-01", "lecturer_name": "Giảng viên A", "max_capacity": 50, "schedules": [ { "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ] }` | `201` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "status": "active", "enrolled": 0 } }` | `409` `{ "status": "fail", "data": { "code": "CONFLICT", "message": "class_code đã tồn tại trong học kỳ" } }` | required |
 | Quản trị hệ thống | Cập nhật các trường được phép sửa của lớp | /api/classes/{id} | PUT | `{ "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60, "schedules": [ { "day_of_week": 3, "start_period": 4, "end_period": 6, "room": "A2-302" } ] }` | `200` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60 } }` | `409` `{ "status": "fail", "data": { "code": "SCHEDULE_LOCKED", "message": "Không thể sửa lịch học khi lớp đã có sinh viên đăng ký" } }` | required |
 | Quản trị hệ thống | Hủy lớp học phần (không xóa vật lý) | /api/classes/{id} | DELETE | — | `200` `{ "status": "success", "data": {} }` | `409` `{ "status": "fail", "data": { "code": "CLASS_CANCELLED", "message": "Lớp học phần đã bị hủy" } }` | required |
-| Quản trị hệ thống | Cập nhật thời gian đăng ký cho học kỳ | /api/registration-period | PUT | `{ "semester_id": 2, "registration_opens_at": "2026-11-01T00:00:00+07:00", "registration_closes_at": "2026-11-14T23:59:59+07:00" }` | `200` `{ "status": "success", "data": { "semester_id": 2, "registration_opens_at": "2026-11-01T00:00:00+07:00", "registration_closes_at": "2026-11-14T23:59:59+07:00" } }` | `400` `{ "status": "fail", "data": { "code": "VALIDATION_ERROR", "message": "Thời gian đóng đăng ký phải sau thời gian mở đăng ký" } }` | required |
 
 ## Thông tin tài khoản hiện tại
 
@@ -172,11 +170,11 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 - `GET /api/classes/{id}` trả thêm `faculty` (khoa của học phần), `major` (ngành của học phần; `null` với học phần chung của nhiều ngành), `semester_name` và `prerequisites` (các học phần tiên quyết, sắp theo `course_code`; mảng rỗng nếu không có). `passed` trong mỗi phần tử chỉ có khi người gọi là sinh viên: `true` nếu sinh viên đó đã đạt học phần (`course_results.passed`), `false` nếu chưa; quản trị viên không nhận `passed`. Đây chỉ là thông tin tham khảo; việc kiểm tra tiên quyết khi đăng ký vẫn do `POST /api/registrations` thực hiện.
 - `GET /api/classes` trả thêm `data.semester`: học kỳ hiện tại mà các lớp thuộc về (`id`, `name`, `max_credits`, `registration_opens_at`, `registration_closes_at`, `registration_open`). Client dùng để hiển thị khung đợt đăng ký và mức tín chỉ tối đa. `semester` là `null` và `classes` rỗng khi chưa có học kỳ nào mở đăng ký. `semester` không phụ thuộc bộ lọc `faculty`, `major`, nên vẫn có khi bộ lọc không khớp lớp nào.
 - `MAX_CREDITS` là cấu hình runtime tùy chọn, số nguyên dương tối đa 2147483647. Khi được đặt, API dùng giá trị này thay giới hạn lưu trong từng học kỳ cho cả `data.semester.max_credits` và kiểm tra `CREDIT_LIMIT_EXCEEDED`; bỏ trống thì dùng database. Không cập nhật cột `semesters.max_credits` hoặc yêu cầu seed lại khi đổi cấu hình.
-- Frontend tự lấy `data.semester.id` làm `semester_id` khi tạo lớp hoặc cấu hình thời gian đăng ký của học kỳ hiện tại; chỉ hiển thị tên học kỳ ở trường chỉ đọc, không yêu cầu admin nhập ID. Khi đang tải, tải lỗi hoặc `semester` là `null`, chưa cho gửi các form này. Form sửa lớp hiển thị học kỳ từ chi tiết lớp, không thay bằng học kỳ hiện tại. Không dùng tham số URL để ghi đè học kỳ.
+- Frontend tự lấy `data.semester.id` làm `semester_id` khi tạo lớp; chỉ hiển thị tên học kỳ ở trường chỉ đọc, không yêu cầu admin nhập ID. Khi đang tải, tải lỗi hoặc `semester` là `null`, chưa cho gửi các form này. Form sửa lớp hiển thị học kỳ từ chi tiết lớp, không thay bằng học kỳ hiện tại. Không dùng tham số URL để ghi đè học kỳ.
 - `POST /api/classes`: `class_code` duy nhất trong học kỳ. `course_id`, `semester_id` phải tồn tại.
 - `PUT /api/classes/{id}`: không đổi `course_id`, `semester_id`. `max_capacity` không nhỏ hơn `enrolled`. Khi `enrolled > 0` không sửa được `schedules`.
 - `DELETE /api/classes/{id}`: hủy mềm. Các đăng ký `registered` của lớp chuyển sang `cancelled`, `enrolled = 0`.
 - `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình.
 - Hai endpoint DELETE trên trả `200` với `{ "status": "success", "data": {} }` khi hủy thành công, không trả lại `data.id` hoặc `data.status`. ID đối tượng đã có trong request; trạng thái hủy được lưu ở cơ sở dữ liệu, các response đọc vẫn giữ trường trạng thái nghiệp vụ khi có.
 - `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ; không nhận ID sinh viên đích. Client tự lọc theo học kỳ nếu cần.
-- Không có API danh mục học kỳ, học phần hoặc kết quả học tập; các dữ liệu này lấy từ seed. `PUT /api/registration-period` chỉ cấu hình thời gian đăng ký của học kỳ đã tồn tại.
+- Không có API danh mục học kỳ, học phần hoặc kết quả học tập; các dữ liệu này lấy từ seed.

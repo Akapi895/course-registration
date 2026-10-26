@@ -29,7 +29,6 @@ var (
 	ErrScheduleLocked            = errors.New("schedule locked")
 	ErrInvalidReference          = errors.New("invalid reference")
 	ErrInvalidSchedule           = errors.New("invalid schedule")
-	ErrInvalidRegistrationPeriod = errors.New("invalid registration period")
 )
 
 type LoginCooldownError struct {

@@ -88,9 +88,4 @@ export interface TimetableEntry extends ClassSchedule {
   course_code: string
   course_name: string
 }
-export interface RegistrationPeriod {
-  semester_id: number
-  registration_opens_at: string
-  registration_closes_at: string
-}
 export const DAYS: Record<number, string> = { 2: 'Thứ Hai', 3: 'Thứ Ba', 4: 'Thứ Tư', 5: 'Thứ Năm', 6: 'Thứ Sáu', 7: 'Thứ Bảy' }

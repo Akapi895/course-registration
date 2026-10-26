@@ -162,7 +162,6 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 - **Tra cứu:** Controller tiếp nhận yêu cầu, Service xử lý điều kiện tra cứu, Repository truy vấn dữ liệu và trả kết quả về Frontend.
 - **Thông tin tài khoản:** `GET /api/auth/me` chỉ trả thông tin người dùng hiện tại, gồm khoa/ngành để frontend hiển thị tổng quan và lọc lớp. Không có luồng quản lý hồ sơ sinh viên theo ID.
 - **Quản trị lớp học phần:** Kiểm tra quyền quản trị, dữ liệu đầu vào và các ràng buộc trước khi tạo, cập nhật hoặc hủy lớp.
-- **Cấu hình thời gian đăng ký:** Kiểm tra quyền quản trị và tính hợp lệ của thời gian trước khi lưu cấu hình.
 
 ## 4. Kiến trúc dữ liệu
 

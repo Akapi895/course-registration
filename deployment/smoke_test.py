@@ -208,8 +208,6 @@ def main():
                 page.get_by_role('button', name='Tạo lớp học phần', exact=True).click()
                 expect(page.locator('#cf-sem')).to_have_value(semester_name)
                 expect(page.locator('#cf-sem')).to_have_attribute('readonly', '')
-                page.evaluate("window.location.hash = '/admin/registration-period'")
-                expect(page.locator('#rp-sem')).to_have_value(semester_name)
                 assert not errors, errors
 
                 # Moving the wall clock does not fire timers: returning to the
