@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrAlreadyLoggedIn    = errors.New("already logged in")
 	ErrLoginCooldown      = errors.New("login cooldown")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrSessionRevoked     = errors.New("session revoked")

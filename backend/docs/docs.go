@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "Trả về access JWT và tạo một phiên trong auth_sessions. Đăng nhập lại trong cửa sổ hiện tại giữ nguyên mốc hết hạn. Sau khi hết hạn, tài khoản phải chờ LOGIN_COOLDOWN trước khi mở cửa sổ mới; áp dụng cả sinh viên và quản trị viên.",
+                "description": "Chỉ trả access_token và tạo một phiên có expires_at = created_at + JWT_TTL. Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Phiên đang hoạt động trả ALREADY_LOGGED_IN; sau logout hoặc hết hạn phải chờ LOGIN_COOLDOWN từ COALESCE(logged_out_at, expires_at). Kiểm tra mật khẩu trước khi kiểm tra phiên; áp dụng cả sinh viên và quản trị viên.",
                 "consumes": [
                     "application/json"
                 ],
@@ -58,6 +58,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/controller.failResponse"
                         }
                     },
+                    "409": {
+                        "description": "ALREADY_LOGGED_IN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
                     "429": {
                         "description": "LOGIN_COOLDOWN",
                         "schema": {
@@ -86,14 +92,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Thu hồi phiên của JWT hiện tại. Sau đó JWT này bị từ chối.",
+                "description": "Ghi logged_out_at một lần cho sid hiện tại nếu phiên chưa hết hạn; giữ nguyên expires_at. JWT cũ bị từ chối ngay, cooldown bắt đầu từ logged_out_at. Phiên hết hạn tự động không ghi logged_out_at.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
-                "summary": "Đăng xuất và thu hồi phiên",
+                "summary": "Đăng xuất và kết thúc phiên hiện tại",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -123,6 +129,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Kiểm tra JWT HS256 (sub, role, sid, iat, exp), phiên đang hoạt động và vai trò hiện tại trong users. Các trường student_code, faculty, major có thể null.",
                 "produces": [
                     "application/json"
                 ],

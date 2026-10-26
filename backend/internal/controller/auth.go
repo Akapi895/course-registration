@@ -51,7 +51,7 @@ type emptySuccessResponse struct {
 
 // Login godoc
 // @Summary     Đăng nhập
-// @Description Trả về access JWT và tạo một phiên trong auth_sessions. Đăng nhập lại trong cửa sổ hiện tại giữ nguyên mốc hết hạn. Sau khi hết hạn, tài khoản phải chờ LOGIN_COOLDOWN trước khi mở cửa sổ mới; áp dụng cả sinh viên và quản trị viên.
+// @Description Chỉ trả access_token và tạo một phiên có expires_at = created_at + JWT_TTL. Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Phiên đang hoạt động trả ALREADY_LOGGED_IN; sau logout hoặc hết hạn phải chờ LOGIN_COOLDOWN từ COALESCE(logged_out_at, expires_at). Kiểm tra mật khẩu trước khi kiểm tra phiên; áp dụng cả sinh viên và quản trị viên.
 // @Tags        auth
 // @Accept      json
 // @Produce     json
@@ -59,6 +59,7 @@ type emptySuccessResponse struct {
 // @Success     200  {object} loginSuccessResponse
 // @Failure     400  {object} failResponse "VALIDATION_ERROR"
 // @Failure     401  {object} failResponse "INVALID_CREDENTIALS"
+// @Failure     409  {object} failResponse "ALREADY_LOGGED_IN"
 // @Failure     429  {object} loginCooldownResponse "LOGIN_COOLDOWN"
 // @Header      429  {integer} Retry-After "Số giây còn phải chờ trước lần đăng nhập tiếp theo"
 // @Failure     500  {object} failResponse "INTERNAL_ERROR"
@@ -78,8 +79,8 @@ func (h *AuthController) Login(c *gin.Context) {
 }
 
 // Logout godoc
-// @Summary     Đăng xuất và thu hồi phiên
-// @Description Thu hồi phiên của JWT hiện tại. Sau đó JWT này bị từ chối.
+// @Summary     Đăng xuất và kết thúc phiên hiện tại
+// @Description Ghi logged_out_at một lần cho sid hiện tại nếu phiên chưa hết hạn; giữ nguyên expires_at. JWT cũ bị từ chối ngay, cooldown bắt đầu từ logged_out_at. Phiên hết hạn tự động không ghi logged_out_at.
 // @Tags        auth
 // @Produce     json
 // @Security    BearerAuth
@@ -97,6 +98,7 @@ func (h *AuthController) Logout(c *gin.Context) {
 
 // Me godoc
 // @Summary     Thông tin người dùng hiện tại
+// @Description Kiểm tra JWT HS256 (sub, role, sid, iat, exp), phiên đang hoạt động và vai trò hiện tại trong users. Các trường student_code, faculty, major có thể null.
 // @Tags        auth
 // @Produce     json
 // @Security    BearerAuth

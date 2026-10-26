@@ -46,6 +46,7 @@ type failure struct {
 
 var failures = []failure{
 	{service.ErrInvalidCredentials, 401, "INVALID_CREDENTIALS", "Sai tên đăng nhập hoặc mật khẩu"},
+	{service.ErrAlreadyLoggedIn, 409, "ALREADY_LOGGED_IN", "Tài khoản đang đăng nhập trên một phiên khác"},
 	{service.ErrLoginCooldown, 429, "LOGIN_COOLDOWN", "Tài khoản đang trong thời gian chờ đăng nhập lại"},
 	{service.ErrSessionRevoked, 401, "SESSION_REVOKED", "Phiên đăng nhập đã bị thu hồi hoặc đã hết hạn"},
 	{service.ErrUnauthorized, 401, "UNAUTHORIZED", "Chưa đăng nhập hoặc phiên không hợp lệ"},
