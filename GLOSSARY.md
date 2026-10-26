@@ -8,6 +8,14 @@ Các thuật ngữ dùng chung khi trao đổi về hệ thống đăng ký họ
 Danh tính dùng để truy cập hệ thống, gắn với một người và vai trò của người đó.
 _Avoid_: Sinh viên (không phải tài khoản nào cũng là sinh viên)
 
+**Phiên đăng nhập (Auth Session)**:
+Khoảng thời gian một tài khoản được dùng token sau khi đăng nhập; mỗi tài khoản chỉ có một phiên hoạt động. Phiên kết thúc khi hết hạn hoặc khi người dùng đăng xuất.
+_Avoid_: Session (dễ nhầm với buổi học), phiên đăng ký, token
+
+**Thời gian chờ đăng nhập lại (Login Cooldown)**:
+Khoảng chờ tính từ lúc phiên gần nhất kết thúc; tài khoản chưa được đăng nhập lại trước khi hết khoảng này.
+_Avoid_: Khóa tài khoản, lockout
+
 **Vai trò (Role)**:
 Phạm vi quyền của một tài khoản. Dự án có hai vai trò: sinh viên (student) và quản trị (admin).
 _Avoid_: Permission, nhóm quyền, chức vụ

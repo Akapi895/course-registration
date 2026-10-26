@@ -114,8 +114,8 @@ Form tạo lớp và cấu hình thời gian đăng ký tự lấy `semester.id`
 
 1. Người dùng gửi username và password tới API đăng nhập.
 2. Hệ thống kiểm tra thông tin xác thực. Nếu sai, trả `401 INVALID_CREDENTIALS`.
-3. Trong transaction khóa bản ghi người dùng, backend kiểm tra phiên gần nhất: phiên còn hoạt động thì trả `409 ALREADY_LOGGED_IN`; phiên đã kết thúc nhưng chưa hết 20 phút cooldown thì trả `429 LOGIN_COOLDOWN`.
-4. Nếu được phép đăng nhập, backend tạo một phiên mới có thời hạn 20 phút, sinh JWT chứa `sub`, `role`, `sid`, `iat`, `exp` và trả `access_token`.
+3. Trong transaction khóa bản ghi người dùng, backend kiểm tra phiên gần nhất: phiên còn hoạt động thì trả `409 ALREADY_LOGGED_IN`; phiên đã kết thúc nhưng chưa hết `LOGIN_COOLDOWN` (mặc định 20 phút) thì trả `429 LOGIN_COOLDOWN`.
+4. Nếu được phép đăng nhập, backend tạo một phiên mới có thời hạn `JWT_TTL` (mặc định 20 phút), sinh JWT chứa `sub`, `role`, `sid`, `iat`, `exp` và trả `access_token`.
 5. Client gửi token trong header `Authorization` để gọi `GET /api/auth/me`, lấy thông tin tài khoản và điều hướng theo vai trò.
 6. Client tiếp tục gửi token trong header của các request cần xác thực. Khoa và ngành đã lấy từ `/api/auth/me` được dùng để hiển thị thông tin sinh viên và lọc lớp theo ngành.
 
@@ -177,7 +177,7 @@ Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên �
 | Phương thức | Endpoint | Mô tả | Quyền truy cập |
 |---|---|---|---|
 | POST | `/api/auth/login` | Đăng nhập hệ thống, trả về JWT | Công khai |
-| POST | `/api/auth/logout` | Đăng xuất hệ thống và thu hồi phiên đăng nhập | Đã xác thực |
+| POST | `/api/auth/logout` | Đăng xuất và kết thúc phiên đăng nhập hiện tại | Đã xác thực |
 | GET | `/api/auth/me` | Lấy thông tin tài khoản hiện tại, gồm khoa và ngành | Đã xác thực |
 
 #### 5.2.2. Tra cứu lớp học phần
@@ -291,5 +291,5 @@ Tài liệu tập trung vào các chức năng nghiệp vụ, kiểm soát truy 
 | 12 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
 | 13 | Yêu cầu đăng ký nhiều lớp ghi nhận các lớp hợp lệ và trả lý do từ chối cho các lớp còn lại; một số lớp bị từ chối không làm mất các lớp đã được ghi nhận. Yêu cầu có danh sách rỗng, trùng lớp hoặc quá 20 lớp bị từ chối toàn bộ. |
 | 14 | Một tài khoản chỉ có một phiên hoạt động trên mọi thiết bị; đăng nhập lại khi phiên còn hoạt động nhận `409 ALREADY_LOGGED_IN` và không đổi thời hạn phiên. |
-| 15 | Tự đăng xuất trước hạn bắt đầu cooldown 20 phút từ `logged_out_at`; tự hết hạn bắt đầu cooldown 20 phút từ `expires_at`; đăng nhập đúng khi hết cooldown được chấp nhận. |
+| 15 | Tự đăng xuất trước hạn bắt đầu cooldown `LOGIN_COOLDOWN` (mặc định 20 phút) từ `logged_out_at`; tự hết hạn bắt đầu cooldown từ `expires_at`; đăng nhập đúng khi hết cooldown được chấp nhận. |
 | 16 | Frontend tự xóa trạng thái xác thực và chuyển tới màn hình đăng nhập khi JWT hết hạn, kể cả khi người dùng không thao tác; backend vẫn từ chối token hết hạn. |

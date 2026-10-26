@@ -70,7 +70,9 @@ sequenceDiagram
     S->>S: Kiểm tra mật khẩu
     alt Thông tin hợp lệ
         S->>R: Tạo phiên đăng nhập
-        R->>DB: INSERT auth_sessions
+    R->>DB: BEGIN; khóa users; kiểm tra phiên gần nhất
+    Note over R,DB: Phiên hoạt động: 409 ALREADY_LOGGED_IN; chưa hết cooldown: 429 LOGIN_COOLDOWN
+    R->>DB: INSERT auth_sessions; COMMIT nếu được phép
         DB-->>R: Thành công
         S->>S: Tạo Access JWT chứa sid
         S-->>C: Access JWT
@@ -84,7 +86,7 @@ sequenceDiagram
     C->>S: Xác minh JWT
     S->>S: Kiểm tra chữ ký, exp và claims
     S->>R: Kiểm tra phiên theo sid
-    R->>DB: SELECT auth_sessions
+    R->>DB: SELECT auth_sessions JOIN users (vai trò hiện tại)
     DB-->>R: Trạng thái và thời hạn phiên
     R-->>S: Kết quả kiểm tra
     S-->>C: Cho phép hoặc từ chối
@@ -94,16 +96,18 @@ sequenceDiagram
     FE->>C: POST /api/auth/logout + JWT
     C->>S: Xác định phiên từ sid
     S->>R: Thu hồi phiên
-    R->>DB: UPDATE auth_sessions.revoked_at
+    R->>DB: UPDATE auth_sessions.logged_out_at nếu chưa logout và chưa hết hạn
     DB-->>R: Thành công
     S-->>C: Xác nhận đăng xuất
     C-->>FE: 200 OK
     FE->>FE: Xóa Access JWT
 ```
 
-Access JWT chứa `sub`, `role`, `sid` và `exp`. Frontend giữ JWT trong bộ nhớ và gửi trong header `Authorization: Bearer <token>`.
+Access JWT HS256 chứa `sub`, `role`, `sid`, `iat`, `exp`. Frontend giữ JWT trong `sessionStorage` (bộ nhớ khi storage không khả dụng) và gửi trong header `Authorization: Bearer <token>`.
 
-Backend kiểm tra chữ ký, `exp`, và phiên tương ứng với `sid` trong `auth_sessions`: phiên phải tồn tại, chưa bị thu hồi và chưa hết hạn. Đăng xuất đặt `revoked_at`, nên JWT cũ bị từ chối ngay cả khi chưa hết hạn. Thời hạn JWT không vượt quá thời hạn phiên.
+Backend kiểm tra chữ ký, thuật toán, claim JWT và phiên tương ứng với `sid`: `sub` khớp người sở hữu, `role` khớp vai trò hiện tại, `iat`/`exp` khớp thời điểm tạo/hết hạn ở độ chính xác giây. Phiên hoạt động khi `logged_out_at IS NULL` và chưa đến `expires_at`. Backend dùng cùng đồng hồ ứng dụng khi tạo, kiểm tra và logout phiên để thống nhất với JWT.
+
+Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Kiểm tra mật khẩu trước, rồi khóa dòng `users`, kiểm tra phiên gần nhất và tạo phiên trong cùng transaction. Login khi phiên còn hoạt động trả `409 ALREADY_LOGGED_IN`, giữ nguyên phiên. Logout chỉ ghi `logged_out_at` một lần trước hạn; tự hết hạn không cập nhật bản ghi. Cooldown cho cả hai vai trò tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất cộng `LOGIN_COOLDOWN`. `expires_at = created_at + JWT_TTL`; đổi TTL chỉ ảnh hưởng phiên mới.
 
 Phase 1 không có refresh token. Khi JWT hết hạn, người dùng đăng nhập lại.
 
@@ -165,15 +169,15 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 - **Tổng quan dữ liệu:** Hệ thống sử dụng PostgreSQL với 9 bảng để lưu trữ người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần, phiên đăng nhập và kết quả học tập. Cấu trúc bảng và các quan hệ được mô tả chi tiết trong `database-design.md`.
 - **Truy cập dữ liệu:** Tầng Repository chịu trách nhiệm truy vấn và cập nhật PostgreSQL. Tầng Service xử lý logic nghiệp vụ và truy cập dữ liệu thông qua Repository, không thực hiện truy vấn SQL trực tiếp.
 - **Giao dịch và tính nhất quán:** Đăng ký và hủy học phần sử dụng database transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Các thay đổi chỉ được ghi nhận khi toàn bộ thao tác thành công.
-- **Dữ liệu xác thực:** Bảng `auth_sessions` lưu thời hạn và trạng thái thu hồi của phiên đăng nhập; không lưu Access JWT. Cột `refresh_token_hash` được giữ theo schema hiện tại và chưa dùng trong Phase 1.
+- **Dữ liệu xác thực:** Bảng `auth_sessions` chỉ có `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm index (`user_id`, `created_at`); không lưu Access JWT hoặc refresh token.
 
 ## 5. Xác thực và phân quyền
 
-- **Access Token:** JWT có thời hạn ngắn, chứa định danh người dùng (`sub`), vai trò (`role`), mã phiên (`sid`) và thời điểm hết hạn (`exp`).
-- **Phiên đăng nhập:** Mỗi lần đăng nhập tạo một bản ghi trong `auth_sessions`. `sid` trỏ tới bản ghi này.
-- **Kiểm tra token:** Backend xác minh chữ ký, `exp` và trạng thái phiên (chưa thu hồi, chưa hết hạn) trước khi cho phép truy cập các API được bảo vệ.
+- **Access Token:** JWT HS256 chứa định danh người dùng (`sub`), vai trò (`role`), mã phiên (`sid`), thời điểm phát hành (`iat`) và hết hạn (`exp`).
+- **Phiên đăng nhập:** Mỗi lần đăng nhập được phép tạo một bản ghi trong `auth_sessions`. Mỗi tài khoản chỉ có một phiên hoạt động; `sid` trỏ tới bản ghi này.
+- **Kiểm tra token:** Backend xác minh chữ ký, thuật toán, claim và phiên (chưa logout, chưa hết hạn); đối chiếu người sở hữu, thời điểm tạo/hết hạn và vai trò hiện tại trước khi cho phép truy cập.
 - **Phân quyền:** Quyền truy cập được kiểm tra theo vai trò Sinh viên/Quản trị viên và phạm vi dữ liệu được phép thao tác.
-- **Đăng xuất:** Backend đặt `revoked_at` cho phiên hiện tại. JWT của phiên đó không còn được chấp nhận. Frontend xóa JWT đang lưu.
+- **Đăng xuất:** Backend ghi `logged_out_at` một lần cho phiên hiện tại còn hạn. JWT mất hiệu lực ngay, frontend xóa JWT đang lưu. Phiên tự hết hạn giữ `logged_out_at = NULL`; cả hai trường hợp bắt đầu cooldown từ thời điểm kết thúc tương ứng.
 - **Bảo mật:** Mật khẩu được băm trước khi lưu trữ. JWT secret và thời hạn token được quản lý qua biến môi trường. Token gửi qua header `Authorization`, không dùng cookie, nên Phase 1 không cần cơ chế chống CSRF riêng.
 
 ## 6. Kiến trúc triển khai và cấu hình
