@@ -1,5 +1,5 @@
-import { useCallback, useState, type ReactNode } from 'react'
-import { BookOpen, CalendarDays, CheckCircle2, ChevronDown, FilterX, Gauge, Layers, Loader2, Lock, Search, XCircle } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { BookOpen, CalendarDays, CheckCircle2, Eye, FilterX, Gauge, Layers, Loader2, Lock, Search, Trash2, XCircle } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import type { ClassSummary, RegisteredClass, TimetableEntry } from '../api/types'
@@ -62,14 +62,19 @@ export function StudentDashboard() {
               {semester && <PeriodBanner semester={semester} />}
               <div className="grid gap-4 md:grid-cols-3">
                 <Stat label="Tổng tín chỉ đã đăng ký" value={cur} icon={<BookOpen className="h-5 w-5" />} sub={max ? (cur <= max ? `Tối đa ${max} tín chỉ` : 'Vượt mức tối đa') : undefined} />
-                <Stat label="Số học phần đã đăng ký" value={regs.length} icon={<Layers className="h-5 w-5" />} sub={semester?.name} />
+                <Stat label="Số học phần đã đăng ký" value={regs.length} icon={<Layers className="h-5 w-5" />} sub={semester?.name ? semester.name.replace(/\s*-\s*(đang mở|chưa mở|đã đóng)$/i, '') : undefined} />
                 {max ? <Card className="p-5"><p className="text-sm text-muted">Tiến độ tín chỉ</p><p className="mb-3 mt-1 text-2xl font-semibold tabular-nums">{cur}<span className="text-base font-normal text-muted">/{max}</span></p><CreditBar value={cur} max={max} /></Card>
                   : <Stat label="Buổi học mỗi tuần" value={week.length} icon={<CalendarDays className="h-5 w-5" />} />}
               </div>
               <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">
                 <Card title="Học phần đã đăng ký gần đây" action={<Link to="/student/registrations" className="text-sm font-medium text-primary hover:underline">Xem tất cả</Link>}>
                   {recent.length === 0 ? <Empty title="Chưa có học phần nào" text="Bạn chưa đăng ký học phần nào trong học kỳ này." action={<Button onClick={() => navigate('/student/classes')}>Tìm lớp học phần</Button>} /> : (
-                    <Table head={['Học phần', 'Lớp', 'TC', 'Đăng ký lúc']} minWidth={600}>
+                    <Table head={[
+                      { label: 'Học phần', className: 'w-auto' },
+                      { label: 'Lớp', className: 'w-44' },
+                      { label: 'TC', className: 'w-16' },
+                      { label: 'Đăng ký lúc', className: 'w-44' },
+                    ]} minWidth={600}>
                       {recent.slice(0, 5).map((r) => (
                         <tr key={r.id} className="hover:bg-slate-50">
                           <Td><button type="button" onClick={() => detail.show(r.class_id)} className="text-left font-medium text-primary hover:underline">{r.course_name}</button><div className="text-xs text-muted">{r.course_code}</div></Td>
@@ -123,6 +128,12 @@ export function StudentClasses() {
   const locked = useSessionLocked()
   const [q, setQ] = useState('')
   const [scope, setScope] = useState<Scope>('major')
+  const [classesByScope, setClassesByScope] = useState<Partial<Record<Scope, ClassSummary[]>>>({})
+  const [classesLoading, setClassesLoading] = useState(false)
+  const scopeRef = useRef(scope)
+  scopeRef.current = scope
+  const scopeAbortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => scopeAbortRef.current?.abort(), [])
   const [status, setStatus] = useState('')
   const [page, setPage] = useState(1)
   // Ticked classes, by class id. Each one is submitted as its own registration request.
@@ -130,12 +141,39 @@ export function StudentClasses() {
   const [batch, setBatch] = useState<BatchItem[] | null>(null)
   const [running, setRunning] = useState(false)
   const resource = useRequest(useCallback(async (signal: AbortSignal) => {
-    const [loaded, regs] = await Promise.all([loadClasses(scope, major, signal), api.listRegistrations(signal)])
+    const [loaded, regs] = await Promise.all([loadClasses(scopeRef.current, major, signal), api.listRegistrations(signal)])
     return { semester: loaded.semester, classes: loaded.classes, regs: regs.registrations.filter((r) => r.status === 'registered' && loaded.termIds.has(r.class_id)) }
-  }, [scope, major]))
-  const ready = !!resource.data && !resource.loading && !resource.error
+  }, [major]))
+  useEffect(() => {
+    if (resource.data?.classes) {
+      setClassesByScope((prev) => ({ ...prev, [scopeRef.current]: resource.data!.classes }))
+    }
+  }, [resource.data])
+
+  const onScopeChange = async (nextScope: Scope) => {
+    setScope(nextScope)
+    setPage(1)
+    if (classesByScope[nextScope]) return
+    scopeAbortRef.current?.abort()
+    const controller = new AbortController()
+    scopeAbortRef.current = controller
+    setClassesLoading(true)
+    try {
+      const res = await loadClasses(nextScope, major, controller.signal)
+      if (!controller.signal.aborted) {
+        setClassesByScope((prev) => ({ ...prev, [nextScope]: res.classes }))
+        setClassesLoading(false)
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        setClassesLoading(false)
+      }
+    }
+  }
+
+  const ready = !!resource.data && !resource.error
   const semester = resource.data?.semester
-  const classes = resource.data?.classes ?? []
+  const classes = classesByScope[scope] ?? resource.data?.classes ?? []
   const regs = resource.data?.regs ?? []
   const registered = new Set(regs.map((r) => r.class_id))
   const open = !!semester?.registration_open
@@ -155,7 +193,14 @@ export function StudentClasses() {
   const pickList = Object.values(picked)
   const pickedCredits = pickList.reduce((n, c) => n + c.credits, 0)
   const filtered = !!q || !!status || scope !== 'major'
-  const reset = () => { setQ(''); setScope('major'); setStatus(''); setPage(1) }
+  const reset = () => {
+    setQ('')
+    setStatus('')
+    setPage(1)
+    if (scope !== 'major') {
+      onScopeChange('major')
+    }
+  }
   const toggle = (c: ClassSummary) => setPicked((p) => { const n = { ...p }; if (n[c.id]) delete n[c.id]; else n[c.id] = c; return n })
 
   // One request carries every ticked class; each class is accepted or rejected on its own.
@@ -179,7 +224,7 @@ export function StudentClasses() {
     if (items.every((x) => x.status === 'ok')) markSubmitted()
   }
   const okCount = batch?.filter((b) => b.status === 'ok').length ?? 0
-  const closeBatch = () => { setBatch(null); resource.reload() }
+  const closeBatch = () => { setBatch(null); setClassesByScope({}); resource.reload() }
 
   const row = (c: ClassSummary) => {
     const mine = registered.has(c.id)
@@ -194,7 +239,7 @@ export function StudentClasses() {
             aria-label={mine ? `Đã đăng ký ${c.course_name}` : `Chọn ${c.course_name} ${c.class_code}`} />
         </Td>
         <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => detail.show(c.id)} className="hover:underline">{c.class_code}</button></Td>
-        <Td><span className={cx('font-medium', mine && 'text-emerald-900')}>{c.course_name}</span><div className="text-xs text-muted">{c.course_code}</div></Td>
+        <Td><button type="button" onClick={() => detail.show(c.id)} className={cx('text-left font-medium hover:underline', mine && 'text-emerald-900')}>{c.course_name}</button><div className="text-xs text-muted">{c.course_code}</div></Td>
         <Td>{c.credits}</Td>
         <Td><Capacity c={c} /></Td>
         <Td>{mine ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" />Đã đăng ký</Badge> : full ? <Badge>Hết chỗ</Badge> : <Badge>Chưa đăng ký</Badge>}</Td>
@@ -204,7 +249,7 @@ export function StudentClasses() {
 
   return (
     <Layout title="Đăng ký học phần">
-      <PageHeader title="Đăng ký học phần" desc={ready && semester && <>Học kỳ: <b className="text-ink">{semester.name}</b> · Tổng tín chỉ hiện tại: <b className="text-ink">{cur}</b>/{semester.max_credits}</>} />
+      <PageHeader title="Đăng ký học phần" desc={ready && semester && <>Học kỳ: <b className="text-ink">{semester.name.replace(/\s*-\s*(đang mở|chưa mở|đã đóng)$/i, '')}</b> · Tổng tín chỉ hiện tại: <b className="text-ink">{cur}</b>/{semester.max_credits}</>} />
       {ready && semester && <div className="mb-6"><PeriodBanner semester={semester} /></div>}
       <Card className="mb-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -213,7 +258,7 @@ export function StudentClasses() {
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1) }} placeholder="Mã học phần, tên học phần hoặc mã lớp" className="pl-10" />
           </label>
-          <PillToggle label="Phạm vi" value={scope} onChange={(v) => { setScope(v); setPage(1) }} options={[{ value: 'major', label: 'Theo ngành' }, { value: 'all', label: 'Toàn trường' }] as const} />
+          <PillToggle label="Phạm vi" value={scope} onChange={onScopeChange} options={[{ value: 'major', label: 'Theo ngành' }, { value: 'all', label: 'Toàn trường' }] as const} />
           <Select aria-label="Trạng thái" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }} className="lg:w-48"><option value="">Mọi trạng thái</option><option value="registered">Đã đăng ký</option><option value="unregistered">Chưa đăng ký</option></Select>
           <Button variant="ghost" onClick={reset} disabled={!filtered}><FilterX className="h-4 w-4" />Xóa bộ lọc</Button>
         </div>
@@ -222,30 +267,41 @@ export function StudentClasses() {
       {ready && semester && !open && <div className="mb-4"><Alert tone="info" title="Không trong thời gian đăng ký">Hiện không trong thời gian đăng ký học phần. Bạn chỉ có thể xem danh sách lớp.</Alert></div>}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 text-sm">
-          <span><b>{list.length}</b> lớp học phần</span>
+          <span><b>{classesLoading ? '…' : list.length}</b> lớp học phần</span>
           <span className="flex items-center gap-4 text-muted"><span className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded bg-emerald-200 ring-1 ring-emerald-500" />Đã đăng ký</span><span className="flex items-center gap-2"><span className="inline-block h-3 w-3 rounded bg-slate-200" />Không thể chọn</span></span>
         </div>
-        <Fetch r={resource} skeleton={<div className="space-y-3 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>}>
-          {() => list.length === 0 ? (
-            <Empty title="Không tìm thấy lớp phù hợp" text="Thử từ khóa khác hoặc xóa bộ lọc." action={<Button variant="secondary" onClick={reset}>Xóa bộ lọc</Button>} icon={<Search className="h-6 w-6" />} />
-          ) : <>
-            <Table head={[<span className="sr-only">Chọn</span>, 'Mã lớp', 'Tên học phần', 'TC', 'Sĩ số', 'Trạng thái']} minWidth={760}>{shown.map(row)}</Table>
-            <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
-          </>}
-        </Fetch>
+        {resource.error ? (
+          <ErrorNotice error={resource.error} retry={resource.reload} />
+        ) : !ready || resource.loading || classesLoading ? (
+          <div className="space-y-3 p-4">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : list.length === 0 ? (
+          <Empty title="Không tìm thấy lớp phù hợp" text="Thử từ khóa khác hoặc xóa bộ lọc." action={<Button variant="secondary" onClick={reset}>Xóa bộ lọc</Button>} icon={<Search className="h-6 w-6" />} />
+        ) : <>
+          <Table head={[
+            { label: <span className="sr-only">Chọn</span>, className: 'w-12' },
+            { label: 'Mã lớp', className: 'w-44' },
+            { label: 'Tên học phần', className: 'w-auto' },
+            { label: 'TC', className: 'w-16' },
+            { label: 'Sĩ số', className: 'w-36' },
+            { label: 'Trạng thái', className: 'w-40' },
+          ]} minWidth={760}>{shown.map(row)}</Table>
+          <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
+        </>}
       </Card>
       {ready && canAct && (
-        <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-lg">
-          <p className="text-sm">
-            Đã chọn <b>{pickList.length}</b> học phần · <b>{pickedCredits}</b> tín chỉ
-            <span className="text-muted"> · Tổng dự kiến {cur + pickedCredits}{semester && `/${semester.max_credits}`} TC</span>
-            {semester && cur + pickedCredits > semester.max_credits && <span className="ml-2 font-medium text-red-700">Vượt giới hạn tối đa</span>}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="secondary" disabled={!pickList.length} onClick={() => setPicked({})}>Bỏ chọn</Button>
-            <Button disabled={!pickList.length} loading={running} onClick={confirm}>{running ? 'Đang đăng ký…' : `Xác nhận đăng ký${pickList.length ? ` (${pickList.length})` : ''}`}</Button>
+        <Card className="mt-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              Đã chọn <b>{pickList.length}</b> học phần · <b>{pickedCredits}</b> tín chỉ
+              <span className="text-muted"> · Tổng dự kiến {cur + pickedCredits}{semester && `/${semester.max_credits}`} TC</span>
+              {semester && cur + pickedCredits > semester.max_credits && <span className="ml-2 font-medium text-red-700">Vượt giới hạn tối đa</span>}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" disabled={!pickList.length} onClick={() => setPicked({})}>Bỏ chọn</Button>
+              <Button disabled={!pickList.length} loading={running} onClick={confirm}>{running ? 'Đang đăng ký…' : `Xác nhận đăng ký${pickList.length ? ` (${pickList.length})` : ''}`}</Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
       {batch && (
         <Modal open closable={!running} onClose={closeBatch} title={running ? 'Đang xử lý đăng ký…' : 'Kết quả đăng ký'} footer={<Button onClick={closeBatch} loading={running}>{running ? 'Đang xử lý…' : 'Đóng'}</Button>}>
@@ -271,25 +327,41 @@ export function StudentClasses() {
 }
 
 function RegistrationRow({ r, open, schedules, onCancel, onDetail }: { r: RegisteredClass; open: boolean; schedules: TimetableEntry[]; onCancel: (r: RegisteredClass) => void; onDetail: (classId: number) => void }) {
-  const [exp, setExp] = useState(false)
+  const scheduleText = schedules.length
+    ? schedules.map((s) => `${DAYS[s.day_of_week]} (tiết ${s.start_period}–${s.end_period})`).join(' · ')
+    : 'Chưa có lịch học'
   return (
-    <li>
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-        <button onClick={() => setExp(!exp)} aria-expanded={exp} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left">
-          <ChevronDown className={cx('h-5 w-5 shrink-0 text-muted transition-transform', exp && 'rotate-180')} />
-          <span className="min-w-0">
-            <span className="block font-semibold">{r.course_name} <span className="font-normal text-muted">· {r.course_code}</span></span>
-            <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-muted"><span className="font-medium text-ink">{r.class_code}</span>· {r.credits} tín chỉ · Đăng ký lúc {fmtDT(r.registered_at)}</span>
+    <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50/60">
+      <button type="button" onClick={() => onDetail(r.class_id)} className="group flex min-w-0 flex-1 items-center gap-3 text-left">
+        <span className="min-w-0">
+          <span className="block font-semibold transition-colors group-hover:text-primary">
+            {r.course_name} <span className="font-normal text-muted">· {r.course_code}</span>
           </span>
-        </button>
-        {open ? <Button size="sm" variant="secondary" className="text-red-600" onClick={() => onCancel(r)}>Hủy đăng ký</Button> : <span className="inline-flex items-center gap-1 whitespace-nowrap text-[13px] text-muted"><Lock className="h-3.5 w-3.5" />Đã khóa</span>}
+          <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-muted">
+            <span className="font-medium text-ink">{r.class_code}</span>
+            <span>·</span>
+            <span>{r.credits} tín chỉ</span>
+            <span>·</span>
+            <span>{scheduleText}</span>
+            <span>·</span>
+            <span>Đăng ký lúc {fmtDT(r.registered_at)}</span>
+          </span>
+        </span>
+      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button size="sm" variant="secondary" onClick={() => onDetail(r.class_id)}>
+          <Eye className="h-4 w-4" />Chi tiết
+        </Button>
+        {open ? (
+          <Button size="sm" variant="secondary" className="text-red-600 hover:bg-red-50" onClick={() => onCancel(r)}>
+            <Trash2 className="h-4 w-4" />Hủy đăng ký
+          </Button>
+        ) : (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap text-[13px] text-muted">
+            <Lock className="h-3.5 w-3.5" />Đã khóa
+          </span>
+        )}
       </div>
-      {exp && (
-        <div className="px-5 pb-4">
-          {schedules.length ? <ScheduleTable schedules={schedules} /> : <p className="text-sm text-muted">Chưa có lịch học.</p>}
-          <button type="button" onClick={() => onDetail(r.class_id)} className="mt-2 inline-block text-sm font-medium text-primary hover:underline">Xem chi tiết lớp</button>
-        </div>
-      )}
     </li>
   )
 }
@@ -325,6 +397,7 @@ export function StudentRegistrations() {
             </Card>
           </> }}
         </Fetch>
+
       </div>
       {flow.modal}
       {detail.modal}

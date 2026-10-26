@@ -15,7 +15,7 @@ function AuthShell({ children }: { children: ReactNode }) {
       <main className="flex flex-col bg-white px-5 py-6 sm:px-12">
         <div className="flex items-center gap-3 lg:hidden">
           <Logo size={64} />
-          <div><p className="text-xs text-muted">Trường Đại học Công nghệ</p><p className="font-semibold">Cổng đăng ký học phần</p></div>
+          <div className="min-w-0 leading-tight"><p className="whitespace-nowrap text-xs text-muted">Trường Đại học Công nghệ</p><p className="whitespace-nowrap font-semibold">Cổng đăng ký học phần</p></div>
         </div>
         <div className="mx-auto my-auto w-full max-w-md py-8">{children}</div>
       </main>
