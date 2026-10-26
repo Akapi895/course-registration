@@ -17,10 +17,11 @@ function Routes() {
   const p = path.split('?')[0]
   useEffect(() => {
     if (auth.loading || auth.error) return
-    if (p === '/' || p === '') navigate(auth.user ? home(auth.user.role) : '/login')
-    else if (!publicPages[p] && !auth.user) navigate('/login?expired=1')
+    const loginPath = auth.expired ? '/login?expired=1' : '/login'
+    if (p === '/' || p === '') navigate(auth.user ? home(auth.user.role) : loginPath)
+    else if (!publicPages[p] && !auth.user) navigate(loginPath)
     else if (publicPages[p] && auth.user) navigate(home(auth.user.role))
-  }, [p, auth.loading, auth.error, auth.user])
+  }, [p, auth.loading, auth.error, auth.expired, auth.user])
   if (auth.loading) return <div role="status" aria-label="Đang xác thực" className="mx-auto max-w-xl space-y-4 p-10"><Logo /><Skeleton className="h-16" /></div>
   if (auth.error) return <StatusPage code="network" onRetry={auth.refreshUser} onHome={() => { auth.clearSession(); navigate('/login') }} homeLabel="Về trang đăng nhập" />
   const PublicPage = publicPages[p]
