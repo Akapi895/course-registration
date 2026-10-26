@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,12 +12,14 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
-	JWTTTL      time.Duration
-	SessionTTL  time.Duration
-	FrontendDir string
+	Port          string
+	DatabaseURL   string
+	JWTSecret     string
+	JWTTTL        time.Duration
+	SessionTTL    time.Duration
+	LoginCooldown time.Duration
+	FrontendDir   string
+	MaxCredits    int
 }
 
 // Load reads the settings from the environment. A .env file in the current or
@@ -40,14 +43,28 @@ func Load() (*Config, error) {
 	}
 
 	var err error
-	if cfg.JWTTTL, err = getDuration("JWT_TTL", time.Hour); err != nil {
+	if cfg.JWTTTL, err = getDuration("JWT_TTL", 20*time.Minute); err != nil {
 		problems = append(problems, err.Error())
 	}
-	if cfg.SessionTTL, err = getDuration("SESSION_TTL", 24*time.Hour); err != nil {
+	if cfg.SessionTTL, err = getDuration("SESSION_TTL", cfg.JWTTTL); err != nil {
 		problems = append(problems, err.Error())
 	}
-	if len(problems) == 0 && cfg.SessionTTL < cfg.JWTTTL {
-		problems = append(problems, "SESSION_TTL must not be shorter than JWT_TTL")
+	if cfg.LoginCooldown, err = getDuration("LOGIN_COOLDOWN", 20*time.Minute); err != nil {
+		problems = append(problems, err.Error())
+	}
+	if value := os.Getenv("MAX_CREDITS"); value != "" {
+		limit, parseErr := strconv.ParseInt(value, 10, 32)
+		if parseErr != nil || limit <= 0 {
+			problems = append(problems, "MAX_CREDITS must be a positive integer up to 2147483647")
+		} else {
+			cfg.MaxCredits = int(limit)
+		}
+	}
+	if len(problems) == 0 && cfg.SessionTTL != cfg.JWTTTL {
+		problems = append(problems, "SESSION_TTL must equal JWT_TTL because sessions and tokens share one expiry")
+	}
+	if len(problems) == 0 && cfg.JWTTTL < time.Second {
+		problems = append(problems, "JWT_TTL must be at least 1s")
 	}
 
 	if len(problems) > 0 {

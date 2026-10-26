@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"math"
 	"strconv"
 	"time"
 
@@ -49,22 +50,56 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 	}
 	placeholderHash := sha256.Sum256(placeholder)
 
-	now := time.Now()
-	sid, err := s.sessions.Create(ctx, user.ID, hex.EncodeToString(placeholderHash[:]), now.Add(s.cfg.SessionTTL))
+	var token string
+	err = s.sessions.WithTx(ctx, func(tx *repository.SessionTx) error {
+		found, err := tx.LockUser(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return ErrInvalidCredentials
+		}
+		previousExpiry, err := tx.LatestExpiry(ctx, user.ID)
+		if err != nil {
+			return err
+		}
+		// Read time after acquiring the lock; a concurrent login may have held it.
+		// Compare with full precision but use whole-second windows so the stored
+		// expires_at and the JWT exp cannot drift apart.
+		now := time.Now().UTC()
+		expiresAt := now.Truncate(time.Second).Add(s.cfg.JWTTTL)
+		if previousExpiry != nil {
+			windowEnd := previousExpiry.Truncate(time.Second)
+			if now.Before(windowEnd) {
+				// Re-login, including after manual logout, cannot extend this window.
+				expiresAt = windowEnd
+			} else if allowedAt := windowEnd.Add(s.cfg.LoginCooldown); now.Before(allowedAt) {
+				return &LoginCooldownError{
+					LoginAllowedAt: allowedAt,
+					RetryAfter:     int(math.Ceil(allowedAt.Sub(now).Seconds())),
+				}
+			}
+		}
+		sid, err := tx.Create(ctx, user.ID, hex.EncodeToString(placeholderHash[:]), expiresAt)
+		if err != nil {
+			return err
+		}
+		claims := tokenClaims{
+			Role: user.Role,
+			SID:  sid,
+			RegisteredClaims: jwt.RegisteredClaims{
+				Subject:   strconv.FormatInt(user.ID, 10),
+				IssuedAt:  jwt.NewNumericDate(now),
+				ExpiresAt: jwt.NewNumericDate(expiresAt),
+			},
+		}
+		token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(s.cfg.JWTSecret))
+		return err
+	})
 	if err != nil {
 		return "", err
 	}
-
-	claims := tokenClaims{
-		Role: user.Role,
-		SID:  sid,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   strconv.FormatInt(user.ID, 10),
-			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.JWTTTL)),
-		},
-	}
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(s.cfg.JWTSecret))
+	return token, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, sid string) error {

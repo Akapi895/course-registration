@@ -1,12 +1,19 @@
 export const AUTH_EXPIRED = 'courseRegistration:auth-expired'
-let accessToken: string | null = null
+const TOKEN_KEY = 'courseRegistration:access-token'
+let accessToken: string | null = (() => {
+  try { return sessionStorage.getItem(TOKEN_KEY) } catch { return null }
+})()
 
 export class ApiError extends Error {
-  constructor(message: string, public code: string, public status = 0) { super(message) }
+  constructor(message: string, public code: string, public status = 0, public retryAfter?: number, public loginAllowedAt?: string) { super(message) }
 }
 export const getAccessToken = () => accessToken
 export function setAccessToken(value: string | null) {
   accessToken = value
+  try {
+    if (value) sessionStorage.setItem(TOKEN_KEY, value)
+    else sessionStorage.removeItem(TOKEN_KEY)
+  } catch { /* Requests can still use the in-memory token when storage is unavailable. */ }
 }
 export function tokenExpiresAt() {
   try {
@@ -31,11 +38,12 @@ export async function request<T>(path: string, options: { method?: string; body?
   if (auth && response.status === 401 && accessToken === usedToken) {
     window.dispatchEvent(new Event(AUTH_EXPIRED))
   }
-  let envelope: { status?: string; data?: T & { code?: string; message?: string } }
+  let envelope: { status?: string; data?: T & { code?: string; message?: string; retry_after?: number; login_allowed_at?: string } }
   try { envelope = await response.json() }
   catch { throw new ApiError('Máy chủ trả về dữ liệu không hợp lệ. Vui lòng thử lại.', 'INVALID_RESPONSE', response.status) }
   if (!response.ok || envelope.status !== 'success') {
-    throw new ApiError(envelope.data?.message || 'Yêu cầu bị từ chối.', envelope.data?.code || 'HTTP_ERROR', response.status)
+    throw new ApiError(envelope.data?.message || 'Yêu cầu bị từ chối.', envelope.data?.code || 'HTTP_ERROR', response.status,
+      envelope.data?.retry_after, envelope.data?.login_allowed_at)
   }
   return envelope.data as T
 }

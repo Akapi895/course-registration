@@ -38,8 +38,8 @@ func main() {
 	registrations := repository.NewRegistrationRepository(pool)
 
 	auth := service.NewAuthService(cfg, users, sessions)
-	classService := service.NewClassService(classes, semesters)
-	registrationService := service.NewRegistrationService(registrations, classes, semesters)
+	classService := service.NewClassService(classes, semesters, cfg.MaxCredits)
+	registrationService := service.NewRegistrationService(registrations, classes, semesters, cfg.MaxCredits)
 	periods := service.NewRegistrationPeriodService(semesters)
 
 	r := controller.NewRouter(auth, classService, registrationService, periods)

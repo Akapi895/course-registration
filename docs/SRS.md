@@ -61,6 +61,10 @@ Theo điều chỉnh phạm vi ngày 2026-10-25, chức năng quản lý hồ s�
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại, gồm `id`, `username`, `role`, `full_name`, `student_code`, `faculty`, `major`. Các trường thông tin sinh viên có thể là `null` khi không có dữ liệu. |
 | 7 | Hệ thống chỉ chấp nhận JWT khi phiên đăng nhập tương ứng còn hiệu lực và chưa bị thu hồi. |
 
+Thời gian đăng nhập được cấu hình bằng `JWT_TTL` và `SESSION_TTL`, cùng mặc định 20 phút và phải bằng nhau. `auth_sessions.expires_at` khớp `exp` trong JWT. Frontend giữ token và trạng thái chỉ xem trong `sessionStorage` để khôi phục sau reload, xác thực lại bằng `/api/auth/me`; token hết hạn, bị từ chối hoặc đăng xuất sẽ bị xóa khỏi tab. Hết hạn tự đăng xuất kể cả khi đang chỉ xem.
+
+Sau khi phiên hết hạn, cả sinh viên và quản trị viên phải chờ `LOGIN_COOLDOWN` (mặc định 20 phút). Mốc được đăng nhập lại tính từ `expires_at` muộn nhất của tài khoản cộng thời gian chờ, kể cả bản ghi đã bị thu hồi. Đăng nhập lại khi cửa sổ còn hiệu lực, gồm sau logout thủ công, giữ mốc hết hạn cũ. Kiểm tra và tạo phiên chạy trong transaction khóa tài khoản để không mở các cửa sổ khác nhau khi có request đồng thời. Không thêm cột cooldown vào schema.
+
 > Lưu ý: Phiên đăng nhập được lưu trong cơ sở dữ liệu. Trong Phase 1, Backend thu hồi phiên khi đăng xuất và từ chối JWT thuộc phiên đã thu hồi hoặc đã hết hạn.
 
 ### 3.2. Tra cứu lớp học phần
@@ -142,7 +146,7 @@ Form tạo lớp và cấu hình thời gian đăng ký tự lấy `semester.id`
 | 3 | Không trùng lịch | Từ chối đăng ký lớp học phần có lịch học trùng với các lớp đã đăng ký trong cùng học kỳ. |
 | 4 | Không đăng ký trùng | Sinh viên chỉ được đăng ký một lần đối với cùng một lớp học phần trong mỗi học kỳ. |
 | 5 | Điều kiện tiên quyết | Sinh viên phải đáp ứng các yêu cầu về học phần tiên quyết trước khi đăng ký. |
-| 6 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau đăng ký không được vượt mức tối đa theo quy định. |
+| 6 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau đăng ký không được vượt mức tối đa theo quy định. Backend dùng `MAX_CREDITS` nếu được cấu hình, nếu không dùng giới hạn của học kỳ trong database; frontend hiển thị cùng mức từ API. |
 | 7 | Thời gian đăng ký hợp lệ | Thời điểm mở đăng ký phải trước thời điểm đóng đăng ký. |
 | 8 | Quyền sở hữu đăng ký | Sinh viên chỉ được phép xem và hủy các đăng ký học phần của chính mình. |
 | 9 | Kiểm tra dữ liệu lớp | Thông tin lớp học phần khi tạo mới hoặc cập nhật phải đáp ứng các ràng buộc dữ liệu đã quy định. |

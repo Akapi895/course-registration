@@ -18,9 +18,13 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_TTL
-        value: 1h
+        value: 20m
       - key: SESSION_TTL
-        value: 24h
+        value: 20m
+      - key: LOGIN_COOLDOWN
+        value: 20m
+      - key: MAX_CREDITS
+        value: "26"
       - key: GIN_MODE
         value: release
 

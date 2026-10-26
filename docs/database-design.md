@@ -115,6 +115,8 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 
 Mỗi phiên đăng nhập thuộc về một người dùng. Backend sử dụng `expires_at` và `revoked_at` để xác định phiên còn hiệu lực hay đã hết hạn hoặc bị thu hồi. Đăng xuất đặt `revoked_at`. Cột `refresh_token_hash` được giữ theo schema hiện tại; nên bỏ cột này khi có thay đổi schema sau này.
 
+`expires_at` khớp `exp` của JWT; cả hai thời hạn mặc định 20 phút. Cooldown được tính từ mốc hết hạn muộn nhất của tài khoản cộng `LOGIN_COOLDOWN`, không thêm cột. Lịch sử phiên đã thu hồi vẫn được xét; đăng nhập lại trong cửa sổ còn hiệu lực giữ nguyên mốc kết thúc. Tạo phiên sử dụng transaction khóa dòng `users` của tài khoản trước khi đọc lịch sử và ghi session mới.
+
 ### 3.9. `course_results` – Kết quả học tập
 
 | Trường | Kiểu dữ liệu | Ràng buộc / ý nghĩa |

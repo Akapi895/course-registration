@@ -9,17 +9,19 @@ import (
 )
 
 type RegistrationService struct {
-	regs      *repository.RegistrationRepository
-	classes   *repository.ClassRepository
-	semesters *repository.SemesterRepository
+	regs       *repository.RegistrationRepository
+	classes    *repository.ClassRepository
+	semesters  *repository.SemesterRepository
+	maxCredits int
 }
 
 func NewRegistrationService(
 	regs *repository.RegistrationRepository,
 	classes *repository.ClassRepository,
 	semesters *repository.SemesterRepository,
+	maxCredits int,
 ) *RegistrationService {
-	return &RegistrationService{regs: regs, classes: classes, semesters: semesters}
+	return &RegistrationService{regs: regs, classes: classes, semesters: semesters, maxCredits: maxCredits}
 }
 
 func (s *RegistrationService) Register(ctx context.Context, p *Principal, classID int64) (*repository.Registration, error) {
@@ -212,7 +214,8 @@ func (s *RegistrationService) semesterOf(ctx context.Context, semesterID int64) 
 	if semester == nil {
 		return nil, fmt.Errorf("missing semester %d", semesterID)
 	}
-	return semester, nil
+	effective := withCreditLimit(*semester, s.maxCredits)
+	return &effective, nil
 }
 
 func checkNoScheduleConflict(ctx context.Context, tx *repository.RegistrationTx, studentID int64, class repository.Class, semesterID int64) error {

@@ -22,7 +22,9 @@ Nếu đã có `.env`, bổ sung các biến còn thiếu từ `.env.example`, g
 | `FRONTEND_PORT` | Cổng giao diện trên host, mặc định `5173`; nginx trong container luôn nghe cổng `80` |
 | `DATABASE_URL` | URL khi chạy API trực tiếp trên host; Compose tự cấp URL dùng `db:5432`, không dùng giá trị host này |
 | `JWT_SECRET` | Khóa ký JWT; cần giữ nguyên để token hiện hành tiếp tục được xác thực sau khi khởi động lại |
-| `JWT_TTL`, `SESSION_TTL` | Thời hạn theo cú pháp Go, mặc định `1h` và `24h`; thời hạn phiên phải ít nhất bằng thời hạn JWT |
+| `JWT_TTL`, `SESSION_TTL` | Thời hạn JWT và phiên, mặc định cùng `20m`; hai giá trị phải bằng nhau. Bỏ trống `SESSION_TTL` để theo `JWT_TTL` |
+| `LOGIN_COOLDOWN` | Khoảng chờ sau khi phiên hết hạn, mặc định `20m`; áp dụng theo tài khoản cho cả sinh viên và admin |
+| `MAX_CREDITS` | Ghi đè giới hạn tín chỉ khi chạy API, ví dụ `26`; bỏ trống để dùng cấu hình từng học kỳ trong database |
 | `REFERENCE_DATE`, `RANDOM_SEED` | Ngày neo và seed của dữ liệu mẫu, mặc định `2026-10-20` và `20261020` |
 
 Nếu cổng bị chiếm hoặc Windows không cho phép bind, đổi `PORT` (ví dụ `8081`), `FRONTEND_PORT` hoặc `POSTGRES_PORT` (máy local hiện dùng `55432`). Khi chạy API trên host, cập nhật cả `DATABASE_URL` cho khớp cổng và thông tin `POSTGRES_*`; password trong URL phải được URL-encode nếu có ký tự đặc biệt. Không chạy frontend Docker và Vite dev cùng lúc nếu cả hai dùng cổng `5173`.
@@ -134,9 +136,10 @@ npm run dev
 
 Mở <http://localhost:5173>. Vite chuyển các request `/api` sang `API_PROXY_TARGET` trong `frontend/.env`, mặc định `http://127.0.0.1:8080`. Nếu backend dùng `PORT=8081`, đặt `API_PROXY_TARGET=http://127.0.0.1:8081`, rồi khởi động lại Vite. Không đưa `JWT_SECRET` vào frontend; giao diện chỉ gửi access token do API cấp.
 
-- Đăng nhập bằng tài khoản seed, không dùng tài khoản mock cũ. JWT chỉ giữ trong bộ nhớ; tải lại trang cần đăng nhập lại. Hồ sơ, lớp, đăng ký và thời khóa biểu đã lưu vẫn nằm ở backend.
-- Mỗi lần xác nhận đăng ký gửi đúng một lớp. Lỗi nghiệp vụ hiển thị từ backend và giữ phiên để thử lại. Sau thành công, giao diện gọi logout; nếu logout lỗi, chỉ thử logout lại, không gửi lại đăng ký.
-- Cooldown 20 phút tính từ đăng ký thành công hiện **chỉ áp dụng trên frontend theo tài khoản/trình duyệt**. Thông tin hoàn tất/cooldown được lưu trước logout để tải lại trang không gửi lại đăng ký. Nếu trình duyệt chặn storage, giao diện dùng trạng thái trong bộ nhớ và thông báo giới hạn lưu trữ. Backend chưa thực thi chặn login mới hoặc thu hồi mọi phiên; endpoint logout hiện chỉ thu hồi phiên đang gọi. Thời hạn JWT vẫn theo cấu hình backend.
+- JWT lưu trong `sessionStorage` của tab; reload khôi phục thông tin người dùng bằng `/api/auth/me`. Logout, token hết hạn hoặc phản hồi `401` xóa token cục bộ. Nếu storage không khả dụng, token chỉ giữ trong bộ nhớ.
+- Mỗi lần xác nhận đăng ký gửi một danh sách lớp; backend trả kết quả riêng cho từng lớp. Khi tất cả thành công, phiên frontend chuyển sang chỉ xem; trạng thái này được giữ qua reload và xóa khi đăng xuất/đăng nhập lại. Hết hạn vẫn tự đăng xuất ở cả chế độ thông thường và chỉ xem.
+- Sau khi phiên hết hạn, tài khoản phải chờ `LOGIN_COOLDOWN` trước khi đăng nhập lại. Backend trả `429 LOGIN_COOLDOWN`, header `Retry-After`, `data.retry_after` và `data.login_allowed_at`; trang đăng nhập hiển thị đếm ngược sau khi bị từ chối. Đăng nhập lại trước hạn, kể cả sau logout thủ công, giữ nguyên mốc hết hạn ban đầu; logout không xóa lịch sử để né cooldown.
+- `JWT_TTL` và `SESSION_TTL` phải bằng nhau, ví dụ cùng `20m` hoặc cùng `30m`. `MAX_CREDITS=26` áp dụng cùng giới hạn cho response học kỳ và kiểm tra đăng ký, không cần seed lại. Sau khi đổi `.env`, chạy `docker compose up -d --force-recreate backend`; TTL mới dùng khi mở cửa sổ đăng nhập mới, không kéo dài cửa sổ hiện tại. `LOGIN_COOLDOWN` được tính lại từ cấu hình backend hiện hành.
 - Một lớp có nhiều buổi học, thứ `2…7`; không có nhóm LT/TH riêng. Admin được hủy mềm cả lớp có sinh viên. Form tạo lớp và cấu hình thời gian đăng ký tự lấy học kỳ hiện tại từ `GET /api/classes`, hiển thị tên học kỳ ở trường chỉ đọc và gửi `semester.id`; chưa cho gửi khi không tải được hoặc chưa có học kỳ. ID học phần vẫn nhập tay vì Phase 1 chưa có API danh sách học phần; không dùng danh sách giả hoặc lịch sử đợt giả.
 - Không có trang quản lý sinh viên hoặc API hồ sơ theo ID. Thông tin khoa/ngành của người dùng hiện tại được lấy từ `GET /api/auth/me` để hiển thị tổng quan và lọc lớp theo ngành.
 

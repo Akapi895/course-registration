@@ -3,6 +3,8 @@ package controller
 import (
 	"errors"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/Akapi895/course-registration/backend/internal/service"
 	"github.com/gin-gonic/gin"
@@ -23,6 +25,18 @@ type failData struct {
 	Message string `json:"message" example:"Chưa đăng nhập hoặc phiên không hợp lệ"`
 }
 
+type loginCooldownData struct {
+	Code           string    `json:"code" example:"LOGIN_COOLDOWN"`
+	Message        string    `json:"message" example:"Tài khoản đang trong thời gian chờ đăng nhập lại"`
+	RetryAfter     int       `json:"retry_after" example:"720"`
+	LoginAllowedAt time.Time `json:"login_allowed_at" example:"2026-10-26T03:40:00Z"`
+}
+
+type loginCooldownResponse struct {
+	Status string            `json:"status" example:"fail"`
+	Data   loginCooldownData `json:"data"`
+}
+
 type failure struct {
 	err     error
 	status  int
@@ -32,6 +46,7 @@ type failure struct {
 
 var failures = []failure{
 	{service.ErrInvalidCredentials, 401, "INVALID_CREDENTIALS", "Sai tên đăng nhập hoặc mật khẩu"},
+	{service.ErrLoginCooldown, 429, "LOGIN_COOLDOWN", "Tài khoản đang trong thời gian chờ đăng nhập lại"},
 	{service.ErrSessionRevoked, 401, "SESSION_REVOKED", "Phiên đăng nhập đã bị thu hồi hoặc đã hết hạn"},
 	{service.ErrUnauthorized, 401, "UNAUTHORIZED", "Chưa đăng nhập hoặc phiên không hợp lệ"},
 	{service.ErrForbidden, 403, "FORBIDDEN", "Bạn không có quyền truy cập dữ liệu này"},
@@ -75,5 +90,13 @@ func classify(err error) (int, string, string) {
 
 func failWithError(c *gin.Context, err error) {
 	status, code, message := classify(err)
+	var cooldown *service.LoginCooldownError
+	if errors.As(err, &cooldown) {
+		c.Header("Retry-After", strconv.Itoa(cooldown.RetryAfter))
+		c.AbortWithStatusJSON(status, loginCooldownResponse{Status: "fail", Data: loginCooldownData{
+			Code: code, Message: message, RetryAfter: cooldown.RetryAfter, LoginAllowedAt: cooldown.LoginAllowedAt,
+		}})
+		return
+	}
 	fail(c, status, code, message)
 }

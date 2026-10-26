@@ -17,10 +17,51 @@ func NewSessionRepository(db *pgxpool.Pool) *SessionRepository {
 	return &SessionRepository{db: db}
 }
 
-// Create stores a new session and returns its id.
-func (r *SessionRepository) Create(ctx context.Context, userID int64, refreshTokenHash string, expiresAt time.Time) (string, error) {
+// WithTx keeps the account lock, previous-window lookup and session write atomic.
+func (r *SessionRepository) WithTx(ctx context.Context, fn func(*SessionTx) error) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := fn(&SessionTx{tx: tx}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+type SessionTx struct {
+	tx pgx.Tx
+}
+
+func (t *SessionTx) LockUser(ctx context.Context, userID int64) (bool, error) {
+	var id int64
+	err := t.tx.QueryRow(ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// LatestExpiry includes revoked sessions: logout must not erase the login window.
+func (t *SessionTx) LatestExpiry(ctx context.Context, userID int64) (*time.Time, error) {
+	var expiresAt time.Time
+	err := t.tx.QueryRow(ctx,
+		`SELECT expires_at FROM auth_sessions WHERE user_id = $1 ORDER BY expires_at DESC LIMIT 1`,
+		userID,
+	).Scan(&expiresAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &expiresAt, nil
+}
+
+func (t *SessionTx) Create(ctx context.Context, userID int64, refreshTokenHash string, expiresAt time.Time) (string, error) {
 	var sid string
-	err := r.db.QueryRow(ctx,
+	err := t.tx.QueryRow(ctx,
 		`INSERT INTO auth_sessions (user_id, refresh_token_hash, expires_at)
 		 VALUES ($1, $2, $3)
 		 RETURNING id::text`,

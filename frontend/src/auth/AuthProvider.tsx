@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(() => !!getAccessToken())
   const [error, setError] = useState<unknown>(null)
   const revision = useRef(0)
   const clearSession = useCallback(() => {
@@ -27,6 +27,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener(AUTH_EXPIRED, clearSession)
     return () => window.removeEventListener(AUTH_EXPIRED, clearSession)
   }, [clearSession])
+  useEffect(() => {
+    if (!getAccessToken()) return
+    const controller = new AbortController()
+    const currentRevision = revision.current
+    api.me(controller.signal).then((current) => {
+      if (!controller.signal.aborted && revision.current === currentRevision) { setUser(current); setError(null) }
+    }).catch((cause) => {
+      if (!controller.signal.aborted && revision.current === currentRevision) setError(cause)
+    }).finally(() => {
+      if (!controller.signal.aborted && revision.current === currentRevision) setLoading(false)
+    })
+    return () => controller.abort()
+  }, [])
   useEffect(() => {
     if (!user) return
     const timer = setTimeout(clearSession, Math.max(0, tokenExpiresAt() - Date.now()))

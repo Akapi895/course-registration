@@ -21,8 +21,10 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-course_app}:${POSTGRES_PASSWORD:-local_demo_only}@db:5432/${POSTGRES_DB:-course_registration}
       JWT_SECRET: ${JWT_SECRET:-local_demo_only_change_this_jwt_secret}
-      JWT_TTL: ${JWT_TTL:-1h}
-      SESSION_TTL: ${SESSION_TTL:-24h}
+      JWT_TTL: ${JWT_TTL:-20m}
+      SESSION_TTL: ${SESSION_TTL:-${JWT_TTL:-20m}}
+      LOGIN_COOLDOWN: ${LOGIN_COOLDOWN:-20m}
+      MAX_CREDITS: ${MAX_CREDITS:-}
       PORT: "8080"
       GIN_MODE: release
     ports:

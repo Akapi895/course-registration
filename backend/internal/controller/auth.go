@@ -51,7 +51,7 @@ type emptySuccessResponse struct {
 
 // Login godoc
 // @Summary     Đăng nhập
-// @Description Trả về access JWT và tạo một phiên trong auth_sessions.
+// @Description Trả về access JWT và tạo một phiên trong auth_sessions. Đăng nhập lại trong cửa sổ hiện tại giữ nguyên mốc hết hạn. Sau khi hết hạn, tài khoản phải chờ LOGIN_COOLDOWN trước khi mở cửa sổ mới; áp dụng cả sinh viên và quản trị viên.
 // @Tags        auth
 // @Accept      json
 // @Produce     json
@@ -59,6 +59,8 @@ type emptySuccessResponse struct {
 // @Success     200  {object} loginSuccessResponse
 // @Failure     400  {object} failResponse "VALIDATION_ERROR"
 // @Failure     401  {object} failResponse "INVALID_CREDENTIALS"
+// @Failure     429  {object} loginCooldownResponse "LOGIN_COOLDOWN"
+// @Header      429  {integer} Retry-After "Số giây còn phải chờ trước lần đăng nhập tiếp theo"
 // @Failure     500  {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/auth/login [post]
 func (h *AuthController) Login(c *gin.Context) {

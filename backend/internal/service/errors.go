@@ -1,9 +1,13 @@
 package service
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrLoginCooldown      = errors.New("login cooldown")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrSessionRevoked     = errors.New("session revoked")
 	ErrForbidden          = errors.New("forbidden")
@@ -26,3 +30,11 @@ var (
 	ErrInvalidSchedule           = errors.New("invalid schedule")
 	ErrInvalidRegistrationPeriod = errors.New("invalid registration period")
 )
+
+type LoginCooldownError struct {
+	LoginAllowedAt time.Time
+	RetryAfter     int
+}
+
+func (e *LoginCooldownError) Error() string { return ErrLoginCooldown.Error() }
+func (e *LoginCooldownError) Unwrap() error { return ErrLoginCooldown }
