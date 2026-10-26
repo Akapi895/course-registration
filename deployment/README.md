@@ -55,14 +55,14 @@ Luồng này sử dụng GitHub Actions cho CI và Render cho CD, không cần d
 | `GIN_MODE` | `release` | Chế độ chạy Gin. |
 | `JWT_TTL` | `20m` | Thời hạn access token 20 phút cho cả hai vai trò. |
 | `SESSION_TTL` | `20m` | Phải bằng `JWT_TTL`; bỏ trống để theo `JWT_TTL`. |
-| `LOGIN_COOLDOWN` | `20m` | Thời gian chờ theo tài khoản sau khi phiên hết hạn, áp dụng cả admin. |
+| `LOGIN_COOLDOWN` | `20m` | Thời gian chờ theo tài khoản sau logout hoặc hết hạn, áp dụng cả admin. |
 | `MAX_CREDITS` | `26` trong Blueprint | Giới hạn runtime cho hiển thị và đăng ký; bỏ trống để dùng giá trị từng học kỳ trong database. |
 | `REFERENCE_DATE` | Ngày khởi tạo theo `Asia/Ho_Chi_Minh` khi không khai báo | Ngày neo dữ liệu demo, chỉ áp dụng lúc seed database trống. |
 | `RANDOM_SEED` | `20261020` khi không khai báo | Seed sinh dữ liệu demo. |
 
 PostgreSQL chỉ nhận kết nối qua mạng riêng Render (`ipAllowList: []`). Không cần `API_PROXY_TARGET` cho mô hình cùng origin.
 
-Render dùng biến môi trường trong Dashboard/Blueprint thay cho `.env` local. Thay cấu hình có hiệu lực sau redeploy; không cần seed lại. TTL mới dùng cho cửa sổ đăng nhập mới; đăng nhập lại trước hạn vẫn giữ mốc hết hạn cũ. Thời gian chờ được tính từ `auth_sessions.expires_at + LOGIN_COOLDOWN` theo cấu hình hiện hành.
+Render dùng biến môi trường trong Dashboard/Blueprint thay cho `.env` local. Thay cấu hình có hiệu lực sau redeploy; không cần seed lại. TTL mới dùng khi tạo phiên mới, không đổi thời hạn phiên đã lưu. Khi tài khoản có phiên hoạt động, login trả `409 ALREADY_LOGGED_IN`; thời gian chờ sau khi phiên kết thúc tính từ `COALESCE(logged_out_at, expires_at) + LOGIN_COOLDOWN` theo cấu hình hiện hành.
 
 ## Vòng đời dữ liệu
 
@@ -80,16 +80,18 @@ Fixture gồm `student001`–`student100`, `admin1`, `admin2`, dùng chung mật
 
 Dữ liệu demo được chia sẻ giữa các phiên truy cập. Không có chức năng reset toàn bộ database qua giao diện.
 
-### Chuyển đổi phiên cũ khi bật cooldown lần đầu
+### Database mock và kết thúc phiên demo
 
-Phiên của bản cũ có thể lưu `expires_at` dài hơn JWT (ví dụ 24 giờ). Không thể suy ra chính xác `exp` của mọi token cũ chỉ từ các hàng này. Trước lần chuyển đổi, dừng backend cũ và đóng các cửa sổ đang còn hạn bằng thao tác dữ liệu tường minh:
+Schema auth mới chỉ gồm `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Database mock cũ dùng `revoked_at`/`refresh_token_hash` cần được dựng lại; startup không nâng cấp schema cũ và không tự xóa volume. Build lại image không làm thay đổi database đã tồn tại.
+
+Khi cần chủ động kết thúc các phiên đang hoạt động trên database demo dùng schema mới:
 
 ```sh
 docker compose stop backend
 docker compose --profile tools run --rm seed expire-sessions --confirm-expire-sessions
 ```
 
-Lệnh giữ lịch sử phiên, đánh dấu thu hồi và đưa mốc kết thúc tương lai về thời điểm thực thi. Các tài khoản đó bắt đầu thời gian chờ từ mốc vừa đóng. Không thay schema hoặc dữ liệu học vụ. Trên Render, lệnh tương ứng trong image là `python /app/database/tools/manage.py expire-sessions --confirm-expire-sessions`; gói Free cần chạy image công cụ từ môi trường có kết nối database hoặc thực hiện câu UPDATE tương đương qua kết nối quản trị. Không chạy lệnh này ở mỗi startup/redeploy.
+Lệnh ghi `logged_out_at` một lần cho các phiên còn hoạt động, giữ nguyên `expires_at` và lịch sử. Cooldown bắt đầu từ mốc logout vừa ghi; phiên đã logout hoặc tự hết hạn không bị đổi. Trên Render, lệnh tương ứng trong image là `python /app/database/tools/manage.py expire-sessions --confirm-expire-sessions`; gói Free cần chạy image công cụ từ môi trường có kết nối database. Không chạy lệnh này ở mỗi startup/redeploy.
 
 ## Kiểm thử image
 
