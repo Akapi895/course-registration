@@ -115,8 +115,8 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 - Phiên hoạt động khi `logged_out_at IS NULL` và thời gian hiện tại **nhỏ hơn** `expires_at`. Hết hạn chỉ là phép so sánh thời gian, không cần cập nhật bảng hay tác vụ nền.
 - Đăng xuất khi phiên còn hiệu lực đặt `logged_out_at` một lần, không đổi `expires_at`. Phiên đã hết hạn không bị ghi `logged_out_at`.
 
-**Quy tắc đăng nhập lại (áp dụng cho mọi thiết bị):**
-- Mỗi tài khoản có tối đa **một phiên hoạt động**. Khi còn phiên hoạt động, đăng nhập mới bị từ chối, không tạo phiên và không gia hạn.
+**Quy tắc đăng nhập lại (sinh viên, mọi thiết bị):**
+- Mỗi sinh viên có tối đa **một phiên hoạt động**. Khi còn phiên hoạt động, đăng nhập mới bị từ chối, không tạo phiên và không gia hạn. Quản trị viên có thể có nhiều phiên hoạt động và không có cooldown.
 - Phiên gần nhất kết thúc tại `COALESCE(logged_out_at, expires_at)`; sau đó phải đợi `LOGIN_COOLDOWN` (mặc định 20 phút).
 - Kiểm tra phiên gần nhất và tạo phiên mới nằm trong **một transaction khóa dòng `users`**, nên hai lần đăng nhập đồng thời không tạo hai phiên. Mỗi lần đăng nhập tạo `sid` mới.
 - JWT được chấp nhận khi chữ ký, claim hợp lệ, phiên `sid` đang hoạt động, `sub` khớp `user_id`, `exp` khớp `expires_at` và `role` khớp vai trò hiện tại của tài khoản.

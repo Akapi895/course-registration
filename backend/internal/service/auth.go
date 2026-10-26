@@ -50,9 +50,12 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 		if currentUser == nil || currentUser.PasswordHash != user.PasswordHash {
 			return ErrInvalidCredentials
 		}
-		previous, err := tx.Latest(ctx, user.ID)
-		if err != nil {
-			return err
+		// Admins may hold several sessions at once and have no login cooldown.
+		var previous *repository.Session
+		if currentUser.Role != repository.RoleAdmin {
+			if previous, err = tx.Latest(ctx, user.ID); err != nil {
+				return err
+			}
 		}
 		// Keep microseconds for ordering sessions even after a very short cooldown.
 		// Read time after the account lock; another login may have held it.

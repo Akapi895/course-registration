@@ -62,7 +62,7 @@ Luồng này sử dụng GitHub Actions cho CI và Render cho CD, không cần d
 
 PostgreSQL chỉ nhận kết nối qua mạng riêng Render (`ipAllowList: []`). Không cần `API_PROXY_TARGET` cho mô hình cùng origin.
 
-Render dùng biến môi trường trong Dashboard/Blueprint thay cho `.env` local. Thay cấu hình có hiệu lực sau redeploy; không cần seed lại. TTL mới dùng khi tạo phiên mới, không đổi thời hạn phiên đã lưu. Khi tài khoản có phiên hoạt động, login trả `409 ALREADY_LOGGED_IN`; thời gian chờ sau khi phiên kết thúc tính từ `COALESCE(logged_out_at, expires_at) + LOGIN_COOLDOWN` theo cấu hình hiện hành.
+Render dùng biến môi trường trong Dashboard/Blueprint thay cho `.env` local. Thay cấu hình có hiệu lực sau redeploy; không cần seed lại. TTL mới dùng khi tạo phiên mới, không đổi thời hạn phiên đã lưu. Khi sinh viên có phiên hoạt động, login trả `409 ALREADY_LOGGED_IN`; thời gian chờ sau khi phiên kết thúc tính từ `COALESCE(logged_out_at, expires_at) + LOGIN_COOLDOWN` theo cấu hình hiện hành. Quản trị viên không chịu hai giới hạn này.
 
 ## Vòng đời dữ liệu
 

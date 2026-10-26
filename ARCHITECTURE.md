@@ -124,7 +124,7 @@ Access JWT HS256 chứa `sub`, `role`, `sid`, `iat`, `exp`. Frontend giữ JWT t
 
 Backend kiểm tra chữ ký, thuật toán, claim JWT và phiên tương ứng với `sid`: `sub` khớp người sở hữu, `role` khớp vai trò hiện tại, `iat`/`exp` khớp thời điểm tạo/hết hạn ở độ chính xác giây. Phiên hoạt động khi `logged_out_at IS NULL` và chưa đến `expires_at`. Backend dùng cùng đồng hồ ứng dụng khi tạo, kiểm tra và logout phiên để thống nhất với JWT.
 
-Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Kiểm tra mật khẩu trước, rồi khóa dòng `users`, kiểm tra phiên gần nhất và tạo phiên trong cùng transaction. Login khi phiên còn hoạt động trả `409 ALREADY_LOGGED_IN`, giữ nguyên phiên. Logout chỉ ghi `logged_out_at` một lần trước hạn; tự hết hạn không cập nhật bản ghi. Cooldown cho cả hai vai trò tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất cộng `LOGIN_COOLDOWN`. `expires_at = created_at + JWT_TTL`; đổi TTL chỉ ảnh hưởng phiên mới.
+Mỗi sinh viên chỉ có một phiên hoạt động trên mọi thiết bị/tab; quản trị viên có thể có nhiều phiên. Kiểm tra mật khẩu trước, rồi khóa dòng `users`, kiểm tra phiên gần nhất (chỉ với sinh viên) và tạo phiên trong cùng transaction. Login khi phiên còn hoạt động trả `409 ALREADY_LOGGED_IN`, giữ nguyên phiên. Logout chỉ ghi `logged_out_at` một lần trước hạn; tự hết hạn không cập nhật bản ghi. Cooldown của sinh viên tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất cộng `LOGIN_COOLDOWN`. `expires_at = created_at + JWT_TTL`; đổi TTL chỉ ảnh hưởng phiên mới.
 
 Khi JWT hết hạn, người dùng đăng nhập lại.
 
@@ -190,10 +190,10 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 ## 5. Xác thực và phân quyền
 
 - **Access Token:** JWT HS256 chứa định danh người dùng (`sub`), vai trò (`role`), mã phiên (`sid`), thời điểm phát hành (`iat`) và hết hạn (`exp`).
-- **Phiên đăng nhập:** Mỗi lần đăng nhập được phép tạo một bản ghi trong `auth_sessions`. Mỗi tài khoản chỉ có một phiên hoạt động; `sid` trỏ tới bản ghi này.
+- **Phiên đăng nhập:** Mỗi lần đăng nhập được phép tạo một bản ghi trong `auth_sessions`. Sinh viên chỉ có một phiên hoạt động, quản trị viên có thể có nhiều; `sid` trỏ tới bản ghi này.
 - **Kiểm tra token:** Backend xác minh chữ ký, thuật toán, claim và phiên (chưa logout, chưa hết hạn); đối chiếu người sở hữu, thời điểm tạo/hết hạn và vai trò hiện tại trước khi cho phép truy cập.
 - **Phân quyền:** Quyền truy cập được kiểm tra theo vai trò Sinh viên/Quản trị viên và phạm vi dữ liệu được phép thao tác.
-- **Đăng xuất:** Backend ghi `logged_out_at` một lần cho phiên hiện tại còn hạn. JWT mất hiệu lực ngay, frontend xóa JWT đang lưu. Phiên tự hết hạn giữ `logged_out_at = NULL`; cả hai trường hợp bắt đầu cooldown từ thời điểm kết thúc tương ứng.
+- **Đăng xuất:** Backend ghi `logged_out_at` một lần cho phiên hiện tại còn hạn. JWT mất hiệu lực ngay, frontend xóa JWT đang lưu. Phiên tự hết hạn giữ `logged_out_at = NULL`; với sinh viên, cả hai trường hợp bắt đầu cooldown từ thời điểm kết thúc tương ứng.
 - **Bảo mật:** Mật khẩu được băm trước khi lưu trữ. JWT secret và thời hạn token được quản lý qua biến môi trường. Token gửi qua header `Authorization`, không dùng cookie, nên Phase 1 không cần cơ chế chống CSRF riêng.
 
 ## 6. Kiến trúc triển khai và cấu hình

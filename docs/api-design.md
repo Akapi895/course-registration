@@ -84,7 +84,7 @@ Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và 
    { "status": "fail", "data": { "code": "INVALID_CREDENTIALS", "message": "Sai tên đăng nhập hoặc mật khẩu" } }
    ```
 
-2. Khi thông tin hợp lệ, backend khóa dòng `users`, đọc phiên gần nhất theo `created_at`, kiểm tra và tạo phiên trong **cùng transaction**. Mỗi tài khoản chỉ có **một phiên hoạt động** trên mọi thiết bị/trình duyệt/tab. Nếu còn phiên hoạt động, trả **409**, giữ nguyên phiên và `expires_at`, không cấp token mới:
+2. Khi thông tin hợp lệ, backend khóa dòng `users`, đọc phiên gần nhất theo `created_at`, kiểm tra và tạo phiên trong **cùng transaction**. Mỗi sinh viên chỉ có **một phiên hoạt động** trên mọi thiết bị/trình duyệt/tab. Nếu còn phiên hoạt động, trả **409**, giữ nguyên phiên và `expires_at`, không cấp token mới:
 
    ```json
    { "status": "fail", "data": { "code": "ALREADY_LOGGED_IN", "message": "Tài khoản đang đăng nhập trên một phiên khác" } }
@@ -98,7 +98,7 @@ Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và 
 
    `Retry-After: 720` và `data.retry_after` cùng là số giây còn chờ, làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Với cooldown mặc định, logout lúc 10:05 UTC+7, thử login lúc 10:13 thì còn 12 phút và được login lại từ 10:25 UTC+7. Nếu để phiên hết hạn lúc 10:20 thì mốc là 10:40.
 
-4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Quy tắc áp dụng cho cả sinh viên và quản trị viên.
+4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Quản trị viên bỏ qua việc kiểm tra phiên ở bước 2 và 3: không bị giới hạn số phiên, không có cooldown, mỗi lần đăng nhập tạo phiên với `sid` riêng; logout chỉ kết thúc phiên của JWT đang dùng.
 
 ### Logout và hết hạn
 
@@ -131,7 +131,7 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 | `VALIDATION_ERROR` | 400 | Dữ liệu sai định dạng, thiếu tham số, gửi trường không được phép, hoặc thời gian không hợp lệ |
 | `UNAUTHORIZED` | 401 | Chưa đăng nhập, thiếu token, token sai chữ ký, hết hạn JWT, claim không hợp lệ hoặc `role` trong JWT không khớp vai trò hiện tại |
 | `INVALID_CREDENTIALS` | 401 | Sai username hoặc password |
-| `ALREADY_LOGGED_IN` | 409 | Đúng thông tin đăng nhập nhưng tài khoản đang có một phiên hoạt động trên thiết bị hoặc tab bất kỳ; không tạo phiên khác |
+| `ALREADY_LOGGED_IN` | 409 | Đúng thông tin đăng nhập nhưng tài khoản sinh viên đang có một phiên hoạt động trên thiết bị hoặc tab bất kỳ; không tạo phiên khác |
 | `LOGIN_COOLDOWN` | 429 | Đúng thông tin đăng nhập nhưng chưa qua `LOGIN_COOLDOWN` (mặc định 20 phút) kể từ lúc phiên gần nhất kết thúc; có `Retry-After`, `data.retry_after` và `data.login_allowed_at` |
 | `SESSION_REVOKED` | 401 | Token còn đúng chữ ký nhưng phiên tương ứng đã chủ động đăng xuất hoặc không còn hoạt động (hết hạn trong database) |
 | `FORBIDDEN` | 403 | Đã đăng nhập nhưng không đủ quyền |

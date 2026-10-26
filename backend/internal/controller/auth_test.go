@@ -234,7 +234,7 @@ func TestAuthValidatesTokenClaims(t *testing.T) {
 }
 
 func TestAuthConcurrentLogin(t *testing.T) {
-	for _, username := range []string{"student", "admin"} {
+	for _, username := range []string{"student"} {
 		t.Run(username, func(t *testing.T) {
 			h := newAuthHarness(t)
 			const attempts = 12
@@ -279,7 +279,7 @@ func TestAuthConcurrentLogin(t *testing.T) {
 }
 
 func TestAuthLogoutCooldown(t *testing.T) {
-	for _, username := range []string{"student", "admin"} {
+	for _, username := range []string{"student"} {
 		t.Run(username, func(t *testing.T) {
 			h := newAuthHarness(t)
 			login, reply := h.login(t, username)
@@ -321,7 +321,7 @@ func TestAuthLogoutCooldown(t *testing.T) {
 }
 
 func TestAuthNaturalExpiryCooldown(t *testing.T) {
-	for _, username := range []string{"student", "admin"} {
+	for _, username := range []string{"student"} {
 		t.Run(username, func(t *testing.T) {
 			h := newAuthHarness(t)
 			h.cfg.JWTTTL, h.cfg.SessionTTL, h.cfg.LoginCooldown = time.Second, time.Second, 2*time.Second
@@ -351,6 +351,39 @@ func TestAuthNaturalExpiryCooldown(t *testing.T) {
 				t.Fatalf("login after natural expiry cooldown: %d %s", login.Code, login.Body)
 			}
 		})
+	}
+}
+
+func TestAuthAdminHasNoSessionLimit(t *testing.T) {
+	h := newAuthHarness(t)
+	first, reply := h.login(t, "admin")
+	if first.Code != http.StatusOK {
+		t.Fatal(first.Body)
+	}
+	firstToken := reply.Data.AccessToken
+	second, reply := h.login(t, "admin")
+	if second.Code != http.StatusOK || reply.Data.AccessToken == firstToken {
+		t.Fatalf("second admin login: %d %s", second.Code, second.Body)
+	}
+	secondToken := reply.Data.AccessToken
+	if authClaims(t, firstToken)["sid"] == authClaims(t, secondToken)["sid"] {
+		t.Fatal("admin sessions share a sid")
+	}
+	logout, _ := h.request(t, http.MethodPost, "/api/auth/logout", firstToken, nil)
+	if logout.Code != http.StatusOK {
+		t.Fatalf("logout: %d %s", logout.Code, logout.Body)
+	}
+	me, reply := h.request(t, http.MethodGet, "/api/auth/me", firstToken, nil)
+	if me.Code != http.StatusUnauthorized || reply.Data.Code != "SESSION_REVOKED" {
+		t.Fatalf("logged-out session accepted: %d %s", me.Code, me.Body)
+	}
+	me, _ = h.request(t, http.MethodGet, "/api/auth/me", secondToken, nil)
+	if me.Code != http.StatusOK {
+		t.Fatalf("other admin session affected: %d %s", me.Code, me.Body)
+	}
+	again, _ := h.login(t, "admin")
+	if again.Code != http.StatusOK {
+		t.Fatalf("admin login right after logout: %d %s", again.Code, again.Body)
 	}
 }
 

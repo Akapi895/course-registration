@@ -9,11 +9,11 @@ Danh tính dùng để truy cập hệ thống, gắn với một người và v
 _Avoid_: Sinh viên (không phải tài khoản nào cũng là sinh viên)
 
 **Phiên đăng nhập (Auth Session)**:
-Khoảng thời gian một tài khoản được dùng token sau khi đăng nhập; mỗi tài khoản chỉ có một phiên hoạt động. Phiên kết thúc khi hết hạn hoặc khi người dùng đăng xuất.
+Khoảng thời gian một tài khoản được dùng token sau khi đăng nhập; mỗi tài khoản sinh viên chỉ có một phiên hoạt động, quản trị viên có thể có nhiều. Phiên kết thúc khi hết hạn hoặc khi người dùng đăng xuất.
 _Avoid_: Session (dễ nhầm với buổi học), phiên đăng ký, token
 
 **Thời gian chờ đăng nhập lại (Login Cooldown)**:
-Khoảng chờ tính từ lúc phiên gần nhất kết thúc; tài khoản chưa được đăng nhập lại trước khi hết khoảng này.
+Khoảng chờ tính từ lúc phiên gần nhất kết thúc; tài khoản sinh viên chưa được đăng nhập lại trước khi hết khoảng này; quản trị viên không có thời gian chờ.
 _Avoid_: Khóa tài khoản, lockout
 
 **Vai trò (Role)**:
