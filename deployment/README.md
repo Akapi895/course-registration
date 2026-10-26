@@ -21,12 +21,28 @@ Docker Compose local dùng frontend nginx riêng. Cấu hình Render không sử
 
 | File | Vai trò |
 |---|---|
-| [`../render.yaml`](../render.yaml) | Blueprint khai báo Web Service và PostgreSQL, cùng vùng Singapore, theo nhánh `develop`. |
+| [`../render.yaml`](../render.yaml) | Blueprint khai báo Web Service và PostgreSQL, cùng vùng Singapore, theo nhánh `main`. |
 | [`Dockerfile`](Dockerfile) | Multi-stage build cho React và Go; runtime chạy bằng user không đặc quyền. |
 | [`start.py`](start.py) | Khởi tạo database demo trước khi thay tiến trình hiện tại bằng API server. |
 | [`smoke_test.py`](smoke_test.py) | Kiểm thử image với PostgreSQL tạm độc lập. |
 
-Blueprint sử dụng build context là gốc repository và Dockerfile tại `deployment/Dockerfile`. Web Service và database được cấu hình gói Free; auto-deploy theo commit được bật. Healthcheck sử dụng `/health`.
+Blueprint sử dụng build context là gốc repository và Dockerfile tại `deployment/Dockerfile`. Web Service và database được cấu hình gói Free; auto-deploy chờ CI thành công trên `main`. Healthcheck sử dụng `/health`.
+
+## CI/CD
+
+Workflow [`CI`](../.github/workflows/ci.yml) chạy khi push `main`, mở/cập nhật pull request vào `main`, hoặc kích hoạt thủ công. Mỗi run có ba job:
+
+| Job | Kiểm tra |
+|---|---|
+| Backend checks | Go theo `backend/go.mod`, chạy `go test ./...` và `go vet ./...`. |
+| Frontend checks | Node.js 22, cài dependency bằng lockfile, typecheck và build React. |
+| Deployment smoke checks | Build image Render, kiểm tra API/giao diện Chromium trên PostgreSQL tạm và giới hạn tín chỉ fallback. |
+
+Render theo dõi `main` với `autoDeployTrigger: checksPass`: commit mới chỉ được tự deploy sau khi các GitHub checks thành công. CI dùng database tạm độc lập; dữ liệu của service Render được giữ theo quy trình startup hiện tại.
+
+Service cần liên kết repository qua GitHub integration của Render để nhận trạng thái checks. Với service đã tồn tại, cấu hình Blueprint/Settings phải được đồng bộ một lần: **Branch = `main`**, **Auto-Deploy = After CI Checks Pass**. Khi quản lý bằng Blueprint, Blueprint cũng phải đọc `render.yaml` từ `main` và bật auto-sync để các thay đổi được áp dụng. Đổi file trong repository chưa đồng bộ không tự thay cấu hình service cũ.
+
+Luồng này sử dụng GitHub Actions cho CI và Render cho CD, không cần deploy-hook hoặc secret Render trong GitHub. Các pull request chỉ chạy kiểm tra; deploy tự động dựa trên commit đã vào `main`.
 
 ## Cấu hình môi trường
 

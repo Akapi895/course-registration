@@ -27,7 +27,7 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
       <div className="flex items-center gap-3 px-5 py-5">
         <Logo size={44} />
         <div className="min-w-0 leading-tight">
-          <p className="whitespace-nowrap text-xs text-muted">Trường Đại học Công nghệ</p>
+          <p className="whitespace-nowrap text-xs text-muted">Trường Đại học Công nghệ, ĐHQGHN</p>
           <p className="whitespace-nowrap text-[15px] font-semibold">Cổng đăng ký học phần</p>
         </div>
       </div>

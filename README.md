@@ -4,6 +4,8 @@ Backend Go/Gin, PostgreSQL 16 và Swagger cho 13 endpoint trong [SRS](docs/SRS.m
 
 Demo Internet trên Render: dùng `render.yaml` và làm theo [deployment/README.md](deployment/README.md). Cấu hình này chạy giao diện và API cùng một Web Service, dùng Render PostgreSQL riêng và tự khởi tạo dữ liệu demo trên database trống.
 
+CI chạy trên push/PR vào `main`: kiểm tra Go, frontend và image triển khai. Render tự deploy commit mới trên `main` khi CI thành công; cấu hình và yêu cầu liên kết service được mô tả tại [CI/CD](deployment/README.md#cicd).
+
 ## 1. Chuẩn bị cấu hình
 
 Cài Docker Desktop, bật Linux containers và Docker Compose v2 có hỗ trợ `--wait`. Lần build đầu cần Internet để tải image và dependency. Chạy các lệnh dưới đây từ thư mục gốc repository bằng PowerShell; không cần cài Go/Python để chạy bằng Docker.

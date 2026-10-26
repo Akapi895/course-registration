@@ -59,15 +59,16 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 		if !found {
 			return ErrInvalidCredentials
 		}
-		previousExpiry, err := tx.LatestExpiry(ctx, user.ID)
+		previousExpiry, err := tx.LatestExpiry(ctx, user.ID, s.cfg.JWTTTL)
 		if err != nil {
 			return err
 		}
 		// Read time after acquiring the lock; a concurrent login may have held it.
-		// Compare with full precision but use whole-second windows so the stored
-		// expires_at and the JWT exp cannot drift apart.
+		// Compare with full precision but use whole-second windows so created_at,
+		// the stored expires_at and the JWT exp cannot drift apart.
 		now := time.Now().UTC()
-		expiresAt := now.Truncate(time.Second).Add(s.cfg.JWTTTL)
+		createdAt := now.Truncate(time.Second)
+		expiresAt := createdAt.Add(s.cfg.JWTTTL)
 		if previousExpiry != nil {
 			windowEnd := previousExpiry.Truncate(time.Second)
 			if now.Before(windowEnd) {
@@ -80,7 +81,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 				}
 			}
 		}
-		sid, err := tx.Create(ctx, user.ID, hex.EncodeToString(placeholderHash[:]), expiresAt)
+		sid, err := tx.Create(ctx, user.ID, hex.EncodeToString(placeholderHash[:]), createdAt, expiresAt)
 		if err != nil {
 			return err
 		}
@@ -149,15 +150,35 @@ func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Pri
 		return nil, ErrUnauthorized
 	}
 
-	owner, err := s.sessions.ActiveOwner(ctx, sid)
+	session, err := s.sessions.Active(ctx, sid)
 	if err != nil {
 		return nil, err
 	}
-	if owner == 0 {
+	if session == nil {
 		return nil, ErrSessionRevoked
 	}
-	if owner != userID {
+	if session.UserID != userID {
 		return nil, ErrUnauthorized
 	}
-	return &Principal{UserID: owner, Role: role, SID: sid}, nil
+	exp, err := claims.GetExpirationTime()
+	if err != nil {
+		return nil, ErrUnauthorized
+	}
+	if err := s.checkWindow(exp.Time, session); err != nil {
+		return nil, err
+	}
+	return &Principal{UserID: session.UserID, Role: role, SID: sid}, nil
+}
+
+// checkWindow rejects a token whose exp differs from its session's expires_at,
+// or whose exp lies beyond created_at + JWT_TTL. Sessions written under a longer
+// TTL keep their old expires_at, so their tokens must stop working at the cap.
+func (s *AuthService) checkWindow(exp time.Time, session *repository.ActiveSession) error {
+	if exp.Unix() != session.ExpiresAt.Unix() {
+		return ErrUnauthorized
+	}
+	if exp.Unix() > session.CreatedAt.Add(s.cfg.JWTTTL).Unix() {
+		return ErrSessionRevoked
+	}
+	return nil
 }

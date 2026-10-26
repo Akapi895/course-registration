@@ -7,7 +7,7 @@ export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Bool
 export function Logo({ size = 48 }: { size?: number }) {
   return (
     <span className="inline-flex shrink-0 overflow-hidden rounded-full" style={{ width: size, height: size }}>
-      <img src={logo} alt="Logo Trường Đại học Công nghệ" width={size} height={size} className="h-full w-full scale-[1.04] object-cover" />
+      <img src={logo} alt="Logo Trường Đại học Công nghệ, ĐHQGHN" width={size} height={size} className="h-full w-full scale-[1.04] object-cover" />
     </span>
   )
 }
