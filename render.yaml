@@ -21,6 +21,8 @@ services:
         value: 20m
       - key: SESSION_TTL
         value: 20m
+      - key: ADMIN_JWT_TTL
+        value: 8h
       - key: LOGIN_COOLDOWN
         value: 20m
       - key: MAX_CREDITS
