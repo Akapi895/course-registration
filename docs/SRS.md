@@ -61,26 +61,35 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại, gồm `id`, `username`, `role`, `full_name`, `student_code`, `faculty`, `major`. Các trường thông tin sinh viên có thể là `null` khi không có dữ liệu. |
 | 7 | Hệ thống chỉ chấp nhận JWT khi phiên `sid` tương ứng chưa đăng xuất, chưa hết hạn, `sub` khớp người sở hữu phiên và `role` khớp vai trò hiện tại của người dùng. |
 
-`JWT_TTL` và `SESSION_TTL` mặc định 20 phút và phải bằng nhau. Phiên mới có `expires_at = created_at + JWT_TTL`; `exp` của JWT khớp `expires_at` ở độ chính xác giây. Mọi API được bảo vệ kiểm tra JWT cùng bản ghi `auth_sessions`, và đối chiếu `role` trong JWT với vai trò hiện tại của tài khoản.
+`JWT_TTL` và `SESSION_TTL` mặc định là 20 phút và 2 giá trị này phải bằng nhau. Phiên mới có `expires_at = created_at + JWT_TTL`; `exp` của JWT khớp `expires_at` ở độ chính xác giây. Mọi API được bảo vệ kiểm tra JWT cùng bản ghi `auth_sessions`, và đối chiếu `role` trong JWT với vai trò hiện tại của tài khoản.
 
 **Quy tắc một phiên và đăng nhập lại (áp dụng cho sinh viên):**
-- Mỗi sinh viên chỉ được có **một phiên hoạt động**, không phân biệt thiết bị, trình duyệt hay tab. Nếu phiên cũ còn hoạt động (`logged_out_at IS NULL` và `NOW() < expires_at`), yêu cầu đăng nhập mới bị từ chối, không cấp JWT mới và không gia hạn phiên.
-- Khi tự đăng xuất trước hạn, backend ghi `logged_out_at` một lần và JWT của phiên bị vô hiệu hóa ngay. Khi đến `expires_at`, phiên tự hết hiệu lực dù người dùng không thao tác; `logged_out_at` vẫn là `NULL` và không cần cập nhật database.
-- Thời điểm kết thúc phiên là `COALESCE(logged_out_at, expires_at)`. Người dùng chỉ được đăng nhập lại kể từ `thời điểm kết thúc + LOGIN_COOLDOWN` (mặc định 20 phút). Ví dụ: đăng nhập 10:00, tự logout 10:05 thì được login lại từ 10:25; nếu để hết hạn 10:20 thì được login lại từ 10:40.
-- Sau khi kiểm tra username/password, backend khóa bản ghi `users` và thực hiện kiểm tra phiên gần nhất cùng việc tạo phiên mới trong **một transaction**, bảo đảm hai yêu cầu đăng nhập đồng thời không tạo ra hai phiên hoạt động. Nếu từ chối đăng nhập, phiên đang hoạt động không bị thay đổi.
-- Quản trị viên không bị giới hạn số phiên và không có cooldown: mỗi lần đăng nhập đúng tạo một phiên mới với `sid` riêng, hết hạn sau `JWT_TTL`. Đăng xuất chỉ kết thúc phiên của JWT đang dùng.
+- Mỗi sinh viên chỉ được có một phiên đăng nhập đang hoạt động tại một thời điểm, không phân biệt thiết bị, trình duyệt hay tab. Nếu phiên trước vẫn còn hiệu lực (`logged_out_at IS NULL` và `NOW() < expires_at`), hệ thống từ chối đăng nhập mới, không cấp JWT mới và không gia hạn phiên hiện tại.
+- Khi sinh viên chủ động đăng xuất, backend cập nhật `logged_out_at` nếu trường này chưa có giá trị, đồng thời vô hiệu hóa JWT của phiên đó. Nếu phiên hết hạn tự nhiên tại `expires_at`, hệ thống không cần cập nhật `logged_out_at`; phiên vẫn được xem là hết hiệu lực.
+- Thời điểm kết thúc phiên được xác định bằng `COALESCE(logged_out_at, expires_at)`. Sau thời điểm này, sinh viên cần chờ thêm `LOGIN_COOLDOWN` (mặc định 20 phút) mới được đăng nhập lại.
+- Sau khi xác thực username và password, backend khóa bản ghi người dùng trong bảng `users` rồi kiểm tra phiên gần nhất và tạo phiên mới trong cùng một transaction. Cách này giúp tránh trường hợp hai yêu cầu đăng nhập đồng thời tạo ra hai phiên hoạt động. Nếu đăng nhập bị từ chối, phiên hiện tại không bị thay đổi.
 
-Frontend lưu token và trạng thái hiển thị trong `sessionStorage`, khôi phục sau reload bằng `GET /api/auth/me`. Bộ hẹn giờ theo `exp` tự xóa phiên cục bộ và chuyển về trang đăng nhập khi hết hạn; frontend cũng kiểm tra lại hạn khi tab hoạt động trở lại hoặc API trả `401`. Bộ hẹn giờ chỉ phục vụ giao diện, backend quyết định phiên còn hiệu lực. Đóng tab không phải logout: phiên vẫn kết thúc tại `expires_at`.
+**Quy tắc phiên đăng nhập của quản trị viên**
+
+- Quản trị viên có thể đăng nhập trên nhiều thiết bị hoặc trình duyệt mà không bị giới hạn số phiên và không cần chờ cooldown. Mỗi lần đăng nhập thành công sẽ tạo một phiên mới với `sid` riêng và thời hạn theo `JWT_TTL`.
+- Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng, không ảnh hưởng đến các phiên khác của quản trị viên.
+
+**Xử lý phiên đăng nhập ở frontend**
+
+- Frontend lưu token và trạng thái đăng nhập trong `sessionStorage`. Khi tải lại trang, frontend gọi `GET /api/auth/me` để kiểm tra và khôi phục trạng thái đăng nhập.
+- Frontend sử dụng bộ hẹn giờ dựa trên thời điểm hết hạn `exp` để xóa thông tin phiên cục bộ và chuyển người dùng về trang đăng nhập khi hết hạn. Ngoài ra, hệ thống kiểm tra lại thời hạn phiên khi tab được mở lại hoặc khi API trả về `401`.
+- Bộ hẹn giờ chỉ giúp frontend cập nhật giao diện kịp thời; backend vẫn là nơi quyết định phiên có còn hiệu lực hay không.
+- Đóng tab không đồng nghĩa với đăng xuất. Nếu người dùng không chủ động đăng xuất, phiên vẫn tồn tại cho đến khi hết hạn tại `expires_at`.
 
 ### 3.2. Tra cứu lớp học phần
 
 | STT | Mô tả |
 |---|---|
 | 1 | Trả về danh sách lớp học phần đang hoạt động (`active`) của học kỳ hiện tại; ngoài thời gian đăng ký vẫn cho phép tra cứu, nhưng không cho đăng ký/hủy. |
-| 2 | Hỗ trợ lọc danh sách theo khoa, ngành hoặc tiêu chí phù hợp. |
+| 2 | Hỗ trợ lọc danh sách theo ngành/toàn trường |
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
 | 4 | Danh sách lớp kèm thông tin học kỳ hiện tại (tên, thời gian mở/đóng đăng ký, giới hạn tín chỉ tối đa) để client hiển thị đợt đăng ký. |
-| 5 | Chi tiết lớp học phần kèm khoa, ngành, tên học kỳ và các học phần tiên quyết; với sinh viên, mỗi học phần tiên quyết cho biết sinh viên đó đã đạt hay chưa. |
+| 5 | Chi tiết lớp học phần kèm khoa, ngành, tên học kỳ và các học phần tiên quyết; với sinh viên, mỗi học phần tiên quyết cho biết sinh viên đó đã học hay chưa. |
 
 ### 3.3. Đăng ký và hủy học phần
 
@@ -88,12 +97,12 @@ Frontend lưu token và trạng thái hiển thị trong `sessionStorage`, khôi
 |---|---|
 | 1 | Sinh viên đã xác thực có thể gửi yêu cầu đăng ký một hoặc nhiều lớp học phần trong cùng một yêu cầu. |
 | 2 | Hệ thống kiểm tra các quy tắc nghiệp vụ cho từng lớp trước khi ghi nhận đăng ký. |
-| 3 | Ghi nhận đăng ký của từng lớp và cập nhật sĩ số nhất quán trong giao dịch dữ liệu. |
+| 3 | Ghi nhận thông tin đăng ký của sinh viên theo từng lớp học phần và cập nhật sĩ số lớp tương ứng, đảm bảo dữ liệu đăng ký và sĩ số luôn nhất quán. |
 | 4 | Sinh viên xem được danh sách học phần đã đăng ký thành công của mình. |
-| 5 | Sinh viên có thể hủy đăng ký khi đáp ứng các điều kiện nghiệp vụ. |
+| 5 | Sinh viên có thể hủy đăng ký lớp học phần đã đăng ký. |
 | 6 | Hệ thống cập nhật trạng thái đăng ký và sĩ số lớp học phần khi hủy đăng ký thành công. |
 | 7 | Cung cấp thời khóa biểu tổng hợp từ các lớp học phần đã đăng ký. |
-| 8 | Trả về kết quả đăng ký/hủy và lý do từ chối nếu có; với đăng ký nhiều lớp, trả kết quả và lý do từ chối (nếu có) cho từng lớp. |
+| 8 | Trả về kết quả đăng ký/hủy. |
 | 9 | Khi đăng ký nhiều lớp, hệ thống xử lý lần lượt từng lớp theo thứ tự gửi: lớp đáp ứng điều kiện được ghi nhận, lớp không đáp ứng bị từ chối kèm lý do mà không ảnh hưởng các lớp khác. Yêu cầu vẫn hoàn tất khi chỉ một phần số lớp được ghi nhận. |
 
 ### 3.4. Quản trị lớp học phần
