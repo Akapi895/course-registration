@@ -5,7 +5,7 @@ Tài liệu database được tổ chức tại thư mục này:
 - [Chạy demo local](demo-guide.md): khởi động, kết nối, truy vấn và thử transaction.
 - [Nguồn dữ liệu và crawler](data-sources.md): nguồn CTĐT, cách cập nhật và rà soát dữ liệu.
 
-PostgreSQL triển khai đúng **9 bảng** theo [thiết kế database](../../docs/database-design.md) và [DBML](../../docs/database.dbml). Dự án chưa có backend/API/frontend; tài khoản, lớp, lịch và đăng ký là fixture phục vụ phát triển.
+PostgreSQL triển khai đúng **9 bảng** theo [thiết kế database](../../docs/database-design.md) và [DBML](../../docs/database.dbml), được backend Go và frontend React sử dụng. Tài khoản, lớp, lịch và đăng ký là fixture phục vụ phát triển; hướng dẫn chạy toàn hệ thống ở [README gốc](../../README.md).
 
 Các đường dẫn dạng `database/...` và mọi lệnh shell trong bộ tài liệu đều tính từ thư mục gốc repository.
 
@@ -22,7 +22,7 @@ Các đường dẫn dạng `database/...` và mọi lệnh shell trong bộ tà
 | Lớp | 80: 35 chuyên ngành CNTT, 35 chuyên ngành ĐTVT, 6 lớp chung, 4 lớp ở học kỳ khác |
 | Buổi học | 82 |
 | Đăng ký | 104, gồm 103 đang đăng ký và 1 đã hủy |
-| Kết quả học tập | 98, gồm 78 đạt và 20 chưa đạt |
+| Kết quả học tập | 100 |
 | Phiên đăng nhập | 0 |
 
 Username `student001` … `student100`, `admin1`, `admin2`; cùng mật khẩu demo **`DemoUET@123`**, lưu bcrypt cost 12. Các tài khoản này chỉ dùng phát triển local. File `database/data/demo-password.json` chứa hash cố định để seed lặp lại giống nhau; bcrypt xác thực được bằng Go.
@@ -37,7 +37,7 @@ Tên giảng viên sử dụng danh sách tên tiếng Việt cố định, các
 
 Ngày neo mặc định `REFERENCE_DATE=2026-10-20`, múi giờ `Asia/Ho_Chi_Minh`, random seed `20261020`. Học kỳ đang mở từ ngày neo -7 đến +30 ngày; tương lai +60 đến +90; đã đóng -90 đến -60. Giới hạn **12 tín chỉ là tham số demo**, không phải quy định UET. Khi demo ở thời điểm khác, đặt ngày neo mong muốn trước khi seed database sạch. Cùng ngày neo, random seed và dataset tạo cùng nội dung; thay các giá trị này trên DB đã seed sẽ bị từ chối.
 
-Seed chạy trong một transaction, khóa bảng để tránh thay đổi đồng thời. Nếu database rỗng thì nạp; nếu toàn bộ nội dung giống fixture thì không làm gì; dữ liệu khác bị từ chối, kể cả thay đổi từ thao tác demo/API. Migration kiểm tra checksum migration và fingerprint schema ghi trong comment bảng `users`, không thêm bảng migration thứ 9.
+Seed chạy trong một transaction, khóa bảng để tránh thay đổi đồng thời. Nếu database rỗng thì nạp; nếu toàn bộ nội dung giống fixture thì không làm gì; dữ liệu khác bị từ chối, kể cả thay đổi từ thao tác demo/API. Migration kiểm tra checksum migration và fingerprint schema ghi trong comment bảng `users`, không thêm bảng theo dõi migration.
 
 ## Giới hạn ánh xạ vào 9 bảng
 

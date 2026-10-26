@@ -3108,43 +3108,43 @@
   "sources": {
     "fet.pdf": {
       "url": "https://fet.uet.vnu.edu.vn/wp-content/uploads/2024/03/2.-Khung-chuong-trinh-dai-hoc-he-chuan_Cong-nghe-ky-thuat-dien-tu-Vien-thong_2023.pdf",
-      "fetched_at": "2026-10-20T04:04:02.440073+00:00",
+      "fetched_at": "2026-10-26T14:37:51.225347+00:00",
       "sha256": "cb9a88c6025b61c4545a2bd9b4e89678873a583ee8fa45a1cc9b01795be7e1a6",
       "tls_verified": true
     },
     "cntt-19.html": {
       "url": "https://services.uet.vnu.edu.vn/books/CT_DT_CNTT/files/basic-html/page19.html",
-      "fetched_at": "2026-10-20T04:04:03.565123+00:00",
+      "fetched_at": "2026-10-26T14:37:52.304646+00:00",
       "sha256": "4a93949173054f81c9b9eb7befaa69989a84146652b368ad7198f896ec1e37cc",
       "tls_verified": false
     },
     "cntt-20.html": {
       "url": "https://services.uet.vnu.edu.vn/books/CT_DT_CNTT/files/basic-html/page20.html",
-      "fetched_at": "2026-10-20T04:04:04.578963+00:00",
+      "fetched_at": "2026-10-26T14:37:53.361143+00:00",
       "sha256": "489c911938bc529d5c64ffcb172143d080294136d22cca831916efe3f497e83f",
       "tls_verified": false
     },
     "cntt-21.html": {
       "url": "https://services.uet.vnu.edu.vn/books/CT_DT_CNTT/files/basic-html/page21.html",
-      "fetched_at": "2026-10-20T04:04:05.590869+00:00",
+      "fetched_at": "2026-10-26T14:37:54.404825+00:00",
       "sha256": "77cbbe59f232bdafa706decc62856b2b23fb71db669182a721455c0fbb05128a",
       "tls_verified": false
     },
     "cntt-22.html": {
       "url": "https://services.uet.vnu.edu.vn/books/CT_DT_CNTT/files/basic-html/page22.html",
-      "fetched_at": "2026-10-20T04:04:06.603694+00:00",
+      "fetched_at": "2026-10-26T14:37:55.448991+00:00",
       "sha256": "cbc9ab213c7b03f2ff5c416bddd0d0d2d8fc36dc4232b56075d2d2213ccef471",
       "tls_verified": false
     },
     "cntt-23.html": {
       "url": "https://services.uet.vnu.edu.vn/books/CT_DT_CNTT/files/basic-html/page23.html",
-      "fetched_at": "2026-10-20T04:04:07.617628+00:00",
+      "fetched_at": "2026-10-26T14:37:56.488307+00:00",
       "sha256": "e51b236e98b088657e6547af809843a93d337cf5c8392a37904d1604a2153ffb",
       "tls_verified": false
     },
     "cntt-24.html": {
       "url": "https://services.uet.vnu.edu.vn/books/CT_DT_CNTT/files/basic-html/page24.html",
-      "fetched_at": "2026-10-20T04:04:08.631758+00:00",
+      "fetched_at": "2026-10-26T14:37:57.528892+00:00",
       "sha256": "a2a01e8a5d0d05e1cc77d06e647e87acd9c96fe978e4becaa31bce2d85e88728",
       "tls_verified": false
     }
