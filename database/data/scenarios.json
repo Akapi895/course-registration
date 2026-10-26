@@ -8,70 +8,70 @@
       "name": "Đăng ký thành công",
       "username": "student001",
       "class_id": 7,
-      "class_code": "INT1007-DEMO07",
+      "class_code": "INT1007-07",
       "expected": "Đủ chỗ, không trùng lịch, tổng 6/12 tín chỉ"
     },
     {
       "name": "Trùng lịch",
       "username": "student001",
       "class_id": 5,
-      "class_code": "INT3102-DEMO05",
+      "class_code": "INT3102-05",
       "expected": "Trùng buổi học lớp 4"
     },
     {
       "name": "Đăng ký trùng",
       "username": "student001",
       "class_id": 4,
-      "class_code": "INT2208-DEMO04",
+      "class_code": "INT2208-04",
       "expected": "Đã có bản ghi registered"
     },
     {
       "name": "Vượt tín chỉ",
       "username": "student002",
       "class_id": 14,
-      "class_code": "INT3120-DEMO14",
+      "class_code": "INT3120-14",
       "expected": "Từ 12 lên 15 tín chỉ"
     },
     {
       "name": "Ngoài thời gian - đã đóng",
       "username": "student001",
       "class_id": 77,
-      "class_code": "INT1007-DEMO77",
+      "class_code": "INT1007-77",
       "expected": "Học kỳ đã đóng"
     },
     {
       "name": "Ngoài thời gian - chưa mở",
       "username": "student001",
       "class_id": 79,
-      "class_code": "INT2020-DEMO79",
+      "class_code": "INT2020-79",
       "expected": "Học kỳ chưa mở"
     },
     {
       "name": "Lớp đầy",
       "username": "student001",
       "class_id": 1,
-      "class_code": "INT1007-DEMO01",
+      "class_code": "INT1007-01",
       "expected": "Sĩ số 2/2"
     },
     {
       "name": "Còn một chỗ",
       "username": "student001",
       "class_id": 2,
-      "class_code": "INT2020-DEMO02",
+      "class_code": "INT2020-02",
       "expected": "Sĩ số 1/2; kiểm tra thêm lịch trước khi đăng ký"
     },
     {
       "name": "Đăng ký lại sau hủy",
       "username": "student001",
       "class_id": 6,
-      "class_code": "INT3105-DEMO06",
+      "class_code": "INT3105-06",
       "expected": "Tái sử dụng bản ghi cancelled"
     },
     {
       "name": "Lớp đã hủy",
       "username": "student001",
       "class_id": 3,
-      "class_code": "INT2204-DEMO03",
+      "class_code": "INT2204-03",
       "expected": "Lớp cancelled"
     }
   ],

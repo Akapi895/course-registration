@@ -11,12 +11,13 @@ import (
 )
 
 type ClassService struct {
-	classes   *repository.ClassRepository
-	semesters *repository.SemesterRepository
+	classes    *repository.ClassRepository
+	semesters  *repository.SemesterRepository
+	maxCredits int
 }
 
-func NewClassService(classes *repository.ClassRepository, semesters *repository.SemesterRepository) *ClassService {
-	return &ClassService{classes: classes, semesters: semesters}
+func NewClassService(classes *repository.ClassRepository, semesters *repository.SemesterRepository, maxCredits int) *ClassService {
+	return &ClassService{classes: classes, semesters: semesters, maxCredits: maxCredits}
 }
 
 type ClassFilter struct {
@@ -71,7 +72,7 @@ func (s *ClassService) ListCurrent(ctx context.Context, filter ClassFilter) (*Cu
 	}
 
 	open := isRegistrationOpen(*semester, now)
-	return &CurrentClasses{Semester: &SemesterView{Semester: *semester, RegistrationOpen: open}, Classes: classes}, nil
+	return &CurrentClasses{Semester: &SemesterView{Semester: withCreditLimit(*semester, s.maxCredits), RegistrationOpen: open}, Classes: classes}, nil
 }
 
 // PrerequisiteView is a prerequisite course. Passed is set only when the caller

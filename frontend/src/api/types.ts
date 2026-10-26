@@ -19,6 +19,7 @@ export interface ClassSummary {
   class_code: string
   course_code: string
   course_name: string
+  lecturer_name: string
   credits: number
   enrolled: number
   max_capacity: number
@@ -49,7 +50,6 @@ export interface ClassDetail extends ClassSummary {
   major: string | null
   semester_id: number
   semester_name: string
-  lecturer_name: string
   status: 'active' | 'cancelled'
   schedules: ClassSchedule[]
   prerequisites: Prerequisite[]

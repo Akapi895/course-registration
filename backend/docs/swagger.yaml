@@ -104,6 +104,9 @@ definitions:
       id:
         example: 10
         type: integer
+      lecturer_name:
+        example: Giảng viên A
+        type: string
       max_capacity:
         example: 50
         type: integer
@@ -203,6 +206,29 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/controller.failData'
+      status:
+        example: fail
+        type: string
+    type: object
+  controller.loginCooldownData:
+    properties:
+      code:
+        example: LOGIN_COOLDOWN
+        type: string
+      login_allowed_at:
+        example: "2026-10-26T03:40:00Z"
+        type: string
+      message:
+        example: Tài khoản đang trong thời gian chờ đăng nhập lại
+        type: string
+      retry_after:
+        example: 720
+        type: integer
+    type: object
+  controller.loginCooldownResponse:
+    properties:
+      data:
+        $ref: '#/definitions/controller.loginCooldownData'
       status:
         example: fail
         type: string
@@ -553,7 +579,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Trả về access JWT và tạo một phiên trong auth_sessions.
+      description: Trả về access JWT và tạo một phiên trong auth_sessions. Đăng nhập
+        lại trong cửa sổ hiện tại giữ nguyên mốc hết hạn. Sau khi hết hạn, tài khoản
+        phải chờ LOGIN_COOLDOWN trước khi mở cửa sổ mới; áp dụng cả sinh viên và quản
+        trị viên.
       parameters:
       - description: Thông tin đăng nhập
         in: body
@@ -576,6 +605,14 @@ paths:
           description: INVALID_CREDENTIALS
           schema:
             $ref: '#/definitions/controller.failResponse'
+        "429":
+          description: LOGIN_COOLDOWN
+          headers:
+            Retry-After:
+              description: Số giây còn phải chờ trước lần đăng nhập tiếp theo
+              type: integer
+          schema:
+            $ref: '#/definitions/controller.loginCooldownResponse'
         "500":
           description: INTERNAL_ERROR
           schema:

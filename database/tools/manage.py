@@ -4,13 +4,14 @@ import hashlib
 import json
 import os
 import sys
+from datetime import timedelta
 
 import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
 from crawl import ROOT, crawl, dump
-from demo import TABLES, generate
+from demo import TABLES, academic_semester_name, generate, lecturer_name
 
 
 def connect():
@@ -54,6 +55,43 @@ COMPOSITE_KEYS = {
 
 def row_key(table):
     return COMPOSITE_KEYS.get(table, ('id',))
+
+
+def normalize_class_codes(conn):
+    """Rename only legacy fixture class codes, without recreating registrations."""
+    conn.execute('SELECT pg_advisory_xact_lock(20261020)')
+    renamed = conn.execute(
+        "UPDATE course_classes SET class_code = replace(class_code, '-DEMO', '-') "
+        "WHERE class_code ~ '^[A-Z]{3}[0-9]{4}-DEMO[0-9]{2}$' RETURNING id"
+    ).fetchall()
+    print(f'Normalized {len(renamed)} legacy class codes')
+
+
+def normalize_semester_names(conn):
+    """Replace legacy fixture labels without changing registration windows."""
+    conn.execute('SELECT pg_advisory_xact_lock(20261020)')
+    legacy = {'Demo - đã đóng': (-1, -90), 'Demo - đang mở': (0, -7), 'Demo - chưa mở': (1, 60)}
+    rows = conn.execute('SELECT id, name, registration_opens_at FROM semesters WHERE name = ANY(%s) FOR UPDATE',
+                        (list(legacy),)).fetchall()
+    for row in rows:
+        relative, opens_offset = legacy[row['name']]
+        reference = row['registration_opens_at'] - timedelta(days=opens_offset)
+        name = academic_semester_name(reference, relative)
+        conn.execute('UPDATE semesters SET name = %s WHERE id = %s', (name, row['id']))
+    print(f'Normalized {len(rows)} legacy semester names')
+
+
+def normalize_lecturer_names(conn):
+    """Replace generated placeholders while preserving administrator edits."""
+    conn.execute('SELECT pg_advisory_xact_lock(20261020)')
+    rows = conn.execute(
+        "SELECT id, course_id FROM course_classes "
+        "WHERE lecturer_name ~ '^Giảng viên giả lập [0-9]{2}$' FOR UPDATE"
+    ).fetchall()
+    for row in rows:
+        conn.execute('UPDATE course_classes SET lecturer_name = %s WHERE id = %s',
+                     (lecturer_name(row['course_id']), row['id']))
+    print(f'Normalized {len(rows)} legacy lecturer names')
 
 
 def read_table(conn, table):
@@ -217,10 +255,11 @@ def verify(conn, expected):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command',choices=['crawl','promote','migrate','seed','verify','generate','test','reset'])
+    parser.add_argument('command',choices=['crawl','promote','migrate','seed','verify','generate','test','reset','normalize-class-codes','normalize-semester-names','normalize-lecturer-names','expire-sessions'])
     parser.add_argument('--refresh',action='store_true')
     parser.add_argument('--allow-expired-uet-tls',action='store_true')
     parser.add_argument('--confirm-reset',action='store_true')
+    parser.add_argument('--confirm-expire-sessions',action='store_true')
     parser.add_argument('--reference-date',default=os.getenv('REFERENCE_DATE','2026-10-20'))
     parser.add_argument('--random-seed',type=int,default=int(os.getenv('RANDOM_SEED','20261020')))
     args = parser.parse_args()
@@ -252,9 +291,35 @@ def main():
             conn.execute(sql.SQL('TRUNCATE {} RESTART IDENTITY').format(sql.SQL(',').join(map(sql.Identifier,TABLES))))
         print('Demo data deleted; schema retained')
         return
+    if args.command=='expire-sessions':
+        if not args.confirm_expire_sessions:
+            raise ValueError('This closes existing login windows. Pass --confirm-expire-sessions explicitly.')
+        with connect() as conn:
+            migrate(conn)
+            result = conn.execute(
+                "UPDATE auth_sessions SET revoked_at = COALESCE(revoked_at, now()), "
+                "expires_at = now() WHERE expires_at > now()"
+            )
+            print(f'Closed {result.rowcount} session records; login cooldown starts at the new expiry')
+        return
     if args.command=='migrate':
         with connect() as conn:
             migrate(conn)
+        return
+    if args.command=='normalize-class-codes':
+        with connect() as conn:
+            migrate(conn)
+            normalize_class_codes(conn)
+        return
+    if args.command=='normalize-semester-names':
+        with connect() as conn:
+            migrate(conn)
+            normalize_semester_names(conn)
+        return
+    if args.command=='normalize-lecturer-names':
+        with connect() as conn:
+            migrate(conn)
+            normalize_lecturer_names(conn)
         return
     data, scenarios = generate(args.reference_date,args.random_seed)
     validate_fixture(data)

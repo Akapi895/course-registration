@@ -9,6 +9,28 @@ from crawl import ROOT, FACULTIES, MAJORS
 TABLES = ['users', 'semesters', 'courses', 'course_prerequisites', 'course_classes',
           'class_schedules', 'registrations', 'auth_sessions', 'course_results']
 
+LECTURER_NAMES = (
+    'Nguyễn Minh Anh', 'Trần Đức Huy', 'Lê Hoàng Nam', 'Phạm Thu Hà',
+    'Hoàng Quang Minh', 'Vũ Ngọc Lan', 'Đặng Quốc Bảo', 'Bùi Thanh Hương',
+    'Đỗ Anh Tuấn', 'Ngô Phương Linh', 'Dương Hải Long', 'Đinh Thị Mai',
+    'Nguyễn Trung Kiên', 'Trần Bảo Ngọc', 'Lê Đức Thành', 'Phạm Minh Châu',
+    'Hoàng Việt Dũng', 'Vũ Thanh Tâm', 'Đặng Hoài An', 'Bùi Gia Hân',
+    'Đỗ Quang Hưng', 'Ngô Thu Trang', 'Dương Minh Khôi', 'Đinh Ngọc Ánh',
+    'Nguyễn Hải Đăng', 'Trần Thùy Dương', 'Lê Quốc Việt', 'Phạm Khánh Linh',
+    'Hoàng Đức Phúc', 'Vũ Kim Ngân', 'Đặng Anh Khoa', 'Bùi Diệu Hương',
+)
+
+
+def lecturer_name(course_id):
+    return LECTURER_NAMES[(course_id - 1) % len(LECTURER_NAMES)]
+
+
+def academic_semester_name(reference, relative=0):
+    # Two teaching semesters per academic year; August starts the next year.
+    period = reference.year * 2 if reference.month >= 8 else (reference.year - 1) * 2 + 1
+    year, term = divmod(period + relative, 2)
+    return f'Học kỳ {term + 1} năm học {year}-{year + 1}'
+
 
 def generate(reference_date, random_seed):
     rng = random.Random(random_seed)
@@ -25,9 +47,8 @@ def generate(reference_date, random_seed):
             student_code=f'DEMO{i:05}' if student else None,
             faculty=FACULTIES[faculty] if student else None,
             major=MAJORS[faculty] if student else None, created_at=ref-timedelta(days=90)))
-    for i, (name, opens, closes) in enumerate([('Demo - đã đóng', -90, -60),
-            ('Demo - đang mở', -7, 30), ('Demo - chưa mở', 60, 90)], 1):
-        data['semesters'].append(dict(id=i, name=name, registration_opens_at=ref+timedelta(days=opens),
+    for i, (opens, closes) in enumerate([(-90, -60), (-7, 30), (60, 90)], 1):
+        data['semesters'].append(dict(id=i, name=academic_semester_name(ref, i - 2), registration_opens_at=ref+timedelta(days=opens),
             registration_closes_at=ref+timedelta(days=closes), max_credits=12))
     for i, course in enumerate(catalog['courses'], 1):
         data['courses'].append(dict(id=i, **course))
@@ -49,7 +70,7 @@ def generate(reference_date, random_seed):
     for i, course in enumerate(selected, 1):
         semester = 2 if i <= 76 else 1 if i <= 78 else 3
         data['course_classes'].append(dict(id=i, course_id=course['id'], semester_id=semester,
-            class_code=f"{course['code']}-DEMO{i:02}", lecturer_name=f'Giảng viên giả lập {i:02}',
+            class_code=f"{course['code']}-{i:02}", lecturer_name=lecturer_name(course['id']),
             max_capacity=2 if i in (1, 2) else 40, enrolled=0,
             status='cancelled' if i == 3 else 'active'))
         slot = 0 if i in (4, 5) else (i-1) % 24

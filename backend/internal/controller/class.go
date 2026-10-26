@@ -25,13 +25,14 @@ func NewClassController(classes *service.ClassService) *ClassController {
 }
 
 type classItem struct {
-	ID          int64  `json:"id" example:"10"`
-	ClassCode   string `json:"class_code" example:"INT3401-01"`
-	CourseCode  string `json:"course_code" example:"INT3401"`
-	CourseName  string `json:"course_name" example:"Hệ điều hành"`
-	Credits     int    `json:"credits" example:"3"`
-	Enrolled    int    `json:"enrolled" example:"42"`
-	MaxCapacity int    `json:"max_capacity" example:"50"`
+	ID           int64  `json:"id" example:"10"`
+	ClassCode    string `json:"class_code" example:"INT3401-01"`
+	CourseCode   string `json:"course_code" example:"INT3401"`
+	CourseName   string `json:"course_name" example:"Hệ điều hành"`
+	LecturerName string `json:"lecturer_name" example:"Giảng viên A"`
+	Credits      int    `json:"credits" example:"3"`
+	Enrolled     int    `json:"enrolled" example:"42"`
+	MaxCapacity  int    `json:"max_capacity" example:"50"`
 }
 
 // semesterItem is the semester the listed classes belong to, so clients can
@@ -168,13 +169,14 @@ func (h *ClassController) List(c *gin.Context) {
 	items := make([]classItem, 0, len(current.Classes))
 	for _, v := range current.Classes {
 		items = append(items, classItem{
-			ID:          v.ID,
-			ClassCode:   v.ClassCode,
-			CourseCode:  v.CourseCode,
-			CourseName:  v.CourseName,
-			Credits:     v.Credits,
-			Enrolled:    v.Enrolled,
-			MaxCapacity: v.MaxCapacity,
+			ID:           v.ID,
+			ClassCode:    v.ClassCode,
+			CourseCode:   v.CourseCode,
+			CourseName:   v.CourseName,
+			LecturerName: v.LecturerName,
+			Credits:      v.Credits,
+			Enrolled:     v.Enrolled,
+			MaxCapacity:  v.MaxCapacity,
 		})
 	}
 	data := classListData{Classes: items}

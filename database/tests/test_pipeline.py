@@ -43,6 +43,40 @@ class ParserTests(unittest.TestCase):
 
 
 class FixtureTests(unittest.TestCase):
+    def test_lecturer_names_are_consistent_across_classes_of_a_course(self):
+        data, _ = generate('2026-10-20',20261020)
+        teachers = {}
+        for cls in data['course_classes']:
+            name = cls['lecturer_name']
+            self.assertGreaterEqual(len(name.split()), 3)
+            self.assertNotIn('giả lập', name)
+            self.assertFalse(any(c.isdigit() for c in name))
+            previous = teachers.setdefault(cls['course_id'], name)
+            self.assertEqual(name, previous)
+
+    def test_academic_semester_names_across_year_boundaries(self):
+        for reference, current in [('2026-10-20', 'Học kỳ 1 năm học 2026-2027'),
+                                   ('2027-02-01', 'Học kỳ 2 năm học 2026-2027')]:
+            data, _ = generate(reference,20261020)
+            names = [s['name'] for s in data['semesters']]
+            self.assertEqual(names[1], current)
+            self.assertEqual(len(set(names)), 3)
+            self.assertTrue(all(name.startswith('Học kỳ ') and 'Demo' not in name for name in names))
+
+    def test_class_codes_are_readable_unique_and_match_scenarios(self):
+        data, scenarios = generate('2026-10-20',20261020)
+        courses = {c['id']: c['code'] for c in data['courses']}
+        classes = {c['id']: c for c in data['course_classes']}
+        keys = set()
+        for cls in classes.values():
+            self.assertRegex(cls['class_code'], r'^[A-Z]{3}[0-9]{4}-[0-9]{2}$')
+            self.assertTrue(cls['class_code'].startswith(courses[cls['course_id']] + '-'))
+            key = (cls['semester_id'], cls['class_code'])
+            self.assertNotIn(key, keys)
+            keys.add(key)
+        for scenario in scenarios['scenarios']:
+            self.assertEqual(scenario['class_code'], classes[scenario['class_id']]['class_code'])
+
     def test_reproducible_and_valid(self):
         first, scenarios = generate('2026-10-20',20261020)
         second, _ = generate('2026-10-20',20261020)

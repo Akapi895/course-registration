@@ -29,6 +29,12 @@ Username `student001` … `student100`, `admin1`, `admin2`; cùng mật khẩu d
 
 [database/data/scenarios.json](../data/scenarios.json) liệt kê tài khoản, ID/mã lớp và kết quả mong đợi cho 10 tình huống: thành công, trùng lịch, đăng ký trùng, vượt tín chỉ, học kỳ đóng/chưa mở, đầy/còn một chỗ, đăng ký lại sau hủy, lớp đã hủy. Đây là fixture chuẩn bị cho kiểm thử API; DB không tự thi hành các luật thuộc Service.
 
+Mã lớp dùng dạng `<mã học phần>-<số lớp>`, ví dụ `INT2204-04`. Database đã seed theo dạng cũ có thể cập nhật bằng `docker compose --profile tools run --rm seed normalize-class-codes`; lệnh chỉ đổi mã khớp mẫu fixture cũ `INT2204-DEMO04`, giữ ID, đăng ký và các dữ liệu khác. Nếu mã đích bị trùng trong cùng học kỳ, toàn bộ thao tác rollback theo ràng buộc UNIQUE.
+
+Tên học kỳ dùng dạng `Học kỳ 1 năm học 2026-2027`, sinh theo ngày neo và thứ tự học kỳ trước/hiện tại/kế tiếp. `docker compose --profile tools run --rm seed normalize-semester-names` chỉ đổi ba nhãn fixture cũ `Demo - đã đóng/đang mở/chưa mở`, giữ ID và thời gian đăng ký; tên học kỳ tự đặt không bị đổi.
+
+Tên giảng viên sử dụng danh sách tên tiếng Việt cố định, các lớp cùng học phần nhận cùng tên. `docker compose --profile tools run --rm seed normalize-lecturer-names` thay nhãn fixture cũ `Giảng viên giả lập XX`, không ghi đè tên đã chỉnh sửa. Đây vẫn là dữ liệu tổng hợp, không phải danh sách giảng viên thực tế của trường.
+
 Ngày neo mặc định `REFERENCE_DATE=2026-10-20`, múi giờ `Asia/Ho_Chi_Minh`, random seed `20261020`. Học kỳ đang mở từ ngày neo -7 đến +30 ngày; tương lai +60 đến +90; đã đóng -90 đến -60. Giới hạn **12 tín chỉ là tham số demo**, không phải quy định UET. Khi demo ở thời điểm khác, đặt ngày neo mong muốn trước khi seed database sạch. Cùng ngày neo, random seed và dataset tạo cùng nội dung; thay các giá trị này trên DB đã seed sẽ bị từ chối.
 
 Seed chạy trong một transaction, khóa bảng để tránh thay đổi đồng thời. Nếu database rỗng thì nạp; nếu toàn bộ nội dung giống fixture thì không làm gì; dữ liệu khác bị từ chối, kể cả thay đổi từ thao tác demo/API. Migration kiểm tra checksum migration và fingerprint schema ghi trong comment bảng `users`, không thêm bảng migration thứ 9.

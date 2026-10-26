@@ -240,6 +240,7 @@ export function StudentClasses() {
         </Td>
         <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => detail.show(c.id)} className="hover:underline">{c.class_code}</button></Td>
         <Td><button type="button" onClick={() => detail.show(c.id)} className={cx('text-left font-medium hover:underline', mine && 'text-emerald-900')}>{c.course_name}</button><div className="text-xs text-muted">{c.course_code}</div></Td>
+        <Td>{c.lecturer_name}</Td>
         <Td>{c.credits}</Td>
         <Td><Capacity c={c} /></Td>
         <Td>{mine ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" />Đã đăng ký</Badge> : full ? <Badge>Hết chỗ</Badge> : <Badge>Chưa đăng ký</Badge>}</Td>
@@ -263,7 +264,7 @@ export function StudentClasses() {
           <Button variant="ghost" onClick={reset} disabled={!filtered}><FilterX className="h-4 w-4" />Xóa bộ lọc</Button>
         </div>
       </Card>
-      {ready && open && locked && <div className="mb-4"><Alert tone="warning" title="Bạn đã gửi đăng ký trong phiên này">Phiên hiện tại chỉ cho phép xem. Để đăng ký hoặc hủy tiếp, hãy đăng xuất (hoặc chờ hết phiên) và đăng nhập lại.</Alert></div>}
+      {ready && open && locked && <div className="mb-4"><Alert tone="warning" title="Bạn đã gửi đăng ký trong phiên này">Phiên hiện tại chỉ cho phép xem. Để đăng ký hoặc hủy tín chỉ, hãy đăng xuất và đăng nhập lại.</Alert></div>}
       {ready && semester && !open && <div className="mb-4"><Alert tone="info" title="Không trong thời gian đăng ký">Hiện không trong thời gian đăng ký học phần. Bạn chỉ có thể xem danh sách lớp.</Alert></div>}
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 text-sm">
@@ -281,10 +282,11 @@ export function StudentClasses() {
             { label: <span className="sr-only">Chọn</span>, className: 'w-12' },
             { label: 'Mã lớp', className: 'w-44' },
             { label: 'Tên học phần', className: 'w-auto' },
+            { label: 'Giảng viên', className: 'w-48' },
             { label: 'TC', className: 'w-16' },
             { label: 'Sĩ số', className: 'w-36' },
             { label: 'Trạng thái', className: 'w-40' },
-          ]} minWidth={760}>{shown.map(row)}</Table>
+          ]} minWidth={960}>{shown.map(row)}</Table>
           <Pagination page={pg} total={list.length} size={size} onChange={setPage} />
         </>}
       </Card>

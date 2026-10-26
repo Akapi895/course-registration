@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'database' / 'tools
 import psycopg
 from psycopg import sql
 
-from manage import TABLES, connect, dump, generate, migrate, seed, validate_fixture
+from manage import TABLES, connect, dump, generate, migrate, normalize_class_codes, normalize_lecturer_names, normalize_semester_names, seed, validate_fixture
 
 
 def initialize():
@@ -27,6 +27,9 @@ def initialize():
         if any(populated.values()):
             if not all(populated[t] for t in ('users', 'semesters', 'courses', 'course_classes', 'class_schedules')):
                 raise ValueError('Database is partially populated; automatic seed will not overwrite it')
+            normalize_class_codes(conn)
+            normalize_semester_names(conn)
+            normalize_lecturer_names(conn)
             print('Existing database retained; skipping demo seed')
         else:
             reference = os.getenv('REFERENCE_DATE') or datetime.now(ZoneInfo('Asia/Ho_Chi_Minh')).date().isoformat()

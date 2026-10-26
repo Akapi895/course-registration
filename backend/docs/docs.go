@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "Trả về access JWT và tạo một phiên trong auth_sessions.",
+                "description": "Trả về access JWT và tạo một phiên trong auth_sessions. Đăng nhập lại trong cửa sổ hiện tại giữ nguyên mốc hết hạn. Sau khi hết hạn, tài khoản phải chờ LOGIN_COOLDOWN trước khi mở cửa sổ mới; áp dụng cả sinh viên và quản trị viên.",
                 "consumes": [
                     "application/json"
                 ],
@@ -56,6 +56,18 @@ const docTemplate = `{
                         "description": "INVALID_CREDENTIALS",
                         "schema": {
                             "$ref": "#/definitions/controller.failResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "LOGIN_COOLDOWN",
+                        "schema": {
+                            "$ref": "#/definitions/controller.loginCooldownResponse"
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "type": "integer",
+                                "description": "Số giây còn phải chờ trước lần đăng nhập tiếp theo"
+                            }
                         }
                     },
                     "500": {
@@ -873,6 +885,10 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 10
                 },
+                "lecturer_name": {
+                    "type": "string",
+                    "example": "Giảng viên A"
+                },
                 "max_capacity": {
                     "type": "integer",
                     "example": 50
@@ -1014,6 +1030,39 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/controller.failData"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "fail"
+                }
+            }
+        },
+        "controller.loginCooldownData": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "LOGIN_COOLDOWN"
+                },
+                "login_allowed_at": {
+                    "type": "string",
+                    "example": "2026-10-26T03:40:00Z"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Tài khoản đang trong thời gian chờ đăng nhập lại"
+                },
+                "retry_after": {
+                    "type": "integer",
+                    "example": 720
+                }
+            }
+        },
+        "controller.loginCooldownResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/controller.loginCooldownData"
                 },
                 "status": {
                     "type": "string",
