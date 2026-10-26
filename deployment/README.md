@@ -76,13 +76,13 @@ Trước khi mở HTTP server, `start.py` kiểm tra migration và trạng thái
 
 Thao tác đăng nhập, đăng ký/hủy và quản trị được lưu trong PostgreSQL, tồn tại qua restart, cold start và redeploy của Web Service. Thay `REFERENCE_DATE` không đặt lại dữ liệu đã nạp. Database trống mới sẽ kích hoạt lại quy trình khởi tạo.
 
-Fixture gồm `student001`–`student100`, `admin1`, `admin2`, dùng chung mật khẩu `DemoUET@123`. Học kỳ demo đang mở có khoảng đăng ký từ ngày neo −7 đến +30 ngày. Không có API đổi thời gian đăng ký; muốn đổi phải seed lại hoặc sửa bảng `semesters`. Ứng dụng không tự gia hạn khi ứng dụng khởi động lại.
+Fixture gồm `student001`–`student100`, `admin1`, `admin2`, dùng chung mật khẩu `DemoUET@123`. Học kỳ demo đang mở có khoảng đăng ký từ ngày neo −7 đến +30 ngày. Muốn đổi thời gian đăng ký phải seed lại hoặc sửa bảng `semesters`; ứng dụng không tự gia hạn khi khởi động lại.
 
-Dữ liệu demo được chia sẻ giữa các phiên truy cập. Không có chức năng reset toàn bộ database qua giao diện.
+Dữ liệu demo được chia sẻ giữa các phiên truy cập.
 
 ### Database mock và kết thúc phiên demo
 
-Schema auth mới chỉ gồm `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Database mock cũ dùng `revoked_at`/`refresh_token_hash` cần được dựng lại; startup không nâng cấp schema cũ và không tự xóa volume. Build lại image không làm thay đổi database đã tồn tại.
+`auth_sessions` chỉ gồm `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Database có schema khác phải được dựng lại: startup không nâng cấp schema và không tự xóa volume, build lại image không đổi database đã tồn tại.
 
 Khi cần chủ động kết thúc các phiên đang hoạt động trên database demo dùng schema mới:
 

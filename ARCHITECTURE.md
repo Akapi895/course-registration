@@ -6,7 +6,7 @@ Phase 1 tập trung hoàn thiện các chức năng theo SRS, bảo đảm tính
 
 ## 2. Cấu trúc repository
 
-Repository được tổ chức theo từng thành phần nhằm phân tách mã nguồn Backend, Frontend, cơ sở dữ liệu và tài liệu dự án.
+Mỗi thành phần (backend, frontend, cơ sở dữ liệu, triển khai, tài liệu) nằm trong thư mục riêng.
 
 ```text
 course-registration/
@@ -23,15 +23,32 @@ course-registration/
 │   ├── Dockerfile
 │   ├── go.mod
 │   └── go.sum
-├── frontend/                    # TODO: bổ sung sau
+├── frontend/
+│   ├── src/
+│   │   ├── api/                 # client.ts (fetch, gắn token, xử lý 401), index.ts (hàm gọi từng endpoint), types.ts
+│   │   ├── auth/                # AuthProvider (phiên, hẹn giờ hết hạn), sessionLock (chế độ chỉ xem sau khi gửi đăng ký)
+│   │   ├── components/          # Layout, ui, PeriodBanner, ClassDetailModal, RegistrationFlow, Schedule
+│   │   ├── hooks/               # useRequest
+│   │   ├── pages/               # auth, student, schedule, admin
+│   │   ├── App.tsx              # bảng route theo vai trò
+│   │   ├── router.tsx           # router theo hash (#/...)
+│   │   └── main.tsx
+│   ├── nginx.conf               # phục vụ bản build và proxy /api/ trong Compose
+│   ├── Dockerfile
+│   └── package.json             # npm + package-lock.json
 ├── database/
 │   ├── migrations/
 │   └── tools/
+├── deployment/                  # Dockerfile, start.py, smoke test cho Render
 ├── docs/
 │   ├── SRS.md
 │   ├── api-design.md
-│   └── database-design.md
+│   ├── database-design.md
+│   ├── database.dbml
+│   └── adr/
 ├── docker-compose.yml
+├── render.yaml
+├── GLOSSARY.md
 ├── ARCHITECTURE.md
 ├── .gitignore
 └── README.md
@@ -109,7 +126,7 @@ Backend kiểm tra chữ ký, thuật toán, claim JWT và phiên tương ứng 
 
 Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Kiểm tra mật khẩu trước, rồi khóa dòng `users`, kiểm tra phiên gần nhất và tạo phiên trong cùng transaction. Login khi phiên còn hoạt động trả `409 ALREADY_LOGGED_IN`, giữ nguyên phiên. Logout chỉ ghi `logged_out_at` một lần trước hạn; tự hết hạn không cập nhật bản ghi. Cooldown cho cả hai vai trò tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất cộng `LOGIN_COOLDOWN`. `expires_at = created_at + JWT_TTL`; đổi TTL chỉ ảnh hưởng phiên mới.
 
-Phase 1 không có refresh token. Khi JWT hết hạn, người dùng đăng nhập lại.
+Khi JWT hết hạn, người dùng đăng nhập lại.
 
 ### 3.2. Đăng ký và hủy học phần
 
@@ -138,7 +155,7 @@ sequenceDiagram
             R->>DB: COMMIT
             R-->>S: Thành công
             S-->>C: Kết quả đăng ký
-            C-->>FE: 201 Created
+            C-->>FE: 200 OK
         else Có lỗi
             R->>DB: ROLLBACK
             R-->>S: Lỗi xử lý dữ liệu
@@ -160,15 +177,15 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 ### 3.3. Tra cứu và quản trị
 
 - **Tra cứu:** Controller tiếp nhận yêu cầu, Service xử lý điều kiện tra cứu, Repository truy vấn dữ liệu và trả kết quả về Frontend.
-- **Thông tin tài khoản:** `GET /api/auth/me` chỉ trả thông tin người dùng hiện tại, gồm khoa/ngành để frontend hiển thị tổng quan và lọc lớp. Không có luồng quản lý hồ sơ sinh viên theo ID.
+- **Thông tin tài khoản:** `GET /api/auth/me` chỉ trả thông tin người dùng hiện tại, gồm khoa/ngành để frontend hiển thị tổng quan và lọc lớp.
 - **Quản trị lớp học phần:** Kiểm tra quyền quản trị, dữ liệu đầu vào và các ràng buộc trước khi tạo, cập nhật hoặc hủy lớp.
 
 ## 4. Kiến trúc dữ liệu
 
-- **Tổng quan dữ liệu:** Hệ thống sử dụng PostgreSQL với 9 bảng để lưu trữ người dùng, học kỳ, học phần, điều kiện tiên quyết, lớp học phần, lịch học, đăng ký học phần, phiên đăng nhập và kết quả học tập. Cấu trúc bảng và các quan hệ được mô tả chi tiết trong `database-design.md`.
-- **Truy cập dữ liệu:** Tầng Repository chịu trách nhiệm truy vấn và cập nhật PostgreSQL. Tầng Service xử lý logic nghiệp vụ và truy cập dữ liệu thông qua Repository, không thực hiện truy vấn SQL trực tiếp.
-- **Giao dịch và tính nhất quán:** Đăng ký và hủy học phần sử dụng database transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Các thay đổi chỉ được ghi nhận khi toàn bộ thao tác thành công.
-- **Dữ liệu xác thực:** Bảng `auth_sessions` chỉ có `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm index (`user_id`, `created_at`); không lưu Access JWT hoặc refresh token.
+- **Tổng quan dữ liệu:** PostgreSQL gồm 9 bảng; cấu trúc và quan hệ nằm trong `database-design.md`.
+- **Truy cập dữ liệu:** Chỉ Repository chạy SQL; Service gọi Repository.
+- **Giao dịch:** Đăng ký và hủy học phần cập nhật bản ghi đăng ký và sĩ số trong cùng một transaction.
+- **Dữ liệu xác thực:** Bảng `auth_sessions` chỉ có `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm index (`user_id`, `created_at`).
 
 ## 5. Xác thực và phân quyền
 
@@ -181,8 +198,8 @@ Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở h�
 
 ## 6. Kiến trúc triển khai và cấu hình
 
-- **Đóng gói:** Frontend (React/Vite), Backend (Go/Gin) và PostgreSQL được tổ chức thành các container riêng biệt, quản lý bằng Docker Compose.
-- **Cấu hình:** Backend sử dụng biến môi trường để quản lý kết nối PostgreSQL, JWT secret, thời hạn JWT, thời hạn phiên và cổng ứng dụng; không hardcode thông tin nhạy cảm.
-- **Lưu trữ:** PostgreSQL sử dụng Docker volume để duy trì dữ liệu khi container khởi động lại, bao gồm các phiên đăng nhập.
-- **Triển khai:** Môi trường phát triển có thể sử dụng HTTP; môi trường triển khai thực tế phải sử dụng HTTPS.
-- **Khởi chạy:** Hệ thống được khởi chạy theo hướng dẫn trong `README.md`.
+- **Đóng gói:** Frontend (nginx), backend (Go/Gin) và PostgreSQL chạy trong các container riêng bằng Docker Compose. Trên Render, backend phục vụ luôn frontend đã build (`deployment/README.md`).
+- **Cấu hình:** Backend đọc kết nối PostgreSQL, JWT secret, TTL và cổng từ biến môi trường.
+- **Lưu trữ:** PostgreSQL dùng Docker volume, nên phiên đăng nhập còn nguyên sau khi khởi động lại.
+- **Giao thức:** Phát triển dùng HTTP; triển khai thực tế phải dùng HTTPS.
+- **Khởi chạy:** Theo `README.md`.

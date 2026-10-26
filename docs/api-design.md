@@ -4,7 +4,7 @@ Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn
 
 ## Phạm vi và phân quyền
 
-Hiện có **12 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn. Danh sách dưới đây tương ứng với router backend và Swagger; `/health` và `/swagger/*any` là các route kỹ thuật, không tính vào 12 endpoint.
+Có **12 endpoint nghiệp vụ**, tính theo cặp phương thức và đường dẫn, khớp với router và Swagger. `/health` và `/swagger/*any` là route kỹ thuật, không tính vào số này.
 
 | STT | Nhóm | Phương thức | Endpoint | Quyền truy cập |
 |---|---|---|---|---|
@@ -22,8 +22,6 @@ Hiện có **12 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP 
 | 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
 
 Mọi endpoint trừ đăng nhập yêu cầu `Authorization: Bearer <access_token>` và phiên đăng nhập còn hiệu lực. Quản trị viên không được đăng ký/hủy học phần thay sinh viên hoặc truy cập các API đăng ký/thời khóa biểu dành riêng cho sinh viên.
-
-Hai endpoint `GET /api/students/{id}` và `PUT /api/students/{id}` đã được gỡ bỏ; không có API danh sách/tìm kiếm sinh viên. Thông tin tài khoản hiện tại được đọc qua `GET /api/auth/me`.
 
 ## Hợp đồng request/response
 
@@ -58,13 +56,13 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | `faculty` | string hoặc null | Khoa của người dùng, nếu có |
 | `major` | string hoặc null | Ngành của người dùng, nếu có |
 
-Endpoint chỉ trả thông tin của tài khoản gắn với JWT, không nhận ID tài khoản đích. Frontend dùng `faculty`, `major` để hiển thị tổng quan và lọc lớp theo ngành; không cần gọi API hồ sơ riêng. Response không chứa mật khẩu hoặc `password_hash`.
+Endpoint trả tài khoản gắn với JWT. Frontend dùng `faculty`, `major` để hiển thị tổng quan và lọc lớp theo ngành.
 
 ## Vòng đời xác thực
 
 ### JWT và phiên phía backend
 
-JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. Không phát hành refresh token. Mọi API nghiệp vụ trừ login kiểm tra chữ ký, thuật toán, claim và phiên trong database trước khi phân quyền:
+JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. Mọi API nghiệp vụ trừ login kiểm tra chữ ký, thuật toán, claim và phiên trong database trước khi phân quyền:
 
 | Claim | Kiểu JSON | Kiểm tra |
 |---|---|---|
@@ -98,16 +96,16 @@ Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và 
    { "status": "fail", "data": { "code": "LOGIN_COOLDOWN", "message": "Tài khoản đang trong thời gian chờ đăng nhập lại", "retry_after": 720, "login_allowed_at": "2026-10-26T03:25:00Z" } }
    ```
 
-   `Retry-After: 720` và `data.retry_after` cùng là số giây còn chờ, làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Với cooldown mặc định, logout lúc 10:05 UTC+7, thử login lúc 10:13 thì còn 12 phút và được login lại từ 10:25 UTC+7. Nếu để phiên hết hạn lúc 10:20 thì mốc là 10:40. Đúng khi hết cooldown được phép login.
+   `Retry-After: 720` và `data.retry_after` cùng là số giây còn chờ, làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Với cooldown mặc định, logout lúc 10:05 UTC+7, thử login lúc 10:13 thì còn 12 phút và được login lại từ 10:25 UTC+7. Nếu để phiên hết hạn lúc 10:20 thì mốc là 10:40.
 
 4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Quy tắc áp dụng cho cả sinh viên và quản trị viên.
 
 ### Logout và hết hạn
 
 - `POST /api/auth/logout` lấy `sid` từ JWT đã xác thực, ghi `logged_out_at` **một lần** bằng thời điểm backend xử lý logout nếu phiên còn hoạt động. Không xóa bản ghi, không đổi `expires_at`; JWT cũ bị từ chối ngay. Thành công trả `200` với `data: {}`.
-- JWT đã hết hạn bị middleware từ chối bằng `401 UNAUTHORIZED`; JWT còn hạn nhưng phiên đã logout hoặc không còn hoạt động trả `401 SESSION_REVOKED`. Gọi lại logout không ghi lại thời điểm kết thúc và không kéo dài cooldown.
-- Tự hết hạn để `logged_out_at = NULL`; không gọi API logout để ghi một mốc kết thúc muộn hơn. Đóng tab/trình duyệt cũng không phải logout chủ động: nếu không gọi API logout, phiên backend tiếp tục tới `expires_at`.
-- Bảng `auth_sessions` có đúng năm cột: `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm chỉ mục (`user_id`, `created_at`). Không có `refresh_token_hash`, `revoked_at`, `status` hay `cooldown_until`.
+- JWT hết hạn trả `401 UNAUTHORIZED`; JWT còn hạn nhưng phiên đã logout hoặc hết hạn trong database trả `401 SESSION_REVOKED`. Gọi lại logout không ghi lại thời điểm kết thúc và không kéo dài cooldown.
+- Phiên tự hết hạn giữ `logged_out_at = NULL`. Đóng tab không phải logout: phiên tiếp tục tới `expires_at`.
+- Bảng `auth_sessions` có đúng năm cột: `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm chỉ mục (`user_id`, `created_at`).
 
 ### Phiên và lỗi phía frontend
 
@@ -154,27 +152,23 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 ## Ghi chú
 
 - Frontend xử lý lỗi theo `data.code`. `data.message` chỉ là câu mô tả để hiển thị.
-- Mọi endpoint nghiệp vụ trừ login cần header `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR` tùy trường hợp. Các route kỹ thuật không yêu cầu token. Hệ thống không phát hành refresh token.
+- Mọi endpoint nghiệp vụ trừ login cần `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR`.
 - `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
-- `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp đáp ứng điều kiện được ghi nhận (`status: "registered"`, kèm `id` và `registered_at`); lớp bị từ chối có `status: "failed"` kèm `code` và `message` mà không ảnh hưởng các lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa được ghi nhận trước đó trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
-- Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Kết quả từng lớp nằm trong `results[].status`; `registered_count` và `failed_count` là số lượng tổng hợp, không dựa vào HTTP status để biết kết quả từng lớp. Đăng ký thành công một phần vẫn được tính là hoàn tất cho các lớp đã ghi nhận.
-- `results[].code` có thể là: `NOT_FOUND`, `CLASS_CANCELLED`, `CLASS_FULL`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `INTERNAL_ERROR`. Các mã này dùng cùng ý nghĩa với bảng trên nhưng nằm trong `results`, không đi kèm HTTP 4xx.
+- `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp hợp lệ có `status: "registered"` kèm `id`, `registered_at`; lớp bị từ chối có `status: "failed"` kèm `code`, `message` và không ảnh hưởng lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa ghi nhận trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
+- Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Kết quả từng lớp nằm trong `results[].status`, không suy ra từ HTTP status.
+- `results[].code` có thể là: `NOT_FOUND`, `CLASS_CANCELLED`, `CLASS_FULL`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `INTERNAL_ERROR`. Ý nghĩa như bảng trên, nhưng nằm trong `results` và không kèm HTTP 4xx.
 - `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `REGISTRATION_NOT_ACTIVE`, `REGISTRATION_CLOSED`.
 - `PUT /api/classes/{id}` có thể trả: `CLASS_CANCELLED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED`, `CONFLICT`, `VALIDATION_ERROR`.
-- Login sai username hoặc password đều trả cùng một mã và message.
-- `GET /api/auth/me` trả thêm `faculty`, `major` (có thể `null`) để frontend hiển thị khoa/ngành và lọc lớp học phần. Không cung cấp hai endpoint hồ sơ `GET`, `PUT /api/students/{id}` trong phạm vi hiện tại.
-- `GET /api/classes`: không nhận `semester_id`, luôn trả lớp `active` của học kỳ hiện tại (học kỳ có `registration_opens_at` mới nhất không sau thời điểm hiện tại). Query `faculty`, `major` là tùy chọn.
+- `GET /api/classes`: luôn trả lớp `active` của học kỳ hiện tại (học kỳ có `registration_opens_at` mới nhất không sau thời điểm hiện tại). Query `faculty`, `major` là tùy chọn.
 - Mỗi phần tử `classes[]` có `lecturer_name` để hiển thị cột Giảng viên trên trang Đăng ký học phần, không cần tải chi tiết từng lớp.
-- `GET /api/classes` vẫn trả danh sách để tra cứu sau khi đóng đăng ký; `data.semester.registration_open = false` không đồng nghĩa lớp bị loại khỏi danh sách.
-- `registration_open` chỉ xuất hiện tại `data.semester.registration_open` của `GET /api/classes`, không lặp trong `classes[]` hoặc response chi tiết lớp. Giá trị là `true` khi thời điểm backend xử lý request nằm trong khoảng từ `registration_opens_at` đến `registration_closes_at` (bao gồm hai đầu). Frontend dùng để hiển thị và khóa/mở thao tác theo thời gian; đây không phải kết quả đăng ký thành công. Backend vẫn kiểm tra lại thời gian và các điều kiện nghiệp vụ khi xử lý đăng ký/hủy.
+- `data.semester.registration_open` của `GET /api/classes` là `true` khi thời điểm xử lý request nằm trong `[registration_opens_at, registration_closes_at]` (gồm hai đầu); không có ở `classes[]` hay chi tiết lớp. Frontend dùng để khóa/mở thao tác, backend vẫn kiểm tra lại khi đăng ký/hủy. Khi `false`, danh sách lớp vẫn được trả để tra cứu.
 - `GET /api/classes/{id}` trả thêm `faculty` (khoa của học phần), `major` (ngành của học phần; `null` với học phần chung của nhiều ngành), `semester_name` và `prerequisites` (các học phần tiên quyết, sắp theo `course_code`; mảng rỗng nếu không có). `passed` trong mỗi phần tử chỉ có khi người gọi là sinh viên: `true` nếu sinh viên đó đã đạt học phần (`course_results.passed`), `false` nếu chưa; quản trị viên không nhận `passed`. Đây chỉ là thông tin tham khảo; việc kiểm tra tiên quyết khi đăng ký vẫn do `POST /api/registrations` thực hiện.
-- `GET /api/classes` trả thêm `data.semester`: học kỳ hiện tại mà các lớp thuộc về (`id`, `name`, `max_credits`, `registration_opens_at`, `registration_closes_at`, `registration_open`). Client dùng để hiển thị khung đợt đăng ký và mức tín chỉ tối đa. `semester` là `null` và `classes` rỗng khi chưa có học kỳ nào mở đăng ký. `semester` không phụ thuộc bộ lọc `faculty`, `major`, nên vẫn có khi bộ lọc không khớp lớp nào.
+- `GET /api/classes` trả thêm `data.semester`: học kỳ hiện tại mà các lớp thuộc về (`id`, `name`, `max_credits`, `registration_opens_at`, `registration_closes_at`, `registration_open`). Client dùng để hiển thị đợt đăng ký và mức tín chỉ tối đa. `semester` là `null` và `classes` rỗng khi chưa có học kỳ nào mở đăng ký. `semester` không phụ thuộc bộ lọc `faculty`, `major`, nên vẫn có khi bộ lọc không khớp lớp nào.
 - `MAX_CREDITS` là cấu hình runtime tùy chọn, số nguyên dương tối đa 2147483647. Khi được đặt, API dùng giá trị này thay giới hạn lưu trong từng học kỳ cho cả `data.semester.max_credits` và kiểm tra `CREDIT_LIMIT_EXCEEDED`; bỏ trống thì dùng database. Không cập nhật cột `semesters.max_credits` hoặc yêu cầu seed lại khi đổi cấu hình.
-- Frontend tự lấy `data.semester.id` làm `semester_id` khi tạo lớp; chỉ hiển thị tên học kỳ ở trường chỉ đọc, không yêu cầu admin nhập ID. Khi đang tải, tải lỗi hoặc `semester` là `null`, chưa cho gửi các form này. Form sửa lớp hiển thị học kỳ từ chi tiết lớp, không thay bằng học kỳ hiện tại. Không dùng tham số URL để ghi đè học kỳ.
+- Form tạo lớp lấy `data.semester.id` làm `semester_id` và chỉ hiển thị tên học kỳ ở trường chỉ đọc; chưa cho gửi khi đang tải, tải lỗi hoặc `semester` là `null`. Form sửa lớp hiển thị học kỳ của chính lớp.
 - `POST /api/classes`: `class_code` duy nhất trong học kỳ. `course_id`, `semester_id` phải tồn tại.
 - `PUT /api/classes/{id}`: không đổi `course_id`, `semester_id`. `max_capacity` không nhỏ hơn `enrolled`. Khi `enrolled > 0` không sửa được `schedules`.
 - `DELETE /api/classes/{id}`: hủy mềm. Các đăng ký `registered` của lớp chuyển sang `cancelled`, `enrolled = 0`.
 - `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình.
-- Hai endpoint DELETE trên trả `200` với `{ "status": "success", "data": {} }` khi hủy thành công, không trả lại `data.id` hoặc `data.status`. ID đối tượng đã có trong request; trạng thái hủy được lưu ở cơ sở dữ liệu, các response đọc vẫn giữ trường trạng thái nghiệp vụ khi có.
-- `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ; không nhận ID sinh viên đích. Client tự lọc theo học kỳ nếu cần.
-- Không có API danh mục học kỳ, học phần hoặc kết quả học tập; các dữ liệu này lấy từ seed.
+- Hai endpoint DELETE trên trả `200` với `data: {}` khi hủy thành công.
+- `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ. Client tự lọc theo học kỳ nếu cần.
