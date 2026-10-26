@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { BookOpen, CalendarDays, CheckCircle2, ChevronDown, FilterX, Gauge, Layers, Loader2, Lock, Search, XCircle } from 'lucide-react'
+import { BookOpen, CalendarDays, CheckCircle2, Eye, FilterX, Gauge, Layers, Loader2, Lock, Search, Trash2, XCircle } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import type { ClassSummary, RegisteredClass, TimetableEntry } from '../api/types'
@@ -239,7 +239,7 @@ export function StudentClasses() {
             aria-label={mine ? `Đã đăng ký ${c.course_name}` : `Chọn ${c.course_name} ${c.class_code}`} />
         </Td>
         <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => detail.show(c.id)} className="hover:underline">{c.class_code}</button></Td>
-        <Td><span className={cx('font-medium', mine && 'text-emerald-900')}>{c.course_name}</span><div className="text-xs text-muted">{c.course_code}</div></Td>
+        <Td><button type="button" onClick={() => detail.show(c.id)} className={cx('text-left font-medium hover:underline', mine && 'text-emerald-900')}>{c.course_name}</button><div className="text-xs text-muted">{c.course_code}</div></Td>
         <Td>{c.credits}</Td>
         <Td><Capacity c={c} /></Td>
         <Td>{mine ? <Badge tone="green"><CheckCircle2 className="h-3 w-3" />Đã đăng ký</Badge> : full ? <Badge>Hết chỗ</Badge> : <Badge>Chưa đăng ký</Badge>}</Td>
@@ -289,17 +289,19 @@ export function StudentClasses() {
         </>}
       </Card>
       {ready && canAct && (
-        <div className="sticky bottom-4 z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-lg">
-          <p className="text-sm">
-            Đã chọn <b>{pickList.length}</b> học phần · <b>{pickedCredits}</b> tín chỉ
-            <span className="text-muted"> · Tổng dự kiến {cur + pickedCredits}{semester && `/${semester.max_credits}`} TC</span>
-            {semester && cur + pickedCredits > semester.max_credits && <span className="ml-2 font-medium text-red-700">Vượt giới hạn tối đa</span>}
-          </p>
-          <div className="flex gap-2">
-            <Button variant="secondary" disabled={!pickList.length} onClick={() => setPicked({})}>Bỏ chọn</Button>
-            <Button disabled={!pickList.length} loading={running} onClick={confirm}>{running ? 'Đang đăng ký…' : `Xác nhận đăng ký${pickList.length ? ` (${pickList.length})` : ''}`}</Button>
+        <Card className="mt-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              Đã chọn <b>{pickList.length}</b> học phần · <b>{pickedCredits}</b> tín chỉ
+              <span className="text-muted"> · Tổng dự kiến {cur + pickedCredits}{semester && `/${semester.max_credits}`} TC</span>
+              {semester && cur + pickedCredits > semester.max_credits && <span className="ml-2 font-medium text-red-700">Vượt giới hạn tối đa</span>}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" disabled={!pickList.length} onClick={() => setPicked({})}>Bỏ chọn</Button>
+              <Button disabled={!pickList.length} loading={running} onClick={confirm}>{running ? 'Đang đăng ký…' : `Xác nhận đăng ký${pickList.length ? ` (${pickList.length})` : ''}`}</Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
       {batch && (
         <Modal open closable={!running} onClose={closeBatch} title={running ? 'Đang xử lý đăng ký…' : 'Kết quả đăng ký'} footer={<Button onClick={closeBatch} loading={running}>{running ? 'Đang xử lý…' : 'Đóng'}</Button>}>
@@ -325,25 +327,41 @@ export function StudentClasses() {
 }
 
 function RegistrationRow({ r, open, schedules, onCancel, onDetail }: { r: RegisteredClass; open: boolean; schedules: TimetableEntry[]; onCancel: (r: RegisteredClass) => void; onDetail: (classId: number) => void }) {
-  const [exp, setExp] = useState(false)
+  const scheduleText = schedules.length
+    ? schedules.map((s) => `${DAYS[s.day_of_week]} (tiết ${s.start_period}–${s.end_period})`).join(' · ')
+    : 'Chưa có lịch học'
   return (
-    <li>
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-        <button onClick={() => setExp(!exp)} aria-expanded={exp} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left">
-          <ChevronDown className={cx('h-5 w-5 shrink-0 text-muted transition-transform', exp && 'rotate-180')} />
-          <span className="min-w-0">
-            <span className="block font-semibold">{r.course_name} <span className="font-normal text-muted">· {r.course_code}</span></span>
-            <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-muted"><span className="font-medium text-ink">{r.class_code}</span>· {r.credits} tín chỉ · Đăng ký lúc {fmtDT(r.registered_at)}</span>
+    <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-slate-50/60">
+      <button type="button" onClick={() => onDetail(r.class_id)} className="group flex min-w-0 flex-1 items-center gap-3 text-left">
+        <span className="min-w-0">
+          <span className="block font-semibold transition-colors group-hover:text-primary">
+            {r.course_name} <span className="font-normal text-muted">· {r.course_code}</span>
           </span>
-        </button>
-        {open ? <Button size="sm" variant="secondary" className="text-red-600" onClick={() => onCancel(r)}>Hủy đăng ký</Button> : <span className="inline-flex items-center gap-1 whitespace-nowrap text-[13px] text-muted"><Lock className="h-3.5 w-3.5" />Đã khóa</span>}
+          <span className="mt-0.5 flex flex-wrap items-center gap-2 text-[13px] text-muted">
+            <span className="font-medium text-ink">{r.class_code}</span>
+            <span>·</span>
+            <span>{r.credits} tín chỉ</span>
+            <span>·</span>
+            <span>{scheduleText}</span>
+            <span>·</span>
+            <span>Đăng ký lúc {fmtDT(r.registered_at)}</span>
+          </span>
+        </span>
+      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button size="sm" variant="secondary" onClick={() => onDetail(r.class_id)}>
+          <Eye className="h-4 w-4" />Chi tiết
+        </Button>
+        {open ? (
+          <Button size="sm" variant="secondary" className="text-red-600 hover:bg-red-50" onClick={() => onCancel(r)}>
+            <Trash2 className="h-4 w-4" />Hủy đăng ký
+          </Button>
+        ) : (
+          <span className="inline-flex items-center gap-1 whitespace-nowrap text-[13px] text-muted">
+            <Lock className="h-3.5 w-3.5" />Đã khóa
+          </span>
+        )}
       </div>
-      {exp && (
-        <div className="px-5 pb-4">
-          {schedules.length ? <ScheduleTable schedules={schedules} /> : <p className="text-sm text-muted">Chưa có lịch học.</p>}
-          <button type="button" onClick={() => onDetail(r.class_id)} className="mt-2 inline-block text-sm font-medium text-primary hover:underline">Xem chi tiết lớp</button>
-        </div>
-      )}
     </li>
   )
 }
