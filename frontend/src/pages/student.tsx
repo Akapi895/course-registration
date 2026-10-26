@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { BookOpen, CalendarDays, CheckCircle2, Eye, FilterX, Gauge, Layers, Loader2, Lock, Search, Trash2, XCircle } from 'lucide-react'
+import { AlertCircle, BookOpen, CalendarDays, CheckCircle2, Eye, FilterX, Gauge, Layers, Loader2, Lock, Search, Trash2, XCircle } from 'lucide-react'
 import Layout from '../components/Layout'
 import * as api from '../api'
 import type { ClassSummary, RegisteredClass, TimetableEntry } from '../api/types'
@@ -306,21 +306,104 @@ export function StudentClasses() {
         </Card>
       )}
       {batch && (
-        <Modal open closable={!running} onClose={closeBatch} title={running ? 'Đang xử lý đăng ký…' : 'Kết quả đăng ký'} footer={<Button onClick={closeBatch} loading={running}>{running ? 'Đang xử lý…' : 'Đóng'}</Button>}>
-          {running && <div role="status" className="mb-3 flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary"><Loader2 className="h-5 w-5 shrink-0 animate-spin" />Đang gửi {batch.length} học phần, vui lòng chờ trong giây lát…</div>}
-          <ul className="divide-y divide-line">
-            {batch.map((b) => (
-              <li key={b.c.id} className="flex gap-3 py-3 text-sm">
-                {b.status === 'pending' ? <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-primary" /> : b.status === 'ok' ? <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" /> : <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />}
-                <div><p className="font-medium">{b.c.course_name}</p><p className="text-[13px] text-muted">{b.c.class_code}</p><p className={b.status === 'fail' ? 'text-red-700' : 'text-muted'}>{b.status === 'pending' ? 'Đang gửi…' : b.status === 'ok' ? 'Đăng ký thành công.' : b.msg}</p></div>
-              </li>
-            ))}
-          </ul>
-          {!running && (okCount === batch.length
-            ? <Alert tone="success" title={`Đăng ký thành công ${okCount}/${batch.length} học phần`}>Trong phiên này bạn chỉ có thể xem thông tin; muốn đăng ký tiếp cần đăng xuất và đăng nhập lại.</Alert>
-            : okCount > 0
-              ? <Alert tone="warning" title={`Đã đăng ký thành công ${okCount}/${batch.length} học phần`}>Các học phần thành công đã được ghi nhận. Học phần chưa thành công không được ghi nhận; bạn có thể chọn lại và tiếp tục đăng ký.</Alert>
-              : <Alert tone="error" title="Chưa đăng ký được học phần nào">Bạn có thể kiểm tra lại lựa chọn và tiếp tục đăng ký.</Alert>)}
+        <Modal
+          open
+          closable={!running}
+          onClose={closeBatch}
+          size="lg"
+          title={running ? 'Đang xử lý đăng ký…' : 'Kết quả đăng ký'}
+          footer={
+            <Button onClick={closeBatch} loading={running}>
+              {running ? 'Đang xử lý…' : 'Đóng'}
+            </Button>
+          }
+        >
+          {running ? (
+            <div role="status" className="flex items-center gap-3 rounded-xl bg-primary-soft p-4 text-sm text-primary">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+              <span>Đang gửi yêu cầu đăng ký <b>{batch.length}</b> học phần, vui lòng chờ trong giây lát…</span>
+            </div>
+          ) : (
+            okCount === batch.length ? (
+              <Alert tone="success" title={`Đăng ký thành công ${okCount}/${batch.length} học phần`}>
+                Toàn bộ học phần đã được ghi nhận. Trong phiên này bạn chỉ có thể xem thông tin; muốn đăng ký tiếp cần đăng xuất và đăng nhập lại.
+              </Alert>
+            ) : okCount > 0 ? (
+              <Alert tone="warning" title={`Đã đăng ký thành công ${okCount}/${batch.length} học phần`}>
+                Các học phần thành công đã được ghi nhận vào hệ thống. Những học phần chưa thành công không được ghi nhận; bạn có thể chọn lại và tiếp tục đăng ký.
+              </Alert>
+            ) : (
+              <Alert tone="error" title="Chưa đăng ký được học phần nào">
+                Tất cả học phần đã chọn đều không thể đăng ký. Bạn vui lòng kiểm tra chi tiết lý do bên dưới để chọn lớp phù hợp.
+              </Alert>
+            )
+          )}
+
+          <div className="mt-4">
+            <div className="mb-2.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted">
+              <span>Danh sách học phần ({batch.length})</span>
+              {!running && (
+                <span className={okCount === batch.length ? 'text-emerald-700' : okCount > 0 ? 'text-amber-700' : 'text-red-700'}>
+                  {okCount}/{batch.length} thành công
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2.5">
+              {batch.map((b) => (
+                <div
+                  key={b.c.id}
+                  className={cx(
+                    'rounded-xl border p-3.5 transition-colors',
+                    b.status === 'ok'
+                      ? 'border-emerald-200 bg-emerald-50/20'
+                      : b.status === 'fail'
+                        ? 'border-red-200 bg-red-50/20'
+                        : 'border-line bg-slate-50/50'
+                  )}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-ink">{b.c.course_name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+                        <span className="font-medium text-ink">{b.c.class_code}</span>
+                        <span>·</span>
+                        <span>{b.c.course_code}</span>
+                        <span>·</span>
+                        <span>{b.c.credits} tín chỉ</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0">
+                      {b.status === 'ok' ? (
+                        <Badge tone="green"><CheckCircle2 className="h-3 w-3" />Thành công</Badge>
+                      ) : b.status === 'fail' ? (
+                        <Badge tone="red"><XCircle className="h-3 w-3" />Không thành công</Badge>
+                      ) : (
+                        <Badge tone="blue"><Loader2 className="h-3 w-3 animate-spin" />Đang gửi…</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {b.status === 'fail' && (
+                    <div className="mt-2.5 flex items-start gap-2 rounded-lg border border-red-200/80 bg-white px-3 py-2 text-xs text-red-700">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-semibold">Lý do: </span>
+                        <span>{b.msg || 'Không thể đăng ký học phần này.'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {b.status === 'ok' && (
+                    <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-700">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      <span>Đã ghi nhận học phần vào danh sách của bạn.</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </Modal>
       )}
       {detail.modal}
