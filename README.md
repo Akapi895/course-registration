@@ -24,7 +24,8 @@ Nếu đã có `.env`, bổ sung các biến còn thiếu từ `.env.example`, g
 | `FRONTEND_PORT` | Cổng giao diện trên host, mặc định `5173`; nginx trong container luôn nghe cổng `80` |
 | `DATABASE_URL` | URL khi chạy API trực tiếp trên host; Compose tự cấp URL dùng `db:5432`, không dùng giá trị host này |
 | `JWT_SECRET` | Khóa ký JWT; cần giữ nguyên để token hiện hành tiếp tục được xác thực sau khi khởi động lại |
-| `JWT_TTL`, `SESSION_TTL` | Thời hạn JWT và phiên, mặc định cùng `20m`; hai giá trị phải bằng nhau. Bỏ trống `SESSION_TTL` để theo `JWT_TTL` |
+| `JWT_TTL`, `SESSION_TTL` | Thời hạn JWT và phiên của sinh viên, mặc định cùng `20m`; hai giá trị phải bằng nhau. Bỏ trống `SESSION_TTL` để theo `JWT_TTL` |
+| `ADMIN_JWT_TTL` | Thời hạn JWT và phiên của quản trị viên, mặc định `8h` |
 | `LOGIN_COOLDOWN` | Khoảng chờ sau khi phiên kết thúc do logout hoặc hết hạn, mặc định `20m`; áp dụng theo tài khoản cho cả sinh viên và admin |
 | `MAX_CREDITS` | Ghi đè giới hạn tín chỉ khi chạy API, ví dụ `26`; bỏ trống để dùng cấu hình từng học kỳ trong database |
 | `REFERENCE_DATE`, `RANDOM_SEED` | Ngày neo và seed của dữ liệu mẫu, mặc định `2026-10-20` và `20261020` |

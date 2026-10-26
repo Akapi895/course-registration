@@ -96,6 +96,7 @@ function AccountMenu({ onError }: { onError: (cause: unknown) => void }) {
 
 // `semester` is accepted for caller compatibility; there is no semester picker to show.
 export default function Layout({ title, children }: { title: string; children: ReactNode; semester?: boolean }) {
+  const { user } = useAuth()
   const [drawer, setDrawer] = useState(false)
   const [error, setError] = useState<unknown>(null)
   return (
@@ -110,7 +111,7 @@ export default function Layout({ title, children }: { title: string; children: R
         <button className="grid h-11 w-11 place-items-center rounded-lg hover:bg-slate-100 lg:hidden" onClick={() => setDrawer(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></button>
         <p className="truncate text-base font-semibold">{title}</p>
         <div className="ml-auto flex items-center gap-2">
-          <SessionTimer />
+          {user?.role !== 'admin' && <SessionTimer />}
           <AccountMenu onError={setError} />
         </div>
       </header>

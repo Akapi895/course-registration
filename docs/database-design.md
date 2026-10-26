@@ -111,7 +111,7 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 `id` là claim `sid` của JWT. Chỉ mục (`user_id`, `created_at`) phục vụ lấy phiên gần nhất.
 
 **Thời hạn và trạng thái phiên:**
-- `expires_at = created_at + JWT_TTL` (mặc định 20 phút); `exp` của JWT khớp `expires_at` ở độ chính xác giây. `SESSION_TTL` phải bằng `JWT_TTL`.
+- `expires_at = created_at + JWT_TTL` (mặc định 20 phút), hoặc `created_at + ADMIN_JWT_TTL` (mặc định 8 giờ) với quản trị viên; `exp` của JWT khớp `expires_at` ở độ chính xác giây. `SESSION_TTL` phải bằng `JWT_TTL`.
 - Phiên hoạt động khi `logged_out_at IS NULL` và thời gian hiện tại **nhỏ hơn** `expires_at`. Hết hạn chỉ là phép so sánh thời gian, không cần cập nhật bảng hay tác vụ nền.
 - Đăng xuất khi phiên còn hiệu lực đặt `logged_out_at` một lần, không đổi `expires_at`. Phiên đã hết hạn không bị ghi `logged_out_at`.
 

@@ -124,7 +124,7 @@ Access JWT HS256 chứa `sub`, `role`, `sid`, `iat`, `exp`. Frontend giữ JWT t
 
 Backend kiểm tra chữ ký, thuật toán, claim JWT và phiên tương ứng với `sid`: `sub` khớp người sở hữu, `role` khớp vai trò hiện tại, `iat`/`exp` khớp thời điểm tạo/hết hạn ở độ chính xác giây. Phiên hoạt động khi `logged_out_at IS NULL` và chưa đến `expires_at`. Backend dùng cùng đồng hồ ứng dụng khi tạo, kiểm tra và logout phiên để thống nhất với JWT.
 
-Mỗi sinh viên chỉ có một phiên hoạt động trên mọi thiết bị/tab; quản trị viên có thể có nhiều phiên. Kiểm tra mật khẩu trước, rồi khóa dòng `users`, kiểm tra phiên gần nhất (chỉ với sinh viên) và tạo phiên trong cùng transaction. Login khi phiên còn hoạt động trả `409 ALREADY_LOGGED_IN`, giữ nguyên phiên. Logout chỉ ghi `logged_out_at` một lần trước hạn; tự hết hạn không cập nhật bản ghi. Cooldown của sinh viên tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất cộng `LOGIN_COOLDOWN`. `expires_at = created_at + JWT_TTL`; đổi TTL chỉ ảnh hưởng phiên mới.
+Mỗi sinh viên chỉ có một phiên hoạt động trên mọi thiết bị/tab; quản trị viên có thể có nhiều phiên. Kiểm tra mật khẩu trước, rồi khóa dòng `users`, kiểm tra phiên gần nhất (chỉ với sinh viên) và tạo phiên trong cùng transaction. Login khi phiên còn hoạt động trả `409 ALREADY_LOGGED_IN`, giữ nguyên phiên. Logout chỉ ghi `logged_out_at` một lần trước hạn; tự hết hạn không cập nhật bản ghi. Cooldown của sinh viên tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất cộng `LOGIN_COOLDOWN`. `expires_at = created_at + JWT_TTL` (`ADMIN_JWT_TTL` với quản trị viên); đổi TTL chỉ ảnh hưởng phiên mới.
 
 Khi JWT hết hạn, người dùng đăng nhập lại.
 

@@ -16,6 +16,7 @@ type Config struct {
 	DatabaseURL   string
 	JWTSecret     string
 	JWTTTL        time.Duration
+	AdminJWTTTL   time.Duration
 	SessionTTL    time.Duration
 	LoginCooldown time.Duration
 	FrontendDir   string
@@ -46,6 +47,9 @@ func Load() (*Config, error) {
 	if cfg.JWTTTL, err = getDuration("JWT_TTL", 20*time.Minute); err != nil {
 		problems = append(problems, err.Error())
 	}
+	if cfg.AdminJWTTTL, err = getDuration("ADMIN_JWT_TTL", 8*time.Hour); err != nil {
+		problems = append(problems, err.Error())
+	}
 	if cfg.SessionTTL, err = getDuration("SESSION_TTL", cfg.JWTTTL); err != nil {
 		problems = append(problems, err.Error())
 	}
@@ -65,6 +69,9 @@ func Load() (*Config, error) {
 	}
 	if len(problems) == 0 && cfg.JWTTTL < time.Second {
 		problems = append(problems, "JWT_TTL must be at least 1s")
+	}
+	if len(problems) == 0 && cfg.AdminJWTTTL < time.Second {
+		problems = append(problems, "ADMIN_JWT_TTL must be at least 1s")
 	}
 
 	if len(problems) > 0 {

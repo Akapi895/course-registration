@@ -61,13 +61,15 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại, gồm `id`, `username`, `role`, `full_name`, `student_code`, `faculty`, `major`. Các trường thông tin sinh viên có thể là `null` khi không có dữ liệu. |
 | 7 | Hệ thống chỉ chấp nhận JWT khi phiên `sid` tương ứng chưa đăng xuất, chưa hết hạn, `sub` khớp người sở hữu phiên và `role` khớp vai trò hiện tại của người dùng. |
 
-`JWT_TTL` và `SESSION_TTL` mặc định là 20 phút và 2 giá trị này phải bằng nhau. Phiên mới có `expires_at = created_at + JWT_TTL`; `exp` của JWT khớp `expires_at` ở độ chính xác giây. Mọi API được bảo vệ kiểm tra JWT cùng bản ghi `auth_sessions`, và đối chiếu `role` trong JWT với vai trò hiện tại của tài khoản.
+`JWT_TTL` và `SESSION_TTL` của sinh viên mặc định là 20 phút và phải có cùng giá trị. Quản trị viên sử dụng `ADMIN_JWT_TTL`, mặc định là 8 giờ. Khi tạo phiên mới, `expires_at` được tính bằng `created_at + JWT_TTL` đối với sinh viên hoặc `created_at + ADMIN_JWT_TTL` đối với quản trị viên. Thời điểm hết hạn `exp` trong JWT phải khớp với `expires_at` đến độ chính xác giây. Các API được bảo vệ phải kiểm tra tính hợp lệ của JWT, đối chiếu với bản ghi tương ứng trong `auth_sessions` và đảm bảo `role` trong JWT khớp với vai trò hiện tại của tài khoản.
 
-**Quy tắc một phiên và đăng nhập lại (áp dụng cho sinh viên):**
+## Quy tắc một phiên và đăng nhập lại (áp dụng cho sinh viên)
+
 - Mỗi sinh viên chỉ được có một phiên đăng nhập đang hoạt động tại một thời điểm, không phân biệt thiết bị, trình duyệt hay tab. Nếu phiên trước vẫn còn hiệu lực (`logged_out_at IS NULL` và `NOW() < expires_at`), hệ thống từ chối đăng nhập mới, không cấp JWT mới và không gia hạn phiên hiện tại.
-- Khi sinh viên chủ động đăng xuất, backend cập nhật `logged_out_at` nếu trường này chưa có giá trị, đồng thời vô hiệu hóa JWT của phiên đó. Nếu phiên hết hạn tự nhiên tại `expires_at`, hệ thống không cần cập nhật `logged_out_at`; phiên vẫn được xem là hết hiệu lực.
-- Thời điểm kết thúc phiên được xác định bằng `COALESCE(logged_out_at, expires_at)`. Sau thời điểm này, sinh viên cần chờ thêm `LOGIN_COOLDOWN` (mặc định 20 phút) mới được đăng nhập lại.
-- Sau khi xác thực username và password, backend khóa bản ghi người dùng trong bảng `users` rồi kiểm tra phiên gần nhất và tạo phiên mới trong cùng một transaction. Cách này giúp tránh trường hợp hai yêu cầu đăng nhập đồng thời tạo ra hai phiên hoạt động. Nếu đăng nhập bị từ chối, phiên hiện tại không bị thay đổi.
+- Khi sinh viên chủ động đăng xuất trước thời hạn, backend ghi nhận `logged_out_at` một lần và vô hiệu hóa JWT của phiên đó ngay lập tức. Nếu phiên hết hạn tại `expires_at`, phiên tự hết hiệu lực mà không cần cập nhật database; `logged_out_at` vẫn là `NULL`.
+- Thời điểm kết thúc phiên được xác định bằng `COALESCE(logged_out_at, expires_at)`. Sinh viên chỉ được đăng nhập lại sau khi thời điểm kết thúc phiên cộng thêm `LOGIN_COOLDOWN` (mặc định 20 phút). Ví dụ: nếu đăng nhập lúc 10:00 và đăng xuất lúc 10:05, sinh viên có thể đăng nhập lại từ 10:25. Nếu không đăng xuất và để phiên hết hạn lúc 10:20, sinh viên có thể đăng nhập lại từ 10:40.
+- Sau khi xác thực username/password, backend khóa bản ghi người dùng trong bảng `users`, sau đó kiểm tra phiên gần nhất và tạo phiên mới trong cùng một transaction. Điều này đảm bảo hai yêu cầu đăng nhập đồng thời không tạo ra hai phiên hoạt động. Nếu đăng nhập bị từ chối, phiên đang hoạt động không bị thay đổi.
+- Quản trị viên không bị giới hạn số phiên và không cần chờ cooldown. Mỗi lần đăng nhập thành công sẽ tạo một phiên mới với `sid` riêng, hết hạn theo `ADMIN_JWT_TTL`. Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng.
 
 **Quy tắc phiên đăng nhập của quản trị viên**
 
@@ -124,7 +126,7 @@ Form tạo lớp tự lấy `semester.id` từ API danh sách lớp, hiển th�
 1. Người dùng gửi username và password tới API đăng nhập.
 2. Hệ thống kiểm tra thông tin xác thực. Nếu sai, trả `401 INVALID_CREDENTIALS`.
 3. Với sinh viên, trong transaction khóa bản ghi người dùng, backend kiểm tra phiên gần nhất: phiên còn hoạt động thì trả `409 ALREADY_LOGGED_IN`; phiên đã kết thúc nhưng chưa hết `LOGIN_COOLDOWN` (mặc định 20 phút) thì trả `429 LOGIN_COOLDOWN`. Quản trị viên bỏ qua bước này.
-4. Nếu được phép đăng nhập, backend tạo một phiên mới có thời hạn `JWT_TTL` (mặc định 20 phút), sinh JWT chứa `sub`, `role`, `sid`, `iat`, `exp` và trả `access_token`.
+4. Nếu được phép đăng nhập, backend tạo một phiên mới có thời hạn `JWT_TTL` (sinh viên, mặc định 20 phút) hoặc `ADMIN_JWT_TTL` (quản trị viên, mặc định 8 giờ), sinh JWT chứa `sub`, `role`, `sid`, `iat`, `exp` và trả `access_token`.
 5. Client gửi token trong header `Authorization` để gọi `GET /api/auth/me`, lấy thông tin tài khoản và điều hướng theo vai trò.
 6. Client tiếp tục gửi token trong header của các request cần xác thực. Khoa và ngành đã lấy từ `/api/auth/me` được dùng để hiển thị thông tin sinh viên và lọc lớp theo ngành.
 
