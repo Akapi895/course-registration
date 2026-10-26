@@ -1,0 +1,89 @@
+erDiagram
+    users {
+        BIGSERIAL id PK
+        TEXT username UK
+        TEXT password_hash
+        TEXT role "student or admin"
+        TEXT full_name
+        TEXT student_code UK
+        TEXT faculty
+        TEXT major
+        TIMESTAMPTZ created_at
+    }
+
+    semesters {
+        BIGSERIAL id PK
+        TEXT name UK
+        TIMESTAMPTZ registration_opens_at
+        TIMESTAMPTZ registration_closes_at
+        INT max_credits
+    }
+
+    courses {
+        BIGSERIAL id PK
+        TEXT code UK
+        TEXT name
+        INT credits
+        TEXT faculty
+        TEXT major
+    }
+
+    course_prerequisites {
+        BIGINT course_id PK, FK
+        BIGINT prerequisite_course_id PK, FK
+    }
+
+    course_classes {
+        BIGSERIAL id PK
+        BIGINT course_id FK
+        BIGINT semester_id FK
+        TEXT class_code
+        TEXT lecturer_name
+        INT max_capacity
+        INT enrolled
+        TEXT status "active or cancelled"
+    }
+
+    class_schedules {
+        BIGSERIAL id PK
+        BIGINT class_id FK
+        SMALLINT day_of_week
+        SMALLINT start_period
+        SMALLINT end_period
+        TEXT room
+    }
+
+    registrations {
+        BIGSERIAL id PK
+        BIGINT student_id FK
+        BIGINT class_id FK
+        TEXT status "registered or cancelled"
+        TIMESTAMPTZ registered_at
+    }
+
+    auth_sessions {
+        UUID id PK
+        BIGINT user_id FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ logged_out_at
+    }
+
+    course_results {
+        BIGINT student_id PK, FK
+        BIGINT course_id PK, FK
+        BOOLEAN passed
+    }
+
+    users ||--o{ auth_sessions : "has"
+    users ||--o{ registrations : "makes"
+    users ||--o{ course_results : "earns"
+
+    semesters ||--o{ course_classes : "offers"
+    courses ||--o{ course_classes : "has"
+    course_classes ||--o{ class_schedules : "contains"
+    course_classes ||--o{ registrations : "receives"
+
+    courses ||--o{ course_results : "records"
+    courses ||--o{ course_prerequisites : "requires"
+    courses ||--o{ course_prerequisites : "is prerequisite for"
