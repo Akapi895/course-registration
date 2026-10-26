@@ -11,7 +11,6 @@ func NewRouter(
 	auth *service.AuthService,
 	classes *service.ClassService,
 	registrations *service.RegistrationService,
-	periods *service.RegistrationPeriodService,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -24,7 +23,6 @@ func NewRouter(
 	classCtl := NewClassController(classes)
 	registrationCtl := NewRegistrationController(registrations)
 	scheduleCtl := NewScheduleController(registrations)
-	periodCtl := NewRegistrationPeriodController(periods)
 
 	api := r.Group("/api")
 	api.POST("/auth/login", authCtl.Login)
@@ -41,7 +39,6 @@ func NewRouter(
 	protected.GET("/registrations", registrationCtl.List)
 	protected.DELETE("/registrations/:id", registrationCtl.Cancel)
 	protected.GET("/schedules", scheduleCtl.List)
-	protected.PUT("/registration-period", periodCtl.Update)
 
 	return r
 }

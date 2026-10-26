@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { LayoutDashboard, BookPlus, ListChecks, CalendarDays, Menu, LogOut, ChevronDown, X, Timer, School, CalendarClock, Loader2 } from 'lucide-react'
+import { LayoutDashboard, BookPlus, ListChecks, CalendarDays, Menu, LogOut, ChevronDown, X, Timer, School, Loader2 } from 'lucide-react'
 import { Link, navigate, useRoute } from '../router'
 import { useAuth } from '../auth/AuthProvider'
 import { tokenExpiresAt } from '../api/client'
@@ -14,7 +14,6 @@ const studentMenu = [
 const adminMenu = [
   ['/admin/dashboard', 'Tổng quan', LayoutDashboard],
   ['/admin/classes', 'Quản lý lớp học phần', School],
-  ['/admin/registration-period', 'Cấu hình đợt đăng ký', CalendarClock],
 ] as const
 
 function Sidebar({ onNav }: { onNav?: () => void }) {
@@ -49,12 +48,9 @@ function Sidebar({ onNav }: { onNav?: () => void }) {
 }
 
 function SessionTimer() {
-  const { clearSession } = useAuth()
   const [now, setNow] = useState(Date.now())
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   const left = Math.max(0, tokenExpiresAt() - now)
-  // Session expired: clear client data and return to login with an explanation.
-  useEffect(() => { if (left <= 0) { clearSession(); navigate('/login?expired=1') } }, [left <= 0])
   const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000)
   return (
     <span className={cx('hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium tabular-nums md:inline-flex', left < 60000 ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-muted')} title="Thời gian còn lại của phiên đăng nhập" aria-live={left < 60000 ? 'polite' : 'off'}>
@@ -100,7 +96,6 @@ function AccountMenu({ onError }: { onError: (cause: unknown) => void }) {
 
 // `semester` is accepted for caller compatibility; there is no semester picker to show.
 export default function Layout({ title, children }: { title: string; children: ReactNode; semester?: boolean }) {
-  const { user } = useAuth()
   const [drawer, setDrawer] = useState(false)
   const [error, setError] = useState<unknown>(null)
   return (
@@ -115,7 +110,7 @@ export default function Layout({ title, children }: { title: string; children: R
         <button className="grid h-11 w-11 place-items-center rounded-lg hover:bg-slate-100 lg:hidden" onClick={() => setDrawer(true)} aria-label="Mở menu"><Menu className="h-5 w-5" /></button>
         <p className="truncate text-base font-semibold">{title}</p>
         <div className="ml-auto flex items-center gap-2">
-          {user?.role !== 'admin' && <SessionTimer />}
+          <SessionTimer />
           <AccountMenu onError={setError} />
         </div>
       </header>

@@ -1,6 +1,6 @@
 # Hệ thống quản lý và đăng ký học phần — Phase 1
 
-Backend Go/Gin, PostgreSQL 16 và Swagger cho 13 endpoint trong [SRS](docs/SRS.md). Yêu cầu và hợp đồng API nằm tại [docs/SRS.md](docs/SRS.md) và [docs/api-design.md](docs/api-design.md).
+Backend Go/Gin, PostgreSQL 16 và Swagger cho 12 endpoint trong [SRS](docs/SRS.md). Yêu cầu và hợp đồng API nằm tại [docs/SRS.md](docs/SRS.md) và [docs/api-design.md](docs/api-design.md).
 
 Demo Internet trên Render: dùng `render.yaml` và làm theo [deployment/README.md](deployment/README.md). Cấu hình này chạy giao diện và API cùng một Web Service, dùng Render PostgreSQL riêng và tự khởi tạo dữ liệu demo trên database trống.
 
@@ -25,7 +25,7 @@ Nếu đã có `.env`, bổ sung các biến còn thiếu từ `.env.example`, g
 | `DATABASE_URL` | URL khi chạy API trực tiếp trên host; Compose tự cấp URL dùng `db:5432`, không dùng giá trị host này |
 | `JWT_SECRET` | Khóa ký JWT; cần giữ nguyên để token hiện hành tiếp tục được xác thực sau khi khởi động lại |
 | `JWT_TTL`, `SESSION_TTL` | Thời hạn JWT và phiên, mặc định cùng `20m`; hai giá trị phải bằng nhau. Bỏ trống `SESSION_TTL` để theo `JWT_TTL` |
-| `LOGIN_COOLDOWN` | Khoảng chờ sau khi phiên hết hạn, mặc định `20m`; áp dụng theo tài khoản cho cả sinh viên và admin |
+| `LOGIN_COOLDOWN` | Khoảng chờ sau khi phiên kết thúc do logout hoặc hết hạn, mặc định `20m`; áp dụng theo tài khoản cho cả sinh viên và admin |
 | `MAX_CREDITS` | Ghi đè giới hạn tín chỉ khi chạy API, ví dụ `26`; bỏ trống để dùng cấu hình từng học kỳ trong database |
 | `REFERENCE_DATE`, `RANDOM_SEED` | Ngày neo và seed của dữ liệu mẫu, mặc định `2026-10-20` và `20261020` |
 
@@ -64,7 +64,7 @@ Nếu đổi `PORT`, thay cổng tương ứng trong URL. `/health` kiểm tra t
 2. Sao chép `data.access_token`, bấm **Authorize**, nhập đầy đủ `Bearer <access_token>` rồi thử các API được bảo vệ.
 3. Dùng [database/data/scenarios.json](database/data/scenarios.json) để chọn tài khoản/lớp cho các tình huống thành công và lỗi nghiệp vụ. Kiểm tra cả phân quyền, quyền sở hữu và token cũ sau logout theo SRS §8.
 
-Thời gian nghiệp vụ dùng đồng hồ thực, không dùng `REFERENCE_DATE`. Fixture mặc định mở đăng ký từ ngày neo −7 đến +30 ngày. Nếu demo ở thời điểm khác, chọn ngày neo phù hợp **trước khi seed database mới**, hoặc dùng tài khoản admin cấu hình lại thời gian qua `PUT /api/registration-period`. Giới hạn 12 tín chỉ là cấu hình demo.
+Thời gian nghiệp vụ dùng đồng hồ thực, không dùng `REFERENCE_DATE`. Fixture mặc định mở đăng ký từ ngày neo −7 đến +30 ngày. Nếu demo ở thời điểm khác, chọn ngày neo phù hợp **trước khi seed database mới**, hoặc sửa trực tiếp `registration_opens_at`/`registration_closes_at` của bảng `semesters` (không còn API cấu hình). Giới hạn 12 tín chỉ là cấu hình demo.
 
 ## 4. Dừng, khởi động lại và kiểm tra lỗi
 
@@ -110,6 +110,10 @@ go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go -o docs
 
 `backend/docs/` là mã/tài liệu sinh tự động và đã được đóng gói trong binary. Kiến trúc và quy ước code: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1; schema: [docs/database-design.md](docs/database-design.md) và [docs/database.dbml](docs/database.dbml). Một số mô tả cũ trong tài liệu database được viết trước khi có API; dùng hướng dẫn khởi chạy backend tại README này.
 
+Kiểm thử API auth với PostgreSQL thật (từ `backend/`): đặt `TEST_DATABASE_URL` trỏ tới database kiểm thử, rồi chạy `go test ./internal/controller -run '^TestAuth' -v`. Mỗi test tạo và xóa schema riêng; không nạp fixture vào schema ứng dụng. Khi thiếu biến này, các test tích hợp được đánh dấu bỏ qua; CI luôn cấp PostgreSQL để chạy chúng. Các trường hợp gồm login đồng thời, vai trò thay đổi, claim JWT sai, logout và hết hạn tự động cùng hai nhánh cooldown.
+
+Schema `auth_sessions` chỉ có `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Database dựng từ schema khác phải được dựng lại theo §2; đổi `001_initial.sql` hoặc build lại image không chuyển schema trong volume cũ. Công cụ dữ liệu từ chối fingerprint không khớp.
+
 ## 6. Chạy frontend
 
 ### Docker (khuyến nghị)
@@ -140,9 +144,9 @@ Mở <http://localhost:5173>. Vite chuyển các request `/api` sang `API_PROXY_
 
 - JWT lưu trong `sessionStorage` của tab; reload khôi phục thông tin người dùng bằng `/api/auth/me`. Logout, token hết hạn hoặc phản hồi `401` xóa token cục bộ. Nếu storage không khả dụng, token chỉ giữ trong bộ nhớ.
 - Mỗi lần xác nhận đăng ký gửi một danh sách lớp; backend trả kết quả riêng cho từng lớp. Khi tất cả thành công, phiên frontend chuyển sang chỉ xem; trạng thái này được giữ qua reload và xóa khi đăng xuất/đăng nhập lại. Hết hạn vẫn tự đăng xuất ở cả chế độ thông thường và chỉ xem.
-- Sau khi phiên hết hạn, tài khoản phải chờ `LOGIN_COOLDOWN` trước khi đăng nhập lại. Backend trả `429 LOGIN_COOLDOWN`, header `Retry-After`, `data.retry_after` và `data.login_allowed_at`; trang đăng nhập hiển thị đếm ngược sau khi bị từ chối. Đăng nhập lại trước hạn, kể cả sau logout thủ công, giữ nguyên mốc hết hạn ban đầu; logout không xóa lịch sử để né cooldown.
-- `JWT_TTL` và `SESSION_TTL` phải bằng nhau, ví dụ cùng `20m` hoặc cùng `30m`. `MAX_CREDITS=26` áp dụng cùng giới hạn cho response học kỳ và kiểm tra đăng ký, không cần seed lại. Sau khi đổi `.env`, chạy `docker compose up -d --force-recreate backend`; TTL mới dùng khi mở cửa sổ đăng nhập mới, không kéo dài cửa sổ hiện tại. `LOGIN_COOLDOWN` được tính lại từ cấu hình backend hiện hành.
-- Một lớp có nhiều buổi học, thứ `2…7`; không có nhóm LT/TH riêng. Admin được hủy mềm cả lớp có sinh viên. Form tạo lớp và cấu hình thời gian đăng ký tự lấy học kỳ hiện tại từ `GET /api/classes`, hiển thị tên học kỳ ở trường chỉ đọc và gửi `semester.id`; chưa cho gửi khi không tải được hoặc chưa có học kỳ. ID học phần vẫn nhập tay vì Phase 1 chưa có API danh sách học phần; không dùng danh sách giả hoặc lịch sử đợt giả.
-- Không có trang quản lý sinh viên hoặc API hồ sơ theo ID. Thông tin khoa/ngành của người dùng hiện tại được lấy từ `GET /api/auth/me` để hiển thị tổng quan và lọc lớp theo ngành.
+- Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Đăng nhập lại khi phiên còn hoạt động nhận `409 ALREADY_LOGGED_IN`, giữ nguyên phiên và thời hạn. Sau logout chủ động hoặc hết hạn tự động, tài khoản phải chờ `LOGIN_COOLDOWN` tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất. Backend trả `429 LOGIN_COOLDOWN`, header `Retry-After`, `data.retry_after` và `data.login_allowed_at`; trang đăng nhập hiển thị đếm ngược sau khi bị từ chối. Đóng tab không gọi logout và không kết thúc phiên backend.
+- `JWT_TTL` và `SESSION_TTL` phải bằng nhau, ví dụ cùng `20m` hoặc cùng `30m`. `MAX_CREDITS=26` áp dụng cùng giới hạn cho response học kỳ và kiểm tra đăng ký, không cần seed lại. Sau khi đổi `.env`, chạy `docker compose up -d --force-recreate backend`; TTL mới dùng khi tạo phiên mới, không đổi thời hạn phiên đã lưu. `LOGIN_COOLDOWN` được tính lại từ cấu hình backend hiện hành.
+- Một lớp có nhiều buổi học, thứ `2…7`. Admin được hủy mềm cả lớp có sinh viên. Form tạo lớp tự lấy học kỳ hiện tại từ `GET /api/classes`, hiển thị tên học kỳ ở trường chỉ đọc và gửi `semester.id`; chưa cho gửi khi không tải được hoặc chưa có học kỳ. ID học phần vẫn nhập tay vì chưa có API danh sách học phần.
+- Khoa/ngành của người dùng hiện tại lấy từ `GET /api/auth/me` để hiển thị tổng quan và lọc lớp theo ngành.
 
 `npm run build` tạo `frontend/dist/`; `npm run preview` phục vụ bản build tại cổng 4173, dùng cùng proxy phát triển. Docker dùng `frontend/Dockerfile` và `frontend/nginx.conf`; khi triển khai máy chủ static khác, cần cấu hình tuyến `/api` tới backend và fallback SPA về `index.html`.

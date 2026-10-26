@@ -46,6 +46,7 @@ type failure struct {
 
 var failures = []failure{
 	{service.ErrInvalidCredentials, 401, "INVALID_CREDENTIALS", "Sai tên đăng nhập hoặc mật khẩu"},
+	{service.ErrAlreadyLoggedIn, 409, "ALREADY_LOGGED_IN", "Tài khoản đang đăng nhập trên một phiên khác"},
 	{service.ErrLoginCooldown, 429, "LOGIN_COOLDOWN", "Tài khoản đang trong thời gian chờ đăng nhập lại"},
 	{service.ErrSessionRevoked, 401, "SESSION_REVOKED", "Phiên đăng nhập đã bị thu hồi hoặc đã hết hạn"},
 	{service.ErrUnauthorized, 401, "UNAUTHORIZED", "Chưa đăng nhập hoặc phiên không hợp lệ"},
@@ -65,7 +66,6 @@ var failures = []failure{
 	{service.ErrRegistrationNotActive, 409, "REGISTRATION_NOT_ACTIVE", "Đăng ký không ở trạng thái đã đăng ký"},
 	{service.ErrInvalidReference, 400, "VALIDATION_ERROR", "Dữ liệu tham chiếu không tồn tại"},
 	{service.ErrInvalidSchedule, 400, "VALIDATION_ERROR", "Tiết kết thúc phải lớn hơn hoặc bằng tiết bắt đầu"},
-	{service.ErrInvalidRegistrationPeriod, 400, "VALIDATION_ERROR", "Thời gian đóng đăng ký phải sau thời gian mở đăng ký"},
 }
 
 func success(c *gin.Context, status int, data any) {

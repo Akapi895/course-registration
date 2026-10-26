@@ -198,7 +198,7 @@ def verify(conn, expected):
         ("UPDATE class_schedules SET end_period=0 WHERE id=1", '23514'),
         ("UPDATE registrations SET status='invalid' WHERE id=1", '23514'),
         ("INSERT INTO registrations(student_id,class_id) VALUES (1,4)", '23505'),
-        ("INSERT INTO auth_sessions(user_id,refresh_token_hash,expires_at) VALUES (-1,'demo',now())", '23503'),
+        ("INSERT INTO auth_sessions(user_id,expires_at) VALUES (-1,now())", '23503'),
         ("INSERT INTO course_results(student_id,course_id,passed) SELECT student_id,course_id,true FROM course_results ORDER BY student_id,course_id LIMIT 1", '23505'),
         ("INSERT INTO course_results(student_id,course_id,passed) VALUES (1,1,NULL)", '23502'),
         ("INSERT INTO course_results(student_id,course_id,passed) VALUES (-1,1,true)", '23503'),
@@ -232,8 +232,8 @@ def verify(conn, expected):
             conn.execute("INSERT INTO class_schedules(class_id,day_of_week,start_period,end_period,room) VALUES (10001,2,1,2,'PROBE')")
             conn.execute('DELETE FROM course_classes WHERE id=10001')
             assert conn.execute('SELECT count(*) AS n FROM class_schedules WHERE class_id=10001').fetchone()['n']==0
-            session=conn.execute("INSERT INTO auth_sessions(user_id,refresh_token_hash,expires_at) VALUES (1,'probe',now()+interval '1 hour') RETURNING id,created_at,revoked_at").fetchone()
-            assert session['id'] and session['created_at'] and session['revoked_at'] is None
+            session=conn.execute("INSERT INTO auth_sessions(user_id,expires_at) VALUES (1,now()+interval '1 hour') RETURNING id,created_at,logged_out_at").fetchone()
+            assert session['id'] and session['created_at'] and session['logged_out_at'] is None
             raise RollbackProbe()
     except RollbackProbe:
         pass
@@ -293,14 +293,14 @@ def main():
         return
     if args.command=='expire-sessions':
         if not args.confirm_expire_sessions:
-            raise ValueError('This closes existing login windows. Pass --confirm-expire-sessions explicitly.')
+            raise ValueError('This ends active sessions. Pass --confirm-expire-sessions explicitly.')
         with connect() as conn:
             migrate(conn)
             result = conn.execute(
-                "UPDATE auth_sessions SET revoked_at = COALESCE(revoked_at, now()), "
-                "expires_at = now() WHERE expires_at > now()"
+                "UPDATE auth_sessions SET logged_out_at = now() "
+                "WHERE logged_out_at IS NULL AND expires_at > now()"
             )
-            print(f'Closed {result.rowcount} session records; login cooldown starts at the new expiry')
+            print(f'Logged out {result.rowcount} active sessions; login cooldown starts at logged_out_at')
         return
     if args.command=='migrate':
         with connect() as conn:

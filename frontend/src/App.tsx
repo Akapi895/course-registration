@@ -4,7 +4,7 @@ import { useAuth } from './auth/AuthProvider'
 import { Logo, Skeleton, Toaster } from './components/ui'
 import Layout from './components/Layout'
 import { ForgotPage, LoginPage, StatusPage } from './pages/auth'
-import { AdminClasses, AdminDashboard, AdminRegistrationPeriod } from './pages/admin'
+import { AdminClasses, AdminDashboard } from './pages/admin'
 import { StudentClasses, StudentDashboard, StudentRegistrations } from './pages/student'
 import { StudentSchedule } from './pages/schedule'
 
@@ -17,10 +17,11 @@ function Routes() {
   const p = path.split('?')[0]
   useEffect(() => {
     if (auth.loading || auth.error) return
-    if (p === '/' || p === '') navigate(auth.user ? home(auth.user.role) : '/login')
-    else if (!publicPages[p] && !auth.user) navigate('/login?expired=1')
+    const loginPath = auth.expired ? '/login?expired=1' : '/login'
+    if (p === '/' || p === '') navigate(auth.user ? home(auth.user.role) : loginPath)
+    else if (!publicPages[p] && !auth.user) navigate(loginPath)
     else if (publicPages[p] && auth.user) navigate(home(auth.user.role))
-  }, [p, auth.loading, auth.error, auth.user])
+  }, [p, auth.loading, auth.error, auth.expired, auth.user])
   if (auth.loading) return <div role="status" aria-label="Đang xác thực" className="mx-auto max-w-xl space-y-4 p-10"><Logo /><Skeleton className="h-16" /></div>
   if (auth.error) return <StatusPage code="network" onRetry={auth.refreshUser} onHome={() => { auth.clearSession(); navigate('/login') }} homeLabel="Về trang đăng nhập" />
   const PublicPage = publicPages[p]
@@ -36,7 +37,6 @@ function Routes() {
     ['/student/schedule', () => <StudentSchedule />],
     ['/admin/dashboard', () => <AdminDashboard />],
     ['/admin/classes', () => <AdminClasses isNew={!!query(path).get('new')} />],
-    ['/admin/registration-period', () => <AdminRegistrationPeriod />],
     ['/error/network', () => <Layout title="Lỗi kết nối"><StatusPage code="network" /></Layout>],
   ]
   for (const [pattern, render] of routes) {

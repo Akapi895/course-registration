@@ -45,8 +45,12 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*User, error) 
 }
 
 func (r *UserRepository) queryOne(ctx context.Context, query string, args ...any) (*User, error) {
+	return scanUser(r.db.QueryRow(ctx, query, args...))
+}
+
+func scanUser(row pgx.Row) (*User, error) {
 	var u User
-	err := r.db.QueryRow(ctx, query, args...).Scan(
+	err := row.Scan(
 		&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.FullName,
 		&u.StudentCode, &u.Faculty, &u.Major,
 	)

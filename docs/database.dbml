@@ -107,12 +107,12 @@ Table registrations {
 
 // 8. Phiên đăng nhập
 Table auth_sessions {
-  id uuid [pk, default: `gen_random_uuid()`]
+  id uuid [pk, default: `gen_random_uuid()`, note: 'Claim sid của JWT']
   user_id bigint [not null]
 
-  created_at timestamptz [not null, default: `now()`]
-  expires_at timestamptz [not null]
-  logged_out_at timestamptz
+  created_at timestamptz [not null, default: `now()`, note: 'Thời điểm tạo phiên']
+  expires_at timestamptz [not null, note: 'created_at + JWT_TTL; khớp exp của JWT']
+  logged_out_at timestamptz [note: 'Thời điểm chủ động đăng xuất trước hạn; NULL nếu chưa đăng xuất hoặc tự hết hạn']
 
   indexes {
     (user_id, created_at)

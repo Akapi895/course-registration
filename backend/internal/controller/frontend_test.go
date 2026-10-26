@@ -26,7 +26,7 @@ func TestFrontendSharesOriginWithoutReplacingAPIRoutes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	r := NewRouter(nil, nil, nil, nil)
+	r := NewRouter(nil, nil, nil)
 	if err := ServeFrontend(r, dir); err != nil {
 		t.Fatal(err)
 	}

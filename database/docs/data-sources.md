@@ -9,6 +9,8 @@ Chạy các lệnh dưới đây tại thư mục gốc repository. Xem [hướn
 
 `database/sources/` lưu HTML/PDF gốc và manifest URL, thời điểm tải UTC, SHA-256, trạng thái TLS. `database/data/catalog.json` là snapshot đã chấp nhận: danh mục, quan hệ CTĐT–học phần, nhóm kiến thức, bắt buộc/tự chọn/thay thế, tiên quyết và vị trí nguồn từng dòng. Các bản ghi lặp ở nhiều định hướng được giữ trong memberships, chỉ gộp trong courses.
 
+HTML gốc trộn CRLF ở markup với LF trong nội dung `<pre>`. `.gitattributes` giữ nguyên byte HTML/PDF và cố định LF cho JSON sinh tự động để SHA-256 không đổi khi checkout trên Windows/Linux. Không chạy formatter hoặc đổi kiểu xuống dòng trên nguồn gốc. Nếu cache cũ đã bị Git chuyển đổi, tải lại theo lệnh `--refresh` bên dưới rồi kiểm tra checksum và báo cáo trước khi promote; không sửa checksum để chấp nhận cache đã đổi byte.
+
 ```powershell
 # Dùng cache có checksum, tạo candidate và báo cáo, chưa thay catalog đang dùng
 docker compose run --rm crawl

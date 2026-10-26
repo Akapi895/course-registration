@@ -24,6 +24,47 @@ def wait_for(check, label):
     raise AssertionError(f'Timed out waiting for {label}')
 
 
+def check_stale_auth_response(browser, base, class_name, class_code):
+    from playwright.sync_api import expect
+    page = browser.new_page()
+    page.goto(base + '/#/login')
+    page.locator('#username').fill('student005')
+    page.locator('#password').fill('DemoUET@123')
+    page.get_by_role('button', name='Đăng nhập', exact=True).click()
+    expect(page.get_by_role('heading', name='Xin chào, Sinh viên giả lập 005', exact=True)).to_be_visible()
+
+    delayed = []
+    def hold_registration(route):
+        if route.request.method == 'POST':
+            delayed.append(route)
+        else:
+            route.continue_()
+    page.route('**/api/registrations', hold_registration)
+    page.evaluate("window.location.hash = '/student/classes'")
+    page.get_by_role('checkbox', name=f'Chọn {class_name} {class_code}', exact=True).check()
+    with page.expect_request(lambda req: req.method == 'POST' and req.url.endswith('/api/registrations')):
+        page.get_by_role('button', name='Xác nhận đăng ký (1)', exact=True).click()
+    page.evaluate("window.location.hash = '/student/dashboard'")
+    page.get_by_role('button', name='Sinh viên giả lập 005', exact=False).click()
+    page.get_by_role('menuitem', name='Đăng xuất', exact=True).click()
+    expect(page.locator('#username')).to_be_visible()
+    page.locator('#username').fill('student006')
+    page.locator('#password').fill('DemoUET@123')
+    page.get_by_role('button', name='Đăng nhập', exact=True).click()
+    expect(page.get_by_role('heading', name='Xin chào, Sinh viên giả lập 006', exact=True)).to_be_visible()
+    current_token = page.evaluate("sessionStorage.getItem('courseRegistration:access-token')")
+    assert delayed, 'registration request was not delayed'
+    with page.expect_response(lambda res: res.request.method == 'POST' and res.url.endswith('/api/registrations')) as response:
+        delayed[0].fulfill(status=401, content_type='application/json', body=json.dumps({
+            'status': 'fail', 'data': {'code': 'UNAUTHORIZED', 'message': 'Expired previous session'},
+        }))
+    response.value.finished()
+    page.evaluate('() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
+    expect(page.get_by_role('heading', name='Xin chào, Sinh viên giả lập 006', exact=True)).to_be_visible()
+    assert page.evaluate("sessionStorage.getItem('courseRegistration:access-token')") == current_token
+    page.close()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', default='course-registration-render-test')
@@ -89,6 +130,9 @@ def main():
         print('PASS startup: automatic migration/seed, frontend, Swagger, API isolation and dynamic PORT')
 
         student = login('student001')
+        code, result = request('/api/auth/login', 'POST', {'username': 'student001', 'password': 'DemoUET@123'})
+        assert code == 409 and result['data']['code'] == 'ALREADY_LOGGED_IN', result
+        assert request('/api/auth/me', token=student)[0] == 200
         encoded_claims = student.split('.')[1]
         claims = json.loads(base64.urlsafe_b64decode(encoded_claims + '=' * (-len(encoded_claims) % 4)))
         assert claims['exp'] - claims['iat'] == 45 * 60, 'configured JWT_TTL was not applied'
@@ -144,7 +188,9 @@ def main():
 
         assert request('/api/auth/logout', 'POST', token=student)[0] == 200
         assert request('/api/auth/me', token=student)[0] == 401
-        print('PASS logout: revoked token rejected')
+        code, result = request('/api/auth/login', 'POST', {'username': 'student001', 'password': 'DemoUET@123'})
+        assert code == 429 and result['data']['code'] == 'LOGIN_COOLDOWN', result
+        print('PASS auth: active-session login rejected, logged-out token rejected and logout cooldown enforced')
         if args.browser:
             from playwright.sync_api import expect, sync_playwright
             with sync_playwright() as p:
@@ -153,7 +199,7 @@ def main():
                 errors = []
                 page.on('pageerror', lambda err: errors.append(str(err)))
                 page.goto(base + '/#/login')
-                page.locator('#username').fill('admin1')
+                page.locator('#username').fill('admin2')
                 page.locator('#password').fill('DemoUET@123')
                 page.get_by_role('button', name='Đăng nhập', exact=True).click()
                 expect(page.get_by_role('button', name='Tạo lớp học phần', exact=True)).to_be_visible()
@@ -162,15 +208,65 @@ def main():
                 page.get_by_role('button', name='Tạo lớp học phần', exact=True).click()
                 expect(page.locator('#cf-sem')).to_have_value(semester_name)
                 expect(page.locator('#cf-sem')).to_have_attribute('readonly', '')
-                page.evaluate("window.location.hash = '/admin/registration-period'")
-                expect(page.locator('#rp-sem')).to_have_value(semester_name)
                 assert not errors, errors
+
+                # Moving the wall clock does not fire timers: returning to the
+                # tab must independently re-check expiry, including for admins.
+                admin_restored = page.evaluate("sessionStorage.getItem('courseRegistration:access-token')")
+                page.clock.install()
+                page.clock.set_system_time(time.time() + 46 * 60)
+                page.evaluate("window.dispatchEvent(new Event('focus'))")
+                expect(page.locator('#username')).to_be_visible()
+                assert page.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
+
+                # An expired stored token must be cleared even when /me is offline.
+                me_calls = []
+                def offline_me(route):
+                    me_calls.append(route.request.url)
+                    route.abort()
+                page.route('**/api/auth/me', offline_me)
+                page.evaluate("""token => {
+                    sessionStorage.setItem('courseRegistration:access-token', token);
+                    sessionStorage.setItem('courseRegistration:submitted', '1');
+                }""", admin_restored)
+                page.reload()
+                expect(page.locator('#username')).to_be_visible()
+                assert not me_calls, 'expired token was sent to /me instead of cleared locally'
+                assert page.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
+                assert page.evaluate("sessionStorage.getItem('courseRegistration:submitted')") is None
+
+                duplicate = browser.new_page()
+                duplicate.goto(base + '/#/login')
+                duplicate.locator('#username').fill('admin1')
+                duplicate.locator('#password').fill('DemoUET@123')
+                duplicate.get_by_role('button', name='Đăng nhập', exact=True).click()
+                expect(duplicate.get_by_text('Tài khoản đang có phiên đăng nhập', exact=True)).to_be_visible()
+                assert duplicate.get_by_role('timer').count() == 0, '409 was shown as a cooldown'
+                assert duplicate.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
+                assert request('/api/auth/me', token=admin)[0] == 200
+                duplicate.close()
+
+                pending = browser.new_page()
+                pending.clock.install()
+                profile_requests = []
+                pending.route('**/api/auth/me', lambda route: profile_requests.append(route))
+                pending.goto(base + '/#/login')
+                pending.locator('#username').fill('student007')
+                pending.locator('#password').fill('DemoUET@123')
+                with pending.expect_request('**/api/auth/me'):
+                    pending.get_by_role('button', name='Đăng nhập', exact=True).click()
+                pending.clock.fast_forward(46 * 60 * 1000)
+                expect(pending.get_by_role('button', name='Đăng nhập', exact=True)).to_be_enabled()
+                assert pending.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
+                for route in profile_requests:
+                    route.abort()
+                pending.close()
 
                 context = browser.new_context()
                 student_page = context.new_page()
                 student_page.clock.install()
                 student_page.goto(base + '/#/login')
-                student_page.locator('#username').fill('student001')
+                student_page.locator('#username').fill('student003')
                 student_page.locator('#password').fill('DemoUET@123')
                 student_page.get_by_role('button', name='Đăng nhập', exact=True).click()
                 expect(student_page.get_by_role('heading', name='Xin chào,', exact=False)).to_be_visible()
@@ -186,12 +282,30 @@ def main():
                 expect(student_page.get_by_text('Bạn đã gửi đăng ký trong phiên này', exact=True)).to_be_visible()
                 restored = student_page.evaluate("sessionStorage.getItem('courseRegistration:access-token')")
                 assert restored, 'token not persisted after reload'
+                student_page.clock.set_system_time(time.time() + 46 * 60)
+                student_page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+                expect(student_page.locator('#username')).to_be_visible()
+                assert student_page.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
+                assert student_page.evaluate("sessionStorage.getItem('courseRegistration:submitted')") is None
+                student_page.clock.set_system_time(time.time())
+                student_page.evaluate("""token => {
+                    sessionStorage.setItem('courseRegistration:access-token', token);
+                    sessionStorage.setItem('courseRegistration:submitted', '1');
+                }""", restored)
                 response = context.request.post(base + '/api/auth/logout', headers={'Authorization': 'Bearer ' + restored})
                 assert response.status == 200
                 student_page.reload()
                 expect(student_page.locator('#username')).to_be_visible()
                 assert student_page.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
-                student_page.locator('#username').fill('student001')
+                student_page.locator('#username').fill('student003')
+                student_page.locator('#password').fill('DemoUET@123')
+                student_page.get_by_role('button', name='Đăng nhập', exact=True).click()
+                expect(student_page.get_by_role('timer')).to_be_visible()
+                student_page.reload()
+                expect(student_page.get_by_role('timer')).to_be_visible()
+                expect(student_page.locator('#username')).to_have_value('student003')
+                # A different account can sign in while the logged-out one waits.
+                student_page.locator('#username').fill('student004')
                 student_page.locator('#password').fill('DemoUET@123')
                 student_page.get_by_role('button', name='Đăng nhập', exact=True).click()
                 expect(student_page.get_by_role('heading', name='Xin chào,', exact=False)).to_be_visible()
@@ -199,9 +313,12 @@ def main():
                 expect(student_page.locator('#username')).to_be_visible()
                 assert student_page.evaluate("sessionStorage.getItem('courseRegistration:access-token')") is None
                 context.close()
+                check_stale_auth_response(browser, base, cls['course_name'], cls['class_code'])
                 browser.close()
             print('PASS browser: same-origin login, dashboard and automatic semester in both admin forms')
             print('PASS session reload: student/admin restored; read-only state retained; revocation and expiry clear stored token')
+            print('PASS frontend auth: 409 feedback, per-account cooldown reload, focus/visibility expiry, offline reload and pending-profile expiry')
+            print('PASS stale response: a delayed 401 from the previous session preserves the new account and token')
         print('PASS all Render image smoke checks (isolated disposable database)')
     finally:
         for name in reversed(created):

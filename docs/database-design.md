@@ -2,15 +2,11 @@
 
 ## 1. Tổng quan cơ sở dữ liệu
 
-Hệ thống sử dụng PostgreSQL để lưu trữ và quản lý dữ liệu theo đặc tả yêu cầu phần mềm (SRS).
-
-Cơ sở dữ liệu gồm 9 bảng: quản lý người dùng, học kỳ, học phần, điều kiện tiên quyết, kết quả học tập, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập.
-
-Thiết kế sử dụng các ràng buộc cơ sở dữ liệu và transaction để bảo đảm tính toàn vẹn và nhất quán dữ liệu.
+PostgreSQL gồm 9 bảng: người dùng, học kỳ, học phần, điều kiện tiên quyết, kết quả học tập, lớp học phần, lịch học, đăng ký học phần và phiên đăng nhập.
 
 ## 2. Sơ đồ quan hệ thực thể (ERD)
 
-Sơ đồ ERD được định nghĩa trong file `database.dbml` và thể hiện quan hệ giữa 9 bảng. Các quan hệ chính gồm: người dùng với đăng ký học phần, kết quả học tập và phiên đăng nhập; học kỳ và học phần với lớp học phần; lớp học phần với lịch học và đăng ký; quan hệ tiên quyết giữa các học phần và kết quả học tập của sinh viên.
+ERD nằm trong `database.dbml`.
 
 ## 3. Thiết kế chi tiết các bảng
 
@@ -40,7 +36,7 @@ Thông tin sinh viên và quản trị viên được lưu chung. `student_code`
 | `registration_closes_at` | TIMESTAMPTZ | NOT NULL |
 | `max_credits` | INT | NOT NULL, > 0 |
 
-Mỗi học kỳ có một khoảng thời gian đăng ký; thời điểm mở phải trước thời điểm đóng.
+Thời điểm mở đăng ký phải trước thời điểm đóng (`chk_registration_period`). Giá trị do seed đặt.
 
 ### 3.3. `courses` – Học phần
 
@@ -112,19 +108,18 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 | `expires_at` | TIMESTAMPTZ | NOT NULL; thời điểm phiên tự hết hạn |
 | `logged_out_at` | TIMESTAMPTZ | Có thể NULL; thời điểm người dùng chủ động đăng xuất trước khi hết hạn |
 
-Mỗi phiên thuộc về một người dùng. Khóa chính `id` được đưa vào claim `sid` của JWT. Bảng có chỉ mục ghép (`user_id`, `created_at`) để hỗ trợ lấy phiên gần nhất; khóa ngoại `user_id` tham chiếu `users.id`. Không có các cột `refresh_token_hash`, `revoked_at`, `status` hoặc `cooldown_until`.
+`id` là claim `sid` của JWT. Chỉ mục (`user_id`, `created_at`) phục vụ lấy phiên gần nhất.
 
 **Thời hạn và trạng thái phiên:**
-- JWT chứa các claim `sub` (ID người dùng), `role`, `sid` (ID phiên), `iat` (thời điểm phát hành) và `exp` (thời điểm hết hạn).
-- Thời điểm `expires_at` được backend đặt bằng `created_at + JWT_TTL` (cấu hình sử dụng 20 phút); giá trị `exp` phải khớp `expires_at` ở độ chính xác giây. `SESSION_TTL` phải bằng `JWT_TTL`.
-- Phiên chỉ hoạt động khi `logged_out_at IS NULL` và thời gian hiện tại **nhỏ hơn** `expires_at`. Khi đến hạn, phiên tự hết hiệu lực theo phép so sánh thời gian; không cần cập nhật bảng hay chạy tác vụ nền.
-- Khi người dùng chủ động đăng xuất và phiên vẫn còn hiệu lực, backend đặt `logged_out_at` một lần bằng thời điểm đăng xuất. Không thay đổi `expires_at`. Nếu phiên đã hết hạn, không ghi đè `logged_out_at` bằng thời điểm muộn hơn.
+- `expires_at = created_at + JWT_TTL` (mặc định 20 phút); `exp` của JWT khớp `expires_at` ở độ chính xác giây. `SESSION_TTL` phải bằng `JWT_TTL`.
+- Phiên hoạt động khi `logged_out_at IS NULL` và thời gian hiện tại **nhỏ hơn** `expires_at`. Hết hạn chỉ là phép so sánh thời gian, không cần cập nhật bảng hay tác vụ nền.
+- Đăng xuất khi phiên còn hiệu lực đặt `logged_out_at` một lần, không đổi `expires_at`. Phiên đã hết hạn không bị ghi `logged_out_at`.
 
 **Quy tắc đăng nhập lại (áp dụng cho mọi thiết bị):**
-- Mỗi tài khoản được có tối đa **một phiên đang hoạt động**. Khi phiên hiện tại còn hoạt động, lần đăng nhập mới bị từ chối; không tạo phiên mới và không gia hạn thời hạn.
-- Thời điểm kết thúc thực tế của phiên gần nhất là `COALESCE(logged_out_at, expires_at)`. Sau khi phiên kết thúc, tài khoản phải đợi đủ `LOGIN_COOLDOWN` (cấu hình sử dụng 20 phút) mới được đăng nhập lại.
-- Backend kiểm tra phiên gần nhất và tạo phiên mới trong **cùng transaction có khóa dòng `users`**, ngăn hai lần đăng nhập đồng thời vượt qua điều kiện một phiên. Mỗi lần được phép đăng nhập tạo một `sid` mới.
-- JWT chỉ được chấp nhận khi chữ ký, thời hạn và claim hợp lệ; session có `sid` tương ứng đang hoạt động; `sub` khớp `user_id` và `exp` khớp `expires_at`. Để tránh sử dụng quyền cũ, khi xác thực cần đối chiếu claim `role` với vai trò hiện tại của tài khoản trước khi phân quyền.
+- Mỗi tài khoản có tối đa **một phiên hoạt động**. Khi còn phiên hoạt động, đăng nhập mới bị từ chối, không tạo phiên và không gia hạn.
+- Phiên gần nhất kết thúc tại `COALESCE(logged_out_at, expires_at)`; sau đó phải đợi `LOGIN_COOLDOWN` (mặc định 20 phút).
+- Kiểm tra phiên gần nhất và tạo phiên mới nằm trong **một transaction khóa dòng `users`**, nên hai lần đăng nhập đồng thời không tạo hai phiên. Mỗi lần đăng nhập tạo `sid` mới.
+- JWT được chấp nhận khi chữ ký, claim hợp lệ, phiên `sid` đang hoạt động, `sub` khớp `user_id`, `exp` khớp `expires_at` và `role` khớp vai trò hiện tại của tài khoản.
 
 Ví dụ: đăng nhập 10:00 → tự đăng xuất 10:05 → được đăng nhập lại từ 10:25; nếu không tự đăng xuất thì hết hạn 10:20 → được đăng nhập lại từ 10:40.
 
@@ -142,5 +137,5 @@ Khóa chính ghép (`student_id`, `course_id`) bảo đảm mỗi sinh viên ch�
 
 - **Ràng buộc dữ liệu:** PostgreSQL sử dụng PK, FK, UNIQUE, NOT NULL và CHECK để kiểm soát tính hợp lệ, tính duy nhất và mối quan hệ giữa các bảng.
 - **Kiểm tra nghiệp vụ:** Backend kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết, giới hạn tín chỉ và quyền truy cập trước khi cập nhật dữ liệu.
-- **Quản lý phiên đăng nhập:** JWT chứa `sub`, `role`, `sid`, `iat`, `exp`; `sid` tham chiếu đến `auth_sessions.id`. Backend kiểm tra JWT, vai trò tài khoản và phiên tương ứng. Đăng xuất chủ động ghi `logged_out_at`; hết hạn tự động dựa trên `expires_at`. Sau khi kết thúc phiên, người dùng phải chờ đủ thời gian cooldown trước khi đăng nhập lại.
+- **Phiên đăng nhập:** quy tắc ở §3.8.
 - **Tính nhất quán:** Đăng ký và hủy học phần sử dụng transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận.

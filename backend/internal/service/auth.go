@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"math"
 	"strconv"
@@ -43,54 +41,49 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 		return "", ErrInvalidCredentials
 	}
 
-	// refresh_token_hash is NOT NULL in the schema but unused in Phase 1.
-	placeholder := make([]byte, 32)
-	if _, err := rand.Read(placeholder); err != nil {
-		return "", err
-	}
-	placeholderHash := sha256.Sum256(placeholder)
-
 	var token string
 	err = s.sessions.WithTx(ctx, func(tx *repository.SessionTx) error {
-		found, err := tx.LockUser(ctx, user.ID)
+		currentUser, err := tx.LockUser(ctx, user.ID)
 		if err != nil {
 			return err
 		}
-		if !found {
+		if currentUser == nil || currentUser.PasswordHash != user.PasswordHash {
 			return ErrInvalidCredentials
 		}
-		previousExpiry, err := tx.LatestExpiry(ctx, user.ID, s.cfg.JWTTTL)
+		previous, err := tx.Latest(ctx, user.ID)
 		if err != nil {
 			return err
 		}
-		// Read time after acquiring the lock; a concurrent login may have held it.
-		// Compare with full precision but use whole-second windows so created_at,
-		// the stored expires_at and the JWT exp cannot drift apart.
+		// Keep microseconds for ordering sessions even after a very short cooldown.
+		// Read time after the account lock; another login may have held it.
 		now := time.Now().UTC()
-		createdAt := now.Truncate(time.Second)
+		createdAt := now.Truncate(time.Microsecond)
 		expiresAt := createdAt.Add(s.cfg.JWTTTL)
-		if previousExpiry != nil {
-			windowEnd := previousExpiry.Truncate(time.Second)
-			if now.Before(windowEnd) {
-				// Re-login, including after manual logout, cannot extend this window.
-				expiresAt = windowEnd
-			} else if allowedAt := windowEnd.Add(s.cfg.LoginCooldown); now.Before(allowedAt) {
+		if previous != nil {
+			if previous.LoggedOutAt == nil && now.Before(previous.ExpiresAt) {
+				return ErrAlreadyLoggedIn
+			}
+			endedAt := previous.ExpiresAt
+			if previous.LoggedOutAt != nil {
+				endedAt = *previous.LoggedOutAt
+			}
+			if allowedAt := endedAt.Add(s.cfg.LoginCooldown); now.Before(allowedAt) {
 				return &LoginCooldownError{
 					LoginAllowedAt: allowedAt,
 					RetryAfter:     int(math.Ceil(allowedAt.Sub(now).Seconds())),
 				}
 			}
 		}
-		sid, err := tx.Create(ctx, user.ID, hex.EncodeToString(placeholderHash[:]), createdAt, expiresAt)
+		sid, err := tx.Create(ctx, user.ID, createdAt, expiresAt)
 		if err != nil {
 			return err
 		}
 		claims := tokenClaims{
-			Role: user.Role,
+			Role: currentUser.Role,
 			SID:  sid,
 			RegisteredClaims: jwt.RegisteredClaims{
 				Subject:   strconv.FormatInt(user.ID, 10),
-				IssuedAt:  jwt.NewNumericDate(now),
+				IssuedAt:  jwt.NewNumericDate(createdAt),
 				ExpiresAt: jwt.NewNumericDate(expiresAt),
 			},
 		}
@@ -104,7 +97,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 }
 
 func (s *AuthService) Logout(ctx context.Context, sid string) error {
-	return s.sessions.Revoke(ctx, sid)
+	return s.sessions.Logout(ctx, sid, time.Now().UTC())
 }
 
 func (s *AuthService) Me(ctx context.Context, userID int64) (*repository.User, error) {
@@ -118,14 +111,17 @@ func (s *AuthService) Me(ctx context.Context, userID int64) (*repository.User, e
 	return user, nil
 }
 
-// VerifyAccessToken returns ErrSessionRevoked when the token is valid but its
-// session is revoked or expired.
+// VerifyAccessToken checks the stored session and current account role on every
+// protected request. An ended session returns ErrSessionRevoked.
 func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Principal, error) {
-	// Preserve JSON types so exp must be a number, not a numeric string.
+	// Use the same clock for JWTs and sessions, including host-run development.
+	now := time.Now().UTC()
+	// Preserve JSON types so timestamps must be numbers, not numeric strings.
 	claims := jwt.MapClaims{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(*jwt.Token) (any, error) {
 		return []byte(s.cfg.JWTSecret), nil
-	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired())
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithExpirationRequired(), jwt.WithIssuedAt(),
+		jwt.WithTimeFunc(func() time.Time { return now }))
 	if err != nil || !parsed.Valid {
 		return nil, ErrUnauthorized
 	}
@@ -149,36 +145,27 @@ func (s *AuthService) VerifyAccessToken(ctx context.Context, token string) (*Pri
 	if _, err := hex.DecodeString(sid[:8] + sid[9:13] + sid[14:18] + sid[19:23] + sid[24:]); err != nil {
 		return nil, ErrUnauthorized
 	}
+	iat, err := claims.GetIssuedAt()
+	if err != nil || iat == nil {
+		return nil, ErrUnauthorized
+	}
+	exp, err := claims.GetExpirationTime()
+	if err != nil || exp == nil || !iat.Before(exp.Time) {
+		return nil, ErrUnauthorized
+	}
 
-	session, err := s.sessions.Active(ctx, sid)
+	session, err := s.sessions.Active(ctx, sid, now)
 	if err != nil {
 		return nil, err
 	}
 	if session == nil {
 		return nil, ErrSessionRevoked
 	}
-	if session.UserID != userID {
+	if session.UserID != userID || session.Role != role {
 		return nil, ErrUnauthorized
 	}
-	exp, err := claims.GetExpirationTime()
-	if err != nil {
+	if exp.Unix() != session.ExpiresAt.Unix() || iat.Unix() != session.CreatedAt.Unix() {
 		return nil, ErrUnauthorized
-	}
-	if err := s.checkWindow(exp.Time, session); err != nil {
-		return nil, err
 	}
 	return &Principal{UserID: session.UserID, Role: role, SID: sid}, nil
-}
-
-// checkWindow rejects a token whose exp differs from its session's expires_at,
-// or whose exp lies beyond created_at + JWT_TTL. Sessions written under a longer
-// TTL keep their old expires_at, so their tokens must stop working at the cap.
-func (s *AuthService) checkWindow(exp time.Time, session *repository.ActiveSession) error {
-	if exp.Unix() != session.ExpiresAt.Unix() {
-		return ErrUnauthorized
-	}
-	if exp.Unix() > session.CreatedAt.Add(s.cfg.JWTTTL).Unix() {
-		return ErrSessionRevoked
-	}
-	return nil
 }

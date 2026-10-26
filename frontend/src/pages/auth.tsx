@@ -42,6 +42,7 @@ export function LoginPage() {
   const [show, setShow] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
+  const [alreadyLoggedIn, setAlreadyLoggedIn] = useState(false)
   const [busy, setBusy] = useState(false)
   const [cooldowns, setCooldowns] = useState(savedCooldowns)
   const [now, setNow] = useState(Date.now)
@@ -58,14 +59,17 @@ export function LoginPage() {
     if (!waiting) return
     const tick = () => setNow(Date.now())
     const timer = setInterval(tick, 1000)
+    const visible = () => { if (document.visibilityState === 'visible') tick() }
     window.addEventListener('focus', tick)
-    return () => { clearInterval(timer); window.removeEventListener('focus', tick) }
+    document.addEventListener('visibilitychange', visible)
+    return () => { clearInterval(timer); window.removeEventListener('focus', tick); document.removeEventListener('visibilitychange', visible) }
   }, [waiting])
   const go = async () => {
-    setError(''); setBusy(true)
+    setError(''); setAlreadyLoggedIn(false); setBusy(true)
     const account = username.trim()
     try { sessionStorage.setItem(LAST_USERNAME_KEY, account) } catch { /* Only a form preference. */ }
     const controller = new AbortController()
+    loginRequest.current?.abort()
     loginRequest.current = controller
     try {
       const user = await signIn(username, password, controller.signal)
@@ -80,9 +84,11 @@ export function LoginPage() {
           const receivedAt = Date.now()
           setNow(receivedAt)
           setCooldowns((saved) => ({ ...saved, [account]: receivedAt + Math.ceil(retryAfter) * 1000 }))
-        } else setError(cause instanceof Error ? cause.message : 'Không thể đăng nhập. Vui lòng thử lại.')
-        setBusy(false)
+        } else if (cause instanceof ApiError && cause.code === 'ALREADY_LOGGED_IN') setAlreadyLoggedIn(true)
+        else setError(cause instanceof Error ? cause.message : 'Không thể đăng nhập. Vui lòng thử lại.')
       }
+    } finally {
+      if (!controller.signal.aborted) setBusy(false)
     }
   }
   const submit = (e: FormEvent) => {
@@ -99,17 +105,18 @@ export function LoginPage() {
       <h2 className="text-2xl font-semibold">Đăng nhập</h2>
       <p className="mt-1 text-sm text-muted">Sử dụng tài khoản do nhà trường cấp. Quyền truy cập được xác định theo tài khoản.</p>
       <div className="mt-4 space-y-3">
-        {q.get('expired') && <Alert tone="warning" title="Phiên đăng nhập đã hết hạn">Tài khoản cần hoàn tất thời gian chờ trước khi đăng nhập lại. Các đăng ký đã thành công vẫn được giữ nguyên.</Alert>}
+        {q.get('expired') && <Alert tone="warning" title="Phiên đăng nhập đã kết thúc">Phiên đã hết hạn hoặc không còn hợp lệ. Vui lòng đăng nhập lại; hệ thống sẽ thông báo nếu tài khoản còn phiên hoạt động hoặc đang trong thời gian chờ. Các đăng ký đã thành công vẫn được giữ nguyên.</Alert>}
+        {alreadyLoggedIn && <Alert tone="warning" title="Tài khoản đang có phiên đăng nhập">Tài khoản chỉ được có một phiên hoạt động. Vui lòng đăng xuất ở phiên đó hoặc chờ phiên hết hạn, sau đó hoàn tất thời gian chờ trước khi đăng nhập lại.</Alert>}
         {waiting && <Alert tone="warning" title="Tài khoản đang chờ đăng nhập lại">Có thể thử đăng nhập lại sau <span className="font-semibold tabular-nums" role="timer">{countdown}</span>. Thời gian chờ áp dụng theo tài khoản, kể cả khi đổi trình duyệt.</Alert>}
         {error && <Alert tone="error">{error}</Alert>}
       </div>
       <form onSubmit={submit} noValidate className="mt-5 space-y-4">
         <Field id="username" label="Tên đăng nhập" error={errors.u} required>
-          <Input id="username" autoComplete="username" value={username} onChange={(e) => { setUsername(e.target.value); setError(''); setNow(Date.now()) }} error={errors.u} placeholder="VD: student001" />
+          <Input id="username" autoComplete="username" disabled={busy} value={username} onChange={(e) => { setUsername(e.target.value); setError(''); setAlreadyLoggedIn(false); setNow(Date.now()) }} error={errors.u} placeholder="VD: student001" />
         </Field>
         <Field id="password" label="Mật khẩu" error={errors.p} required>
           <div className="relative">
-            <Input id="password" type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.p} className="pr-12" />
+            <Input id="password" type={show ? 'text' : 'password'} autoComplete="current-password" disabled={busy} value={password} onChange={(e) => setPassword(e.target.value)} error={errors.p} className="pr-12" />
             <button type="button" onClick={() => setShow(!show)} className="absolute right-0.5 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-slate-100" aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={show}>
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>

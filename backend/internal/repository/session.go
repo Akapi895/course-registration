@@ -17,7 +17,7 @@ func NewSessionRepository(db *pgxpool.Pool) *SessionRepository {
 	return &SessionRepository{db: db}
 }
 
-// WithTx keeps the account lock, previous-window lookup and session write atomic.
+// WithTx keeps the account lock, latest-session lookup and session write atomic.
 func (r *SessionRepository) WithTx(ctx context.Context, fn func(*SessionTx) error) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -34,57 +34,26 @@ type SessionTx struct {
 	tx pgx.Tx
 }
 
-func (t *SessionTx) LockUser(ctx context.Context, userID int64) (bool, error) {
-	var id int64
-	err := t.tx.QueryRow(ctx, `SELECT id FROM users WHERE id = $1 FOR UPDATE`, userID).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
-	return err == nil, err
+func (t *SessionTx) LockUser(ctx context.Context, userID int64) (*User, error) {
+	return scanUser(t.tx.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE id = $1 FOR UPDATE`, userID))
 }
 
-// LatestExpiry includes revoked sessions: logout must not erase the login window.
-// Each row is capped at created_at + ttl so windows stored under a longer TTL
-// cannot extend a login, and the maximum is taken after capping.
-func (t *SessionTx) LatestExpiry(ctx context.Context, userID int64, ttl time.Duration) (*time.Time, error) {
-	var expiresAt *time.Time
+type Session struct {
+	UserID      int64
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	LoggedOutAt *time.Time
+}
+
+// Latest includes ended sessions because their actual end determines cooldown.
+// Call only after locking the account in the same transaction.
+func (t *SessionTx) Latest(ctx context.Context, userID int64) (*Session, error) {
+	var session Session
 	err := t.tx.QueryRow(ctx,
-		`SELECT MAX(LEAST(expires_at, created_at + make_interval(secs => $2)))
-		 FROM auth_sessions WHERE user_id = $1`,
-		userID, ttl.Seconds(),
-	).Scan(&expiresAt)
-	if err != nil {
-		return nil, err
-	}
-	return expiresAt, nil
-}
-
-func (t *SessionTx) Create(ctx context.Context, userID int64, refreshTokenHash string, createdAt, expiresAt time.Time) (string, error) {
-	var sid string
-	err := t.tx.QueryRow(ctx,
-		`INSERT INTO auth_sessions (user_id, refresh_token_hash, created_at, expires_at)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id::text`,
-		userID, refreshTokenHash, createdAt, expiresAt,
-	).Scan(&sid)
-	return sid, err
-}
-
-// ActiveSession is an unrevoked, unexpired session row.
-type ActiveSession struct {
-	UserID    int64
-	CreatedAt time.Time
-	ExpiresAt time.Time
-}
-
-// Active returns the session when it is unrevoked and unexpired, or nil otherwise.
-func (r *SessionRepository) Active(ctx context.Context, sid string) (*ActiveSession, error) {
-	var session ActiveSession
-	err := r.db.QueryRow(ctx,
-		`SELECT user_id, created_at, expires_at FROM auth_sessions
-		 WHERE id = $1::uuid AND revoked_at IS NULL AND expires_at > now()`,
-		sid,
-	).Scan(&session.UserID, &session.CreatedAt, &session.ExpiresAt)
+		`SELECT user_id, created_at, expires_at, logged_out_at
+		 FROM auth_sessions WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
+		userID,
+	).Scan(&session.UserID, &session.CreatedAt, &session.ExpiresAt, &session.LoggedOutAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
@@ -94,11 +63,48 @@ func (r *SessionRepository) Active(ctx context.Context, sid string) (*ActiveSess
 	return &session, nil
 }
 
-func (r *SessionRepository) Revoke(ctx context.Context, sid string) error {
+func (t *SessionTx) Create(ctx context.Context, userID int64, createdAt, expiresAt time.Time) (string, error) {
+	var sid string
+	err := t.tx.QueryRow(ctx,
+		`INSERT INTO auth_sessions (user_id, created_at, expires_at)
+		 VALUES ($1, $2, $3)
+		 RETURNING id::text`,
+		userID, createdAt, expiresAt,
+	).Scan(&sid)
+	return sid, err
+}
+
+// ActiveSession includes the account's current role for token authorization.
+type ActiveSession struct {
+	UserID    int64
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	Role      string
+}
+
+// Active returns the session when it is not logged out or expired, or nil otherwise.
+func (r *SessionRepository) Active(ctx context.Context, sid string, now time.Time) (*ActiveSession, error) {
+	var session ActiveSession
+	err := r.db.QueryRow(ctx,
+		`SELECT s.user_id, s.created_at, s.expires_at, u.role
+		 FROM auth_sessions s JOIN users u ON u.id = s.user_id
+		 WHERE s.id = $1::uuid AND s.logged_out_at IS NULL AND s.expires_at > $2`,
+		sid, now,
+	).Scan(&session.UserID, &session.CreatedAt, &session.ExpiresAt, &session.Role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (r *SessionRepository) Logout(ctx context.Context, sid string, now time.Time) error {
 	_, err := r.db.Exec(ctx,
-		`UPDATE auth_sessions SET revoked_at = now()
-		 WHERE id = $1::uuid AND revoked_at IS NULL`,
-		sid,
+		`UPDATE auth_sessions SET logged_out_at = $2
+		 WHERE id = $1::uuid AND logged_out_at IS NULL AND expires_at > $2`,
+		sid, now,
 	)
 	return err
 }

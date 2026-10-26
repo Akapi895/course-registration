@@ -1,0 +1,7 @@
+# Source HTML mixes CRLF markup and LF preformatted text; hashes cover raw bytes.
+database/sources/*.html -text -whitespace
+database/sources/*.pdf -text
+
+# Generated snapshot hashes must survive Windows/Linux checkouts.
+database/data/*.json text eol=lf
+database/sources/manifest.json text eol=lf

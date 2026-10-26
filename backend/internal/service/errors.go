@@ -7,6 +7,7 @@ import (
 
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrAlreadyLoggedIn    = errors.New("already logged in")
 	ErrLoginCooldown      = errors.New("login cooldown")
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrSessionRevoked     = errors.New("session revoked")
@@ -28,7 +29,6 @@ var (
 	ErrScheduleLocked            = errors.New("schedule locked")
 	ErrInvalidReference          = errors.New("invalid reference")
 	ErrInvalidSchedule           = errors.New("invalid schedule")
-	ErrInvalidRegistrationPeriod = errors.New("invalid registration period")
 )
 
 type LoginCooldownError struct {

@@ -66,12 +66,11 @@ CREATE TABLE registrations (
 CREATE TABLE auth_sessions (
  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
  user_id BIGINT NOT NULL REFERENCES users(id),
- refresh_token_hash TEXT NOT NULL,
  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
  expires_at TIMESTAMPTZ NOT NULL,
- revoked_at TIMESTAMPTZ
+ logged_out_at TIMESTAMPTZ
 );
-CREATE INDEX ON auth_sessions(user_id);
+CREATE INDEX ON auth_sessions(user_id, created_at);
 CREATE TABLE course_results (
  student_id BIGINT NOT NULL REFERENCES users(id),
  course_id BIGINT NOT NULL REFERENCES courses(id),
