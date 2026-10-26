@@ -51,7 +51,7 @@ type emptySuccessResponse struct {
 
 // Login godoc
 // @Summary     Đăng nhập
-// @Description Chỉ trả access_token và tạo một phiên có expires_at = created_at + JWT_TTL. Mỗi tài khoản chỉ có một phiên hoạt động trên mọi thiết bị/tab. Phiên đang hoạt động trả ALREADY_LOGGED_IN; sau logout hoặc hết hạn phải chờ LOGIN_COOLDOWN từ COALESCE(logged_out_at, expires_at). Kiểm tra mật khẩu trước khi kiểm tra phiên; áp dụng cả sinh viên và quản trị viên.
+// @Description Chỉ trả access_token và tạo một phiên có expires_at = created_at + JWT_TTL (ADMIN_JWT_TTL với quản trị viên). Mỗi sinh viên chỉ có một phiên hoạt động trên mọi thiết bị/tab. Phiên đang hoạt động trả ALREADY_LOGGED_IN; sau logout hoặc hết hạn phải chờ LOGIN_COOLDOWN từ COALESCE(logged_out_at, expires_at). Quản trị viên không bị giới hạn số phiên và không có cooldown. Kiểm tra mật khẩu trước khi kiểm tra phiên.
 // @Tags        auth
 // @Accept      json
 // @Produce     json

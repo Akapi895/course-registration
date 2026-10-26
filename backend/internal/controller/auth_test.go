@@ -89,7 +89,7 @@ func newAuthHarness(t *testing.T) *authHarness {
 		       ('admin', $1, 'admin', 'Test Admin', NULL)`, string(hash)); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.Config{JWTSecret: "auth-integration-test-secret", JWTTTL: 2 * time.Minute, SessionTTL: 2 * time.Minute, LoginCooldown: 30 * time.Second}
+	cfg := &config.Config{JWTSecret: "auth-integration-test-secret", JWTTTL: 2 * time.Minute, AdminJWTTTL: 5 * time.Minute, SessionTTL: 2 * time.Minute, LoginCooldown: 30 * time.Second}
 	users := repository.NewUserRepository(db)
 	sessions := repository.NewSessionRepository(db)
 	classes := repository.NewClassRepository(db)
@@ -351,6 +351,24 @@ func TestAuthNaturalExpiryCooldown(t *testing.T) {
 				t.Fatalf("login after natural expiry cooldown: %d %s", login.Code, login.Body)
 			}
 		})
+	}
+}
+
+func TestAuthAdminTokenLifetime(t *testing.T) {
+	h := newAuthHarness(t)
+	for username, want := range map[string]time.Duration{"student": h.cfg.JWTTTL, "admin": h.cfg.AdminJWTTTL} {
+		login, reply := h.login(t, username)
+		if login.Code != http.StatusOK {
+			t.Fatalf("%s login: %d %s", username, login.Code, login.Body)
+		}
+		claims := authClaims(t, reply.Data.AccessToken)
+		if got := time.Duration(claims["exp"].(float64)-claims["iat"].(float64)) * time.Second; got != want {
+			t.Fatalf("%s token lifetime = %v, want %v", username, got, want)
+		}
+		me, _ := h.request(t, http.MethodGet, "/api/auth/me", reply.Data.AccessToken, nil)
+		if me.Code != http.StatusOK {
+			t.Fatalf("%s token rejected: %d %s", username, me.Code, me.Body)
+		}
 	}
 }
 

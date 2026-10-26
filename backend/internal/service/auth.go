@@ -50,9 +50,11 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 		if currentUser == nil || currentUser.PasswordHash != user.PasswordHash {
 			return ErrInvalidCredentials
 		}
-		// Admins may hold several sessions at once and have no login cooldown.
+		// Admins may hold several sessions at once, have no login cooldown and
+		// use their own token lifetime.
+		isAdmin := currentUser.Role == repository.RoleAdmin
 		var previous *repository.Session
-		if currentUser.Role != repository.RoleAdmin {
+		if !isAdmin {
 			if previous, err = tx.Latest(ctx, user.ID); err != nil {
 				return err
 			}
@@ -61,7 +63,11 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (str
 		// Read time after the account lock; another login may have held it.
 		now := time.Now().UTC()
 		createdAt := now.Truncate(time.Microsecond)
-		expiresAt := createdAt.Add(s.cfg.JWTTTL)
+		ttl := s.cfg.JWTTTL
+		if isAdmin {
+			ttl = s.cfg.AdminJWTTTL
+		}
+		expiresAt := createdAt.Add(ttl)
 		if previous != nil {
 			if previous.LoggedOutAt == nil && now.Before(previous.ExpiresAt) {
 				return ErrAlreadyLoggedIn

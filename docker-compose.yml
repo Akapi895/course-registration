@@ -23,6 +23,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-local_demo_only_change_this_jwt_secret}
       JWT_TTL: ${JWT_TTL:-20m}
       SESSION_TTL: ${SESSION_TTL:-${JWT_TTL:-20m}}
+      ADMIN_JWT_TTL: ${ADMIN_JWT_TTL:-8h}
       LOGIN_COOLDOWN: ${LOGIN_COOLDOWN:-20m}
       MAX_CREDITS: ${MAX_CREDITS:-}
       PORT: "8080"

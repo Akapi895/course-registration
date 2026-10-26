@@ -61,14 +61,14 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại, gồm `id`, `username`, `role`, `full_name`, `student_code`, `faculty`, `major`. Các trường thông tin sinh viên có thể là `null` khi không có dữ liệu. |
 | 7 | Hệ thống chỉ chấp nhận JWT khi phiên `sid` tương ứng chưa đăng xuất, chưa hết hạn, `sub` khớp người sở hữu phiên và `role` khớp vai trò hiện tại của người dùng. |
 
-`JWT_TTL` và `SESSION_TTL` mặc định 20 phút và phải bằng nhau. Phiên mới có `expires_at = created_at + JWT_TTL`; `exp` của JWT khớp `expires_at` ở độ chính xác giây. Mọi API được bảo vệ kiểm tra JWT cùng bản ghi `auth_sessions`, và đối chiếu `role` trong JWT với vai trò hiện tại của tài khoản.
+`JWT_TTL` và `SESSION_TTL` (sinh viên) mặc định 20 phút và phải bằng nhau; quản trị viên dùng `ADMIN_JWT_TTL` (mặc định 8 giờ). Phiên mới có `expires_at = created_at + JWT_TTL` (hoặc `ADMIN_JWT_TTL` với quản trị viên); `exp` của JWT khớp `expires_at` ở độ chính xác giây. Mọi API được bảo vệ kiểm tra JWT cùng bản ghi `auth_sessions`, và đối chiếu `role` trong JWT với vai trò hiện tại của tài khoản.
 
 **Quy tắc một phiên và đăng nhập lại (áp dụng cho sinh viên):**
 - Mỗi sinh viên chỉ được có **một phiên hoạt động**, không phân biệt thiết bị, trình duyệt hay tab. Nếu phiên cũ còn hoạt động (`logged_out_at IS NULL` và `NOW() < expires_at`), yêu cầu đăng nhập mới bị từ chối, không cấp JWT mới và không gia hạn phiên.
 - Khi tự đăng xuất trước hạn, backend ghi `logged_out_at` một lần và JWT của phiên bị vô hiệu hóa ngay. Khi đến `expires_at`, phiên tự hết hiệu lực dù người dùng không thao tác; `logged_out_at` vẫn là `NULL` và không cần cập nhật database.
 - Thời điểm kết thúc phiên là `COALESCE(logged_out_at, expires_at)`. Người dùng chỉ được đăng nhập lại kể từ `thời điểm kết thúc + LOGIN_COOLDOWN` (mặc định 20 phút). Ví dụ: đăng nhập 10:00, tự logout 10:05 thì được login lại từ 10:25; nếu để hết hạn 10:20 thì được login lại từ 10:40.
 - Sau khi kiểm tra username/password, backend khóa bản ghi `users` và thực hiện kiểm tra phiên gần nhất cùng việc tạo phiên mới trong **một transaction**, bảo đảm hai yêu cầu đăng nhập đồng thời không tạo ra hai phiên hoạt động. Nếu từ chối đăng nhập, phiên đang hoạt động không bị thay đổi.
-- Quản trị viên không bị giới hạn số phiên và không có cooldown: mỗi lần đăng nhập đúng tạo một phiên mới với `sid` riêng, hết hạn sau `JWT_TTL`. Đăng xuất chỉ kết thúc phiên của JWT đang dùng.
+- Quản trị viên không bị giới hạn số phiên và không có cooldown: mỗi lần đăng nhập đúng tạo một phiên mới với `sid` riêng, hết hạn sau `ADMIN_JWT_TTL`. Đăng xuất chỉ kết thúc phiên của JWT đang dùng.
 
 Frontend lưu token và trạng thái hiển thị trong `sessionStorage`, khôi phục sau reload bằng `GET /api/auth/me`. Bộ hẹn giờ theo `exp` tự xóa phiên cục bộ và chuyển về trang đăng nhập khi hết hạn; frontend cũng kiểm tra lại hạn khi tab hoạt động trở lại hoặc API trả `401`. Bộ hẹn giờ chỉ phục vụ giao diện, backend quyết định phiên còn hiệu lực. Đóng tab không phải logout: phiên vẫn kết thúc tại `expires_at`.
 
@@ -115,7 +115,7 @@ Form tạo lớp tự lấy `semester.id` từ API danh sách lớp, hiển th�
 1. Người dùng gửi username và password tới API đăng nhập.
 2. Hệ thống kiểm tra thông tin xác thực. Nếu sai, trả `401 INVALID_CREDENTIALS`.
 3. Với sinh viên, trong transaction khóa bản ghi người dùng, backend kiểm tra phiên gần nhất: phiên còn hoạt động thì trả `409 ALREADY_LOGGED_IN`; phiên đã kết thúc nhưng chưa hết `LOGIN_COOLDOWN` (mặc định 20 phút) thì trả `429 LOGIN_COOLDOWN`. Quản trị viên bỏ qua bước này.
-4. Nếu được phép đăng nhập, backend tạo một phiên mới có thời hạn `JWT_TTL` (mặc định 20 phút), sinh JWT chứa `sub`, `role`, `sid`, `iat`, `exp` và trả `access_token`.
+4. Nếu được phép đăng nhập, backend tạo một phiên mới có thời hạn `JWT_TTL` (sinh viên, mặc định 20 phút) hoặc `ADMIN_JWT_TTL` (quản trị viên, mặc định 8 giờ), sinh JWT chứa `sub`, `role`, `sid`, `iat`, `exp` và trả `access_token`.
 5. Client gửi token trong header `Authorization` để gọi `GET /api/auth/me`, lấy thông tin tài khoản và điều hướng theo vai trò.
 6. Client tiếp tục gửi token trong header của các request cần xác thực. Khoa và ngành đã lấy từ `/api/auth/me` được dùng để hiển thị thông tin sinh viên và lọc lớp theo ngành.
 

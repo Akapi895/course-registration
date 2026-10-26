@@ -234,19 +234,19 @@ export function AdminClasses({ isNew = false }: { isNew?: boolean }) {
         <RequestStatus {...resource} retry={resource.reload} />
         {!resource.loading && !resource.error && (list.length === 0 ? <Empty title="Không có lớp phù hợp" text="Thử thay đổi từ khóa hoặc bộ lọc." /> : <>
           <Table head={[
-            { label: 'Mã lớp', className: 'w-44' },
-            { label: 'Học phần', className: 'w-auto' },
-            { label: 'TC', className: 'w-16' },
-            { label: 'Sĩ số', className: 'w-36' },
-            { label: 'Thao tác', className: 'w-36' },
-          ]} minWidth={720}>
+            { label: 'Mã lớp', className: 'w-px whitespace-nowrap' },
+            'Học phần',
+            { label: 'TC', className: 'w-px whitespace-nowrap' },
+            { label: 'Sĩ số', className: 'w-px whitespace-nowrap' },
+            { label: 'Thao tác', className: 'w-px whitespace-nowrap' },
+          ]} minWidth={720} fixed={false}>
             {list.slice((pg - 1) * size, pg * size).map((c) => (
               <tr key={c.id} className="hover:bg-slate-50">
                 <Td className="whitespace-nowrap font-medium"><button type="button" onClick={() => admin.show(c.id)} className="text-primary hover:underline">{c.class_code}</button></Td>
                 <Td>{c.course_name}<div className="text-xs text-muted">{c.course_code}</div></Td>
-                <Td>{c.credits}</Td>
-                <Td><Capacity c={c} /></Td>
-                <Td><div className="flex gap-1">
+                <Td className="whitespace-nowrap">{c.credits}</Td>
+                <Td className="whitespace-nowrap"><Capacity c={c} /></Td>
+                <Td className="whitespace-nowrap"><div className="flex gap-1">
                   <Button size="sm" variant="ghost" onClick={() => admin.show(c.id)} aria-label={`Xem lớp ${c.class_code}`} title="Xem chi tiết"><Eye className="h-4 w-4" /></Button>
                   <Button size="sm" variant="ghost" onClick={() => admin.edit(c.id)} aria-label={`Sửa lớp ${c.class_code}`} title="Chỉnh sửa"><Pencil className="h-4 w-4" /></Button>
                   <Button size="sm" variant="ghost" className="text-red-600" onClick={() => admin.cancel(c)} aria-label={`Hủy lớp ${c.class_code}`} title="Hủy lớp"><Trash2 className="h-4 w-4" /></Button>

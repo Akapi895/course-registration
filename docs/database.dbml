@@ -111,7 +111,7 @@ Table auth_sessions {
   user_id bigint [not null]
 
   created_at timestamptz [not null, default: `now()`, note: 'Thời điểm tạo phiên']
-  expires_at timestamptz [not null, note: 'created_at + JWT_TTL; khớp exp của JWT']
+  expires_at timestamptz [not null, note: 'created_at + JWT_TTL (ADMIN_JWT_TTL với quản trị viên); khớp exp của JWT']
   logged_out_at timestamptz [note: 'Thời điểm chủ động đăng xuất trước hạn; NULL nếu chưa đăng xuất hoặc tự hết hạn']
 
   indexes {

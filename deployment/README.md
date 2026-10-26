@@ -53,8 +53,9 @@ Luồng này sử dụng GitHub Actions cho CI và Render cho CD, không cần d
 | `PORT` | Render cấp; image mặc định `10000` | Cổng HTTP của ứng dụng. |
 | `FRONTEND_DIR` | `/app/frontend` trong image | Thư mục React build được backend phục vụ. |
 | `GIN_MODE` | `release` | Chế độ chạy Gin. |
-| `JWT_TTL` | `20m` | Thời hạn access token 20 phút cho cả hai vai trò. |
+| `JWT_TTL` | `20m` | Thời hạn access token của sinh viên. |
 | `SESSION_TTL` | `20m` | Phải bằng `JWT_TTL`; bỏ trống để theo `JWT_TTL`. |
+| `ADMIN_JWT_TTL` | `8h` | Thời hạn access token và phiên của quản trị viên. |
 | `LOGIN_COOLDOWN` | `20m` | Thời gian chờ theo tài khoản sau logout hoặc hết hạn, áp dụng cả admin. |
 | `MAX_CREDITS` | `26` trong Blueprint | Giới hạn runtime cho hiển thị và đăng ký; bỏ trống để dùng giá trị từng học kỳ trong database. |
 | `REFERENCE_DATE` | Ngày khởi tạo theo `Asia/Ho_Chi_Minh` khi không khai báo | Ngày neo dữ liệu demo, chỉ áp dụng lúc seed database trống. |

@@ -74,7 +74,7 @@ JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. M�
 
 Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và điều kiện SQL của phiên, kể cả khi PostgreSQL chạy trên máy khác. Phiên chỉ hoạt động khi `logged_out_at IS NULL AND now < expires_at`. Không cần tác vụ nền để đánh dấu hết hạn.
 
-`JWT_TTL` và `SESSION_TTL` mặc định cùng `20m` và bắt buộc bằng nhau; bỏ trống `SESSION_TTL` để theo `JWT_TTL`. Mỗi phiên mới có `expires_at = created_at + JWT_TTL`. Khi đổi TTL, các phiên đã lưu giữ nguyên thời hạn; không tính lại hạn của chúng theo cấu hình mới. `LOGIN_COOLDOWN` mặc định `20m` và được áp dụng theo cấu hình hiện hành khi kiểm tra đăng nhập.
+`JWT_TTL` và `SESSION_TTL` mặc định cùng `20m` và bắt buộc bằng nhau; bỏ trống `SESSION_TTL` để theo `JWT_TTL`. Quản trị viên dùng `ADMIN_JWT_TTL` (mặc định `8h`). Mỗi phiên mới có `expires_at = created_at + JWT_TTL` (hoặc `ADMIN_JWT_TTL` với quản trị viên). Khi đổi TTL, các phiên đã lưu giữ nguyên thời hạn; không tính lại hạn của chúng theo cấu hình mới. `LOGIN_COOLDOWN` mặc định `20m` và được áp dụng theo cấu hình hiện hành khi kiểm tra đăng nhập.
 
 ### Login: kiểm tra mật khẩu → phiên hoạt động → cooldown
 
