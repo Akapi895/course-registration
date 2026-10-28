@@ -91,7 +91,8 @@ users ||--o{ course_results
 
 courses ||--o{ course_classes
 courses ||--o{ course_results
-courses ||--o{ course_prerequisites
+courses ||--o{ course_prerequisites : "requires"
+courses ||--o{ course_prerequisites : "is_prerequisite_for"
 
 semesters ||--o{ course_classes
 

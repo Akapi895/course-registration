@@ -1,7 +1,7 @@
 # Deployment Diagram
 
 Sơ đồ triển khai hệ thống mô tả cấu trúc triển khai trên 2 môi trường:
-1. **Local Development (Docker Compose)**: gồm frontend container (Nginx + React build), backend container (Go/Gin), PostgreSQL 16 container, tools container (migrate/seed/verify), và postgres_data volume.
+1. **Local Development (Docker Compose)**: gồm frontend container (Nginx + React build), backend container (Go/Gin), PostgreSQL 16 container, tools container (migrate/seed/verify/crawl), và postgres_data volume.
 2. **Render Cloud Deployment**: gồm Web Service container (Single Docker image đóng gói cả Frontend build và Go API binary) kết nối qua private network tới Render PostgreSQL 16.
 
 ## Trực quan hóa
@@ -14,7 +14,7 @@ flowchart TB
         local_frontend[frontend container\nNginx + React build]
         local_backend[backend container\nGo/Gin API]
         local_db[(db container\nPostgreSQL 16)]
-        local_tools[tools profile\nmigrate / seed / verify]
+        local_tools[tools profile\nmigrate / seed / verify / crawl]
         volume[(postgres_data volume)]
 
         local_frontend -->|/api proxy| local_backend

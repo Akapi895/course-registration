@@ -12,7 +12,7 @@ node "Local Environment (Docker Compose)" {
     }
     database "DB Container (PostgreSQL 16)" as c_db
     node "Tools Container (Profile: tools)" as c_tools {
-        artifact "migrate / seed / verify" as art_tools
+        artifact "migrate / seed / verify / crawl" as art_tools
     }
     storage "Volume (postgres_data)" as vol
 }

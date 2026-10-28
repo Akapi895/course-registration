@@ -7,6 +7,7 @@ actor "Administrator" as admin
 
 rectangle "Course Registration System" {
     usecase "Log in" as UC_login
+    usecase "Log out" as UC_logout
     usecase "View profile" as UC_profile
     usecase "Browse classes" as UC_browse
     usecase "View class details" as UC_details
@@ -17,6 +18,7 @@ rectangle "Course Registration System" {
 }
 
 student --> UC_login
+student --> UC_logout
 student --> UC_profile
 student --> UC_browse
 student --> UC_details
@@ -25,6 +27,7 @@ student --> UC_cancel
 student --> UC_schedule
 
 admin --> UC_login
+admin --> UC_logout
 admin --> UC_profile
 admin --> UC_browse
 admin --> UC_details

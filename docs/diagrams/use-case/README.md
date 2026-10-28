@@ -1,6 +1,6 @@
 # Use Case Diagram
 
-Sơ đồ ca sử dụng của Hệ thống Đăng ký Học phần mô tả tương tác giữa 2 tác nhân chính (Sinh viên và Quản trị viên) với các chức năng nghiệp vụ.
+Sơ đồ ca sử dụng của Hệ thống Đăng ký Học phần mô tả tương tác giữa 2 tác nhân chính (Sinh viên và Quản trị viên) với các chức năng nghiệp vụ tương ứng 12 endpoint API.
 
 ## Trực quan hóa
 
@@ -11,6 +11,7 @@ flowchart LR
 
     subgraph system[Course Registration System]
         login((Log in))
+        logout((Log out))
         profile((View profile))
         browse((Browse classes))
         details((View class details))
@@ -21,6 +22,7 @@ flowchart LR
     end
 
     student --> login
+    student --> logout
     student --> profile
     student --> browse
     student --> details
@@ -29,6 +31,7 @@ flowchart LR
     student --> schedule
 
     admin --> login
+    admin --> logout
     admin --> profile
     admin --> browse
     admin --> details
