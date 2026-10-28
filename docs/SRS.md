@@ -290,7 +290,7 @@ Các route này không phải API nghiệp vụ. `/health` trả `200` với `{ 
 | 6 | Hệ thống từ chối đăng ký từng lớp khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ, kèm mã lỗi tương ứng cho lớp đó. |
 | 7 | Sinh viên xem được danh sách lớp học phần đã đăng ký và thời khóa biểu của mình. |
 | 8 | Sinh viên chỉ có thể hủy đăng ký thuộc về mình khi đáp ứng điều kiện nghiệp vụ; hủy thành công cập nhật trạng thái đăng ký và sĩ số tương ứng. |
-| 9 | Quản trị viên có thể tạo, cập nhật và xóa/hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
+| 9 | Quản trị viên có thể tạo, cập nhật và hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
 | 10 | OpenAPI/Swagger hoạt động và mô tả đầy đủ các endpoint được triển khai. |
 | 11 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
 | 12 | Yêu cầu đăng ký nhiều lớp ghi nhận các lớp hợp lệ và trả lý do từ chối cho các lớp còn lại; một số lớp bị từ chối không làm mất các lớp đã được ghi nhận. Yêu cầu có danh sách rỗng, trùng lớp hoặc quá 20 lớp bị từ chối toàn bộ. |

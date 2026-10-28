@@ -1,6 +1,6 @@
 # Thiết kế API
 
-Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `database.dbml` và được mô tả trong `database-design.md`.
+Tài liệu này mô tả chi tiết các API theo yêu cầu trong mục 5.2 của SRS. Nếu có điểm chưa thống nhất, ưu tiên nội dung trong SRS. Cấu trúc dữ liệu được xác định trong file database.dbml và giải thích chi tiết trong database-design.md.
 
 ## Phạm vi và phân quyền
 
@@ -21,8 +21,7 @@ Có **12 endpoint nghiệp vụ**, tính theo cặp phương thức và đườn
 | 11 | Quản trị hệ thống | PUT | `/api/classes/{id}` | Chỉ quản trị viên |
 | 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
 
-Mọi endpoint trừ đăng nhập yêu cầu `Authorization: Bearer <access_token>` và phiên đăng nhập còn hiệu lực. Quản trị viên không được đăng ký/hủy học phần thay sinh viên hoặc truy cập các API đăng ký/thời khóa biểu dành riêng cho sinh viên.
-
+Tất cả API, ngoại trừ API đăng nhập, đều yêu cầu gửi access token trong header `Authorization: Bearer <access_token>`. Token phải hợp lệ và phiên đăng nhập tương ứng vẫn còn hiệu lực. Quản trị viên không được đăng ký hoặc hủy học phần thay sinh viên, đồng thời không được sử dụng các API dành riêng cho sinh viên để xem đăng ký và thời khóa biểu.
 ## Hợp đồng request/response
 
 Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được xác định tại bảng trên. Response lỗi trong bảng là ví dụ, các mã lỗi và ghi chú bên dưới mô tả thêm các trường hợp từ chối.
@@ -53,8 +52,8 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | `role` | string | `student` hoặc `admin` |
 | `full_name` | string | Họ và tên |
 | `student_code` | string hoặc null | Mã sinh viên; `null` với quản trị viên |
-| `faculty` | string hoặc null | Khoa của người dùng, nếu có |
-| `major` | string hoặc null | Ngành của người dùng, nếu có |
+| `faculty` | string hoặc null | Khoa của người dùng|
+| `major` | string hoặc null | Ngành học của người dùng |
 
 Endpoint trả tài khoản gắn với JWT. Frontend dùng `faculty`, `major` để hiển thị tổng quan và lọc lớp theo ngành.
 
@@ -72,13 +71,16 @@ JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. M�
 | `iat` | number | Bắt buộc, không nằm trong tương lai; khớp `auth_sessions.created_at` ở độ chính xác giây |
 | `exp` | number | Bắt buộc, sau `iat` và thời gian hiện tại chưa đến `exp`; khớp `auth_sessions.expires_at` ở độ chính xác giây |
 
-Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và điều kiện SQL của phiên, kể cả khi PostgreSQL chạy trên máy khác. Phiên chỉ hoạt động khi `logged_out_at IS NULL AND now < expires_at`. Không cần tác vụ nền để đánh dấu hết hạn.
+Backend sử dụng cùng một mốc thời gian khi kiểm tra JWT và trạng thái phiên trong cơ sở dữ liệu, kể cả khi PostgreSQL chạy trên một máy khác. Một phiên được xem là còn hoạt động khi `logged_out_at IS NULL AND now < expires_at`; khi đã đến hoặc vượt quá thời điểm hết hạn, phiên không còn hoạt động. Hệ thống không cần tác vụ chạy nền để cập nhật trạng thái hết hạn của phiên.
 
-`JWT_TTL` và `SESSION_TTL` mặc định cùng `20m` và bắt buộc bằng nhau; bỏ trống `SESSION_TTL` để theo `JWT_TTL`. Quản trị viên dùng `ADMIN_JWT_TTL` (mặc định `8h`). Mỗi phiên mới có `expires_at = created_at + JWT_TTL` (hoặc `ADMIN_JWT_TTL` với quản trị viên). Khi đổi TTL, các phiên đã lưu giữ nguyên thời hạn; không tính lại hạn của chúng theo cấu hình mới. `LOGIN_COOLDOWN` mặc định `20m` và được áp dụng theo cấu hình hiện hành khi kiểm tra đăng nhập.
+Đối với sinh viên, `JWT_TTL` và `SESSION_TTL` mặc định là 20m và phải có cùng giá trị. Nếu không cấu hình `SESSION_TTL`, hệ thống sẽ sử dụng giá trị của`JWT_TTL`. Đối với quản trị viên, thời hạn JWT được cấu hình bằng `ADMIN_JWT_TTL`, mặc định là 8h.
 
+Khi tạo phiên mới, hệ thống xác định thời điểm hết hạn (`expires_at`) dựa trên thời điểm tạo phiên (`created_at`) và thời hạn tương ứng với vai trò của người dùng. Nếu cấu hình thời hạn được thay đổi, các phiên đã tạo trước đó vẫn giữ nguyên thời điểm hết hạn ban đầu.
+
+Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `LOGIN_COOLDOWN`, mặc định là 20m. Hệ thống sử dụng giá trị cấu hình hiện tại để kiểm tra thời gian chờ khi người dùng đăng nhập.
 ### Login: kiểm tra mật khẩu → phiên hoạt động → cooldown
 
-1. Xác thực username/password. Sai username hay password đều trả cùng response, trước khi kiểm tra trạng thái phiên:
+1. Xác thực username/password. Khi 1 trong 2 thông tin không chính xác, hệ thống đều trả cùng response, trước khi kiểm tra trạng thái phiên:
 
    ```json
    { "status": "fail", "data": { "code": "INVALID_CREDENTIALS", "message": "Sai tên đăng nhập hoặc mật khẩu" } }
@@ -96,13 +98,13 @@ Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và 
    { "status": "fail", "data": { "code": "LOGIN_COOLDOWN", "message": "Tài khoản đang trong thời gian chờ đăng nhập lại", "retry_after": 720, "login_allowed_at": "2026-10-26T03:25:00Z" } }
    ```
 
-   `Retry-After: 720` và `data.retry_after` cùng là số giây còn chờ, làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Với cooldown mặc định, logout lúc 10:05 UTC+7, thử login lúc 10:13 thì còn 12 phút và được login lại từ 10:25 UTC+7. Nếu để phiên hết hạn lúc 10:20 thì mốc là 10:40.
+   `Retry-After: 720` và `data.retry_after` đều cho biết số giây còn chờ trước khi được đăng nhập lại, giá trị này được làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Ví dụ, nếu sinh viên đăng xuất lúc 10:05 và thử đăng nhập lúc 10:13, với thời gian chờ mặc định 20 phút, sinh viên còn phải chờ 12 phút và có thể đăng nhập lại từ 10:25. Nếu phiên tự hết hạn lúc 10:20, sinh viên có thể đăng nhập lại từ 10:40.
 
-4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Quản trị viên bỏ qua việc kiểm tra phiên ở bước 2 và 3: không bị giới hạn số phiên, không có cooldown, mỗi lần đăng nhập tạo phiên với `sid` riêng; logout chỉ kết thúc phiên của JWT đang dùng.
+4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Đối với quản trị viên, hệ thống không giới hạn số phiên đăng nhập và không áp dụng thời gian chờ đăng nhập lại. Mỗi lần đăng nhập sẽ tạo một phiên mới. Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng.
 
 ### Logout và hết hạn
 
-- `POST /api/auth/logout` lấy `sid` từ JWT đã xác thực, ghi `logged_out_at` **một lần** bằng thời điểm backend xử lý logout nếu phiên còn hoạt động. Không xóa bản ghi, không đổi `expires_at`; JWT cũ bị từ chối ngay. Thành công trả `200` với `data: {}`.
+- `POST /api/auth/logout` lấy `sid` từ JWT đã xác thực. Nếu phiên vẫn còn hoạt động, hệ thống ghi nhận thời điểm đăng xuất vào `logged_out_at`. Giá trị này chỉ được ghi một lần. Bản ghi phiên không bị xóa và `expires_at` không thay đổi. Sau khi đăng xuất thành công, JWT cũ không còn được chấp nhận. API trả về `200` với `data: {}`.
 - JWT hết hạn trả `401 UNAUTHORIZED`; JWT còn hạn nhưng phiên đã logout hoặc hết hạn trong database trả `401 SESSION_REVOKED`. Gọi lại logout không ghi lại thời điểm kết thúc và không kéo dài cooldown.
 - Phiên tự hết hạn giữ `logged_out_at = NULL`. Đóng tab không phải logout: phiên tiếp tục tới `expires_at`.
 - Bảng `auth_sessions` có đúng năm cột: `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm chỉ mục (`user_id`, `created_at`).
