@@ -1,0 +1,100 @@
+@startuml
+skinparam linetype ortho
+
+entity "users" as users {
+    * id : bigserial <<PK>>
+    --
+    * username : text <<UK>>
+    * password_hash : text
+    * role : text
+    * full_name : text
+    student_code : text <<UK>>
+    faculty : text
+    major : text
+    * created_at : timestamptz
+}
+
+entity "semesters" as semesters {
+    * id : bigserial <<PK>>
+    --
+    * name : text <<UK>>
+    * registration_opens_at : timestamptz
+    * registration_closes_at : timestamptz
+    * max_credits : int
+}
+
+entity "courses" as courses {
+    * id : bigserial <<PK>>
+    --
+    * code : text <<UK>>
+    * name : text
+    * credits : int
+    * faculty : text
+    major : text
+}
+
+entity "course_prerequisites" as course_prerequisites {
+    * course_id : bigint <<PK, FK>>
+    * prerequisite_course_id : bigint <<PK, FK>>
+}
+
+entity "course_classes" as course_classes {
+    * id : bigserial <<PK>>
+    --
+    * course_id : bigint <<FK>>
+    * semester_id : bigint <<FK>>
+    * class_code : text
+    * lecturer_name : text
+    * max_capacity : int
+    * enrolled : int
+    * status : text
+}
+
+entity "class_schedules" as class_schedules {
+    * id : bigserial <<PK>>
+    --
+    * class_id : bigint <<FK>>
+    * day_of_week : smallint
+    * start_period : smallint
+    * end_period : smallint
+    * room : text
+}
+
+entity "registrations" as registrations {
+    * id : bigserial <<PK>>
+    --
+    * student_id : bigint <<FK>>
+    * class_id : bigint <<FK>>
+    * status : text
+    * registered_at : timestamptz
+}
+
+entity "auth_sessions" as auth_sessions {
+    * id : uuid <<PK>>
+    --
+    * user_id : bigint <<FK>>
+    * created_at : timestamptz
+    * expires_at : timestamptz
+    logged_out_at : timestamptz
+}
+
+entity "course_results" as course_results {
+    * student_id : bigint <<PK, FK>>
+    * course_id : bigint <<PK, FK>>
+    --
+    * passed : boolean
+}
+
+users ||--o{ auth_sessions
+users ||--o{ registrations
+users ||--o{ course_results
+
+courses ||--o{ course_classes
+courses ||--o{ course_results
+courses ||--o{ course_prerequisites
+
+semesters ||--o{ course_classes
+
+course_classes ||--o{ class_schedules
+course_classes ||--o{ registrations
+@enduml

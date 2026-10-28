@@ -1,0 +1,32 @@
+@startuml
+left to right direction
+skinparam componentStyle uml2
+
+actor "Browser" as browser
+
+package "Client / Presentation Layer" {
+    component "Frontend\n(React + TypeScript + Vite)" as frontend
+    component "Frontend Nginx\n(local Compose only)" as nginx
+}
+
+package "Backend Service (Go + Gin)" {
+    component "Backend API" as api
+    component "Controller Layer\n(HTTP routes, middleware, DTOs)" as controller
+    component "Service Layer\n(business rules, JWT, password hashing)" as service
+    component "Repository Layer\n(SQL and transactions)" as repository
+    component "Swagger / OpenAPI" as swagger
+}
+
+database "PostgreSQL 16" as postgres
+
+browser --> frontend : HTTP/HTTPS JSON
+frontend --> nginx : same-origin /api
+nginx --> api : proxy /api in local dev
+browser --> api : same-origin API in Render
+
+api --> controller
+controller --> service
+service --> repository
+repository --> postgres
+api --> swagger
+@enduml

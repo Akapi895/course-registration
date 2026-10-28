@@ -6,7 +6,7 @@ PostgreSQL gồm 9 bảng: người dùng, học kỳ, học phần, điều ki�
 
 ## 2. Sơ đồ quan hệ thực thể (ERD)
 
-Sơ đồ ERD có thể được xem trực quan qua file [`erd.mmd`](diagrams/erd/erd.mmd) hoặc chỉnh sửa tương tác trên dbdiagram.io qua file [`database.dbml`](diagrams/erd/database.dbml).
+Sơ đồ ERD có thể được xem trực quan tại thư mục [`docs/diagrams/erd/`](diagrams/erd/) (hỗ trợ [`README.md`](diagrams/erd/README.md), [`erd.mmd`](diagrams/erd/erd.mmd), [`erd.puml`](diagrams/erd/erd.puml) hoặc chỉnh sửa trên dbdiagram.io qua [`database.dbml`](diagrams/erd/database.dbml)).
 
 ## 3. Thiết kế chi tiết các bảng
 

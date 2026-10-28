@@ -1,0 +1,36 @@
+@startuml
+skinparam nodeStyle uml2
+
+actor "User Browser" as user
+
+node "Local Environment (Docker Compose)" {
+    node "Frontend Container" as c_fe {
+        artifact "Nginx + React build" as art_fe
+    }
+    node "Backend Container" as c_be {
+        artifact "Go/Gin API" as art_be
+    }
+    database "DB Container (PostgreSQL 16)" as c_db
+    node "Tools Container (Profile: tools)" as c_tools {
+        artifact "migrate / seed / verify" as art_tools
+    }
+    storage "Volume (postgres_data)" as vol
+}
+
+node "Render Cloud Platform" {
+    node "Web Service Container" as r_web {
+        artifact "Single Docker Image\n(Frontend build + Go API)" as art_rweb
+    }
+    database "Managed Render PostgreSQL 16" as r_db
+}
+
+user --> art_fe : HTTP localhost:5173
+user --> art_rweb : HTTPS (*.onrender.com)
+
+art_fe --> art_be : /api proxy (port 8080)
+art_be --> c_db : TCP 5432
+art_tools --> c_db : TCP 5432
+c_db --- vol : mount /var/lib/postgresql/data
+
+art_rweb --> r_db : private network TCP 5432
+@enduml

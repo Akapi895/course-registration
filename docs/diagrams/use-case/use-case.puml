@@ -1,0 +1,36 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Student" as student
+actor "Administrator" as admin
+
+rectangle "Course Registration System" {
+    usecase "Log in" as UC_login
+    usecase "View profile" as UC_profile
+    usecase "Browse classes" as UC_browse
+    usecase "View class details" as UC_details
+    usecase "Register for classes" as UC_register
+    usecase "Cancel registration" as UC_cancel
+    usecase "View timetable" as UC_schedule
+    usecase "Manage classes" as UC_manage
+}
+
+student --> UC_login
+student --> UC_profile
+student --> UC_browse
+student --> UC_details
+student --> UC_register
+student --> UC_cancel
+student --> UC_schedule
+
+admin --> UC_login
+admin --> UC_profile
+admin --> UC_browse
+admin --> UC_details
+admin --> UC_manage
+
+UC_register ..> UC_login : <<include>>
+UC_cancel ..> UC_login : <<include>>
+UC_manage ..> UC_login : <<include>>
+@enduml
