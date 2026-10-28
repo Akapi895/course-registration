@@ -70,6 +70,7 @@ course-registration/
 ### 3.1. Xác thực người dùng
 
 ```mermaid
+
 sequenceDiagram
     participant FE as Frontend
     participant C as Controller
@@ -85,16 +86,20 @@ sequenceDiagram
     DB-->>R: Thông tin tài khoản
     R-->>S: Dữ liệu người dùng
     S->>S: Kiểm tra mật khẩu
+
     alt Thông tin hợp lệ
         S->>R: Tạo phiên đăng nhập
-    R->>DB: BEGIN; khóa users; kiểm tra phiên gần nhất
-    Note over R,DB: Phiên hoạt động: 409 ALREADY_LOGGED_IN; chưa hết cooldown: 429 LOGIN_COOLDOWN
-    R->>DB: INSERT auth_sessions; COMMIT nếu được phép
+        R->>DB: BEGIN, khóa users và kiểm tra phiên gần nhất
+        Note over R,DB: Phiên hoạt động trả 409 ALREADY_LOGGED_IN
+        Note over R,DB: Chưa hết cooldown trả 429 LOGIN_COOLDOWN
+        R->>DB: INSERT auth_sessions và COMMIT nếu được phép
         DB-->>R: Thành công
+        R-->>S: Tạo phiên thành công
         S->>S: Tạo Access JWT chứa sid
         S-->>C: Access JWT
         C-->>FE: 200 OK + JWT
     else Không hợp lệ
+        S-->>C: Thông tin không hợp lệ
         C-->>FE: 401 Unauthorized
     end
 
@@ -103,7 +108,7 @@ sequenceDiagram
     C->>S: Xác minh JWT
     S->>S: Kiểm tra chữ ký, exp và claims
     S->>R: Kiểm tra phiên theo sid
-    R->>DB: SELECT auth_sessions JOIN users (vai trò hiện tại)
+    R->>DB: SELECT auth_sessions JOIN users
     DB-->>R: Trạng thái và thời hạn phiên
     R-->>S: Kết quả kiểm tra
     S-->>C: Cho phép hoặc từ chối
@@ -113,8 +118,9 @@ sequenceDiagram
     FE->>C: POST /api/auth/logout + JWT
     C->>S: Xác định phiên từ sid
     S->>R: Thu hồi phiên
-    R->>DB: UPDATE auth_sessions.logged_out_at nếu chưa logout và chưa hết hạn
+    R->>DB: UPDATE auth_sessions.logged_out_at nếu phiên còn hợp lệ
     DB-->>R: Thành công
+    R-->>S: Xác nhận thu hồi
     S-->>C: Xác nhận đăng xuất
     C-->>FE: 200 OK
     FE->>FE: Xóa Access JWT
