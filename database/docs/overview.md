@@ -5,7 +5,7 @@ Tài liệu database được tổ chức tại thư mục này:
 - [Chạy demo local](demo-guide.md): khởi động, kết nối, truy vấn và thử transaction.
 - [Nguồn dữ liệu và crawler](data-sources.md): nguồn CTĐT, cách cập nhật và rà soát dữ liệu.
 
-PostgreSQL triển khai đúng **9 bảng** theo [thiết kế database](../../docs/database-design.md) và [DBML](../../docs/database.dbml), được backend Go và frontend React sử dụng. Tài khoản, lớp, lịch và đăng ký là fixture phục vụ phát triển; hướng dẫn chạy toàn hệ thống ở [README gốc](../../README.md).
+PostgreSQL triển khai đúng **9 bảng** theo [thiết kế database](../../docs/database-design.md) và [DBML](../../docs/diagrams/erd/database.dbml), được backend Go và frontend React sử dụng. Tài khoản, lớp, lịch và đăng ký là fixture phục vụ phát triển; hướng dẫn chạy toàn hệ thống ở [README gốc](../../README.md).
 
 Các đường dẫn dạng `database/...` và mọi lệnh shell trong bộ tài liệu đều tính từ thư mục gốc repository.
 

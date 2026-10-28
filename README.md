@@ -109,7 +109,7 @@ Khi sửa annotation/DTO API, tái sinh Swagger từ `backend/`:
 go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go -o docs
 ```
 
-`backend/docs/` là mã/tài liệu sinh tự động và đã được đóng gói trong binary. Kiến trúc và quy ước code: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1; schema: [docs/database-design.md](docs/database-design.md) và [docs/database.dbml](docs/database.dbml). Một số mô tả cũ trong tài liệu database được viết trước khi có API; dùng hướng dẫn khởi chạy backend tại README này.
+`backend/docs/` là mã/tài liệu sinh tự động và đã được đóng gói trong binary. Kiến trúc và quy ước code: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1; schema: [docs/database-design.md](docs/database-design.md) và [docs/diagrams/erd/database.dbml](docs/diagrams/erd/database.dbml). Một số mô tả cũ trong tài liệu database được viết trước khi có API; dùng hướng dẫn khởi chạy backend tại README này.
 
 Kiểm thử API auth với PostgreSQL thật (từ `backend/`): đặt `TEST_DATABASE_URL` trỏ tới database kiểm thử, rồi chạy `go test ./internal/controller -run '^TestAuth' -v`. Mỗi test tạo và xóa schema riêng; không nạp fixture vào schema ứng dụng. Khi thiếu biến này, các test tích hợp được đánh dấu bỏ qua; CI luôn cấp PostgreSQL để chạy chúng. Các trường hợp gồm login đồng thời, vai trò thay đổi, claim JWT sai, logout và hết hạn tự động cùng hai nhánh cooldown.
 

@@ -1,6 +1,6 @@
 # Thiết kế API
 
-Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `database.dbml` và được mô tả trong `database-design.md`.
+Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `diagrams/erd/database.dbml` và được mô tả trong `database-design.md`.
 
 ## Phạm vi và phân quyền
 
