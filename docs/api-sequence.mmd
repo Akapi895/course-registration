@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor Student
+    participant FE as Frontend
+    participant API as Go/Gin API
+    participant Auth as Auth middleware
+    participant Service as Registration service
+    participant Repo as Repository
+    participant DB as PostgreSQL
+
+    Student->>FE: Select classes and submit registration
+    FE->>API: POST /api/registrations\nAuthorization: Bearer JWT
+    API->>Auth: Validate JWT and session
+    Auth->>Repo: Load auth_sessions and user
+    Repo->>DB: SELECT active session and current role
+    DB-->>Repo: Session state
+    Repo-->>Auth: Authenticated principal
+    Auth-->>API: Continue request
+    API->>Service: RegisterBatch(user, class_ids)
+
+    loop Each class in request order
+        Service->>Repo: Check class, capacity, schedule, prerequisites
+        Repo->>DB: SELECT and lock registration data
+        DB-->>Repo: Current class and student state
+        Repo-->>Service: Validation data
+        alt Registration allowed
+            Service->>Repo: Insert or reactivate registration
+            Repo->>DB: BEGIN; write registration and enrolled count; COMMIT
+            DB-->>Repo: Transaction committed
+            Repo-->>Service: Registered result
+        else Registration rejected
+            Service-->>Service: Map business error
+        end
+    end
+
+    Service-->>API: Per-class results and counts
+    API-->>FE: 200 JSON response
+    FE-->>Student: Show registered and failed classes
