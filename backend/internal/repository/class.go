@@ -167,12 +167,11 @@ func (t *ClassTx) ReplaceSchedules(ctx context.Context, classID int64, schedules
 	return t.insertSchedules(ctx, classID, schedules)
 }
 
-// Cancel marks the class cancelled, cancels its active registrations and
+// Cancel marks the class cancelled, deletes its registrations and
 // releases every seat.
 func (t *ClassTx) Cancel(ctx context.Context, classID int64) error {
 	if _, err := t.tx.Exec(ctx,
-		`UPDATE registrations SET status = 'cancelled'
-		 WHERE class_id = $1 AND status = 'registered'`,
+		`DELETE FROM registrations WHERE class_id = $1`,
 		classID,
 	); err != nil {
 		return err

@@ -160,7 +160,7 @@ sequenceDiagram
 
     alt Đủ điều kiện
         S->>R: Ghi đăng ký và cập nhật sĩ số
-        R->>DB: BEGIN, INSERT/UPDATE, UPDATE
+        R->>DB: BEGIN, INSERT registrations, UPDATE course_classes
 
         alt Ghi dữ liệu thành công
             R->>DB: COMMIT
@@ -183,7 +183,7 @@ Service kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng l
 
 Một yêu cầu `POST /api/registrations` có thể chứa nhiều lớp (`class_ids`). Sơ đồ trên mô tả xử lý của **một lớp**: Service lặp qua danh sách theo thứ tự gửi và chạy luồng này cho từng lớp trong một transaction riêng. Lớp bị từ chối chỉ rollback transaction của chính nó, các lớp đã commit trước đó được giữ lại. Controller gộp kết quả từng lớp vào một response `200`.
 
-Luồng hủy đăng ký thực hiện tương tự: kiểm tra quyền sở hữu và điều kiện hủy, sau đó cập nhật trạng thái đăng ký và sĩ số trong cùng transaction. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận. Khi đăng ký lại một lớp đã hủy, hệ thống cập nhật bản ghi đăng ký cũ thay vì tạo bản ghi trùng.
+Hủy đăng ký kiểm tra quyền sở hữu và điều kiện hủy, sau đó xóa vật lý bản ghi `registrations` và giảm `course_classes.enrolled` trong cùng transaction, khóa dòng sinh viên rồi dòng lớp trước khi xóa. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận. Đăng ký lại dùng `INSERT`, tạo ID mới. Admin hủy lớp khóa dòng lớp, xóa toàn bộ đăng ký của lớp, chuyển lớp sang `cancelled` và đặt sĩ số về 0 trong cùng transaction.
 
 ### 3.3. Tra cứu và quản trị
 

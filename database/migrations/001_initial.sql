@@ -71,7 +71,6 @@ CREATE TABLE registrations (
   id BIGSERIAL PRIMARY KEY,
   student_id BIGINT NOT NULL REFERENCES users (id),
   class_id BIGINT NOT NULL REFERENCES course_classes (id) ON DELETE RESTRICT,
-  status TEXT NOT NULL DEFAULT 'registered' CHECK (status IN ('registered', 'cancelled')),
   registered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (student_id, class_id)
 );

@@ -64,7 +64,6 @@ export interface ClassCreate extends ClassUpdate { course_id: number; semester_i
 export interface Registration {
   id: number
   class_id: number
-  status: 'registered' | 'cancelled'
   registered_at: string
 }
 /** Outcome of one class in a POST /api/registrations request. */

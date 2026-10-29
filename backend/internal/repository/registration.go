@@ -10,15 +10,13 @@ import (
 )
 
 const (
-	StatusActive     = "active"
-	StatusRegistered = "registered"
-	StatusCancelled  = "cancelled"
+	StatusActive    = "active"
+	StatusCancelled = "cancelled"
 )
 
 type Registration struct {
 	ID           int64
 	ClassID      int64
-	Status       string
 	RegisteredAt time.Time
 }
 
@@ -29,7 +27,6 @@ type RegisteredClass struct {
 	CourseCode   string
 	CourseName   string
 	Credits      int
-	Status       string
 	RegisteredAt time.Time
 }
 
@@ -55,7 +52,7 @@ func NewRegistrationRepository(db *pgxpool.Pool) *RegistrationRepository {
 // FindOwned returns nil, nil when the registration does not exist or belongs to another student.
 func (r *RegistrationRepository) FindOwned(ctx context.Context, id, studentID int64) (*Registration, error) {
 	reg, err := scanRegistration(r.db.QueryRow(ctx,
-		`SELECT id, class_id, status, registered_at
+		`SELECT id, class_id, registered_at
 		 FROM registrations WHERE id = $1 AND student_id = $2`,
 		id, studentID,
 	))
@@ -67,11 +64,11 @@ func (r *RegistrationRepository) FindOwned(ctx context.Context, id, studentID in
 
 func (r *RegistrationRepository) ListRegistered(ctx context.Context, studentID int64) ([]RegisteredClass, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT r.id, r.class_id, cc.class_code, c.code, c.name, c.credits, r.status, r.registered_at
+		`SELECT r.id, r.class_id, cc.class_code, c.code, c.name, c.credits, r.registered_at
 		 FROM registrations r
 		 JOIN course_classes cc ON cc.id = r.class_id
 		 JOIN courses c ON c.id = cc.course_id
-		 WHERE r.student_id = $1 AND r.status = 'registered'
+		 WHERE r.student_id = $1
 		 ORDER BY r.registered_at`,
 		studentID,
 	)
@@ -81,7 +78,7 @@ func (r *RegistrationRepository) ListRegistered(ctx context.Context, studentID i
 	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (RegisteredClass, error) {
 		var rc RegisteredClass
 		err := row.Scan(&rc.ID, &rc.ClassID, &rc.ClassCode, &rc.CourseCode, &rc.CourseName,
-			&rc.Credits, &rc.Status, &rc.RegisteredAt)
+			&rc.Credits, &rc.RegisteredAt)
 		return rc, err
 	})
 }
@@ -93,7 +90,7 @@ func (r *RegistrationRepository) ListSchedules(ctx context.Context, studentID in
 		 JOIN course_classes cc ON cc.id = r.class_id
 		 JOIN courses c ON c.id = cc.course_id
 		 JOIN class_schedules s ON s.class_id = cc.id
-		 WHERE r.student_id = $1 AND r.status = 'registered'
+		 WHERE r.student_id = $1
 		 ORDER BY cc.class_code, s.day_of_week, s.start_period`,
 		studentID,
 	)
@@ -145,13 +142,13 @@ func (t *RegistrationTx) IsRegistered(ctx context.Context, studentID, classID in
 	err := t.tx.QueryRow(ctx,
 		`SELECT EXISTS (
 		   SELECT 1 FROM registrations
-		   WHERE student_id = $1 AND class_id = $2 AND status = 'registered')`,
+		   WHERE student_id = $1 AND class_id = $2)`,
 		studentID, classID,
 	).Scan(&ok)
 	return ok, err
 }
 
-// RegisteredSchedules returns the class schedules of the student's active
+// RegisteredSchedules returns the class schedules of the student's
 // registrations in one semester.
 func (t *RegistrationTx) RegisteredSchedules(ctx context.Context, studentID, semesterID int64) ([]Schedule, error) {
 	rows, err := t.tx.Query(ctx,
@@ -159,7 +156,7 @@ func (t *RegistrationTx) RegisteredSchedules(ctx context.Context, studentID, sem
 		 FROM registrations r
 		 JOIN course_classes cc ON cc.id = r.class_id
 		 JOIN class_schedules s ON s.class_id = cc.id
-		 WHERE r.student_id = $1 AND r.status = 'registered' AND cc.semester_id = $2`,
+		 WHERE r.student_id = $1 AND cc.semester_id = $2`,
 		studentID, semesterID,
 	)
 	if err != nil {
@@ -172,7 +169,7 @@ func (t *RegistrationTx) RegisteredSchedules(ctx context.Context, studentID, sem
 	})
 }
 
-// RegisteredCredits returns the total credits of the student's active
+// RegisteredCredits returns the total credits of the student's
 // registrations in one semester.
 func (t *RegistrationTx) RegisteredCredits(ctx context.Context, studentID, semesterID int64) (int, error) {
 	var total int
@@ -181,7 +178,7 @@ func (t *RegistrationTx) RegisteredCredits(ctx context.Context, studentID, semes
 		 FROM registrations r
 		 JOIN course_classes cc ON cc.id = r.class_id
 		 JOIN courses c ON c.id = cc.course_id
-		 WHERE r.student_id = $1 AND r.status = 'registered' AND cc.semester_id = $2`,
+		 WHERE r.student_id = $1 AND cc.semester_id = $2`,
 		studentID, semesterID,
 	).Scan(&total)
 	return total, err
@@ -240,24 +237,21 @@ func (t *RegistrationTx) ReleaseSeat(ctx context.Context, classID int64) error {
 	return err
 }
 
-// Upsert records the registration, reusing the student's cancelled row for the
-// class when one exists.
-func (t *RegistrationTx) Upsert(ctx context.Context, studentID, classID int64) (*Registration, error) {
-	return scanRegistration(t.tx.QueryRow(ctx,
+// Insert creates a new registration. Cancellation deletes the previous row.
+func (t *RegistrationTx) Insert(ctx context.Context, studentID, classID int64) (*Registration, error) {
+	reg, err := scanRegistration(t.tx.QueryRow(ctx,
 		`INSERT INTO registrations (student_id, class_id)
 		 VALUES ($1, $2)
-		 ON CONFLICT (student_id, class_id)
-		 DO UPDATE SET status = 'registered', registered_at = now()
-		 RETURNING id, class_id, status, registered_at`,
+		 RETURNING id, class_id, registered_at`,
 		studentID, classID,
 	))
+	return reg, translateError(err)
 }
 
-// CancelRegistration reports false when the registration is not active.
+// CancelRegistration deletes the registration and reports false when it no longer exists.
 func (t *RegistrationTx) CancelRegistration(ctx context.Context, registrationID int64) (bool, error) {
 	tag, err := t.tx.Exec(ctx,
-		`UPDATE registrations SET status = 'cancelled'
-		 WHERE id = $1 AND status = 'registered'`,
+		`DELETE FROM registrations WHERE id = $1`,
 		registrationID,
 	)
 	if err != nil {
@@ -268,7 +262,7 @@ func (t *RegistrationTx) CancelRegistration(ctx context.Context, registrationID 
 
 func scanRegistration(row pgx.Row) (*Registration, error) {
 	var reg Registration
-	err := row.Scan(&reg.ID, &reg.ClassID, &reg.Status, &reg.RegisteredAt)
+	err := row.Scan(&reg.ID, &reg.ClassID, &reg.RegisteredAt)
 	if err != nil {
 		return nil, err
 	}

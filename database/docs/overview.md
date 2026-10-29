@@ -21,13 +21,15 @@ Các đường dẫn dạng `database/...` và mọi lệnh shell trong bộ tà
 | Học kỳ | 3: đã đóng, đang mở, chưa mở |
 | Lớp | 80: 35 chuyên ngành CNTT, 35 chuyên ngành ĐTVT, 6 lớp chung, 4 lớp ở học kỳ khác |
 | Buổi học | 82 |
-| Đăng ký | 104, gồm 103 đang đăng ký và 1 đã hủy |
+| Đăng ký | 103, đều đang hiệu lực |
 | Kết quả học tập | 100 |
 | Phiên đăng nhập | 0 |
 
 Username `student001` … `student100`, `admin1`, `admin2`; cùng mật khẩu demo **`DemoUET@123`**, lưu bcrypt cost 12. Các tài khoản này chỉ dùng phát triển local. File `database/data/demo-password.json` chứa hash cố định để seed lặp lại giống nhau; bcrypt xác thực được bằng Go.
 
 [database/data/scenarios.json](../data/scenarios.json) liệt kê tài khoản, ID/mã lớp và kết quả mong đợi cho 10 tình huống: thành công, trùng lịch, đăng ký trùng, vượt tín chỉ, học kỳ đóng/chưa mở, đầy/còn một chỗ, đăng ký lại sau hủy, lớp đã hủy. Đây là fixture chuẩn bị cho kiểm thử API; DB không tự thi hành các luật thuộc Service.
+
+Bảng `registrations` chỉ lưu đăng ký đang hiệu lực. Với tình huống lớp 6, thực hiện đăng ký → hủy → đăng ký lại; lần sau nhận ID mới. Khi admin hủy lớp, bản ghi lớp được giữ với `status = cancelled` và mọi đăng ký của lớp bị xóa vật lý.
 
 Mã lớp dùng dạng `<mã học phần>-<số lớp>`, ví dụ `INT2204-04`. Database đã seed theo dạng cũ có thể cập nhật bằng `docker compose --profile tools run --rm seed normalize-class-codes`; lệnh chỉ đổi mã khớp mẫu fixture cũ `INT2204-DEMO04`, giữ ID, đăng ký và các dữ liệu khác. Nếu mã đích bị trùng trong cùng học kỳ, toàn bộ thao tác rollback theo ràng buộc UNIQUE.
 

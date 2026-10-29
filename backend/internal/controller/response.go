@@ -63,7 +63,6 @@ var failures = []failure{
 	{service.ErrScheduleConflict, 409, "SCHEDULE_CONFLICT", "Lớp bị trùng lịch với học phần đã đăng ký"},
 	{service.ErrPrerequisiteNotMet, 409, "PREREQUISITE_NOT_MET", "Chưa đạt học phần tiên quyết"},
 	{service.ErrCreditLimitExceeded, 409, "CREDIT_LIMIT_EXCEEDED", "Vượt quá số tín chỉ tối đa của học kỳ"},
-	{service.ErrRegistrationNotActive, 409, "REGISTRATION_NOT_ACTIVE", "Đăng ký không ở trạng thái đã đăng ký"},
 	{service.ErrInvalidReference, 400, "VALIDATION_ERROR", "Dữ liệu tham chiếu không tồn tại"},
 	{service.ErrInvalidSchedule, 400, "VALIDATION_ERROR", "Tiết kết thúc phải lớn hơn hoặc bằng tiết bắt đầu"},
 }

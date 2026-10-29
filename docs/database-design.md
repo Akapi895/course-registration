@@ -93,10 +93,9 @@ Mỗi bản ghi thể hiện một buổi học lặp theo tuần. Một lớp h
 | `id` | BIGSERIAL | PK |
 | `student_id` | BIGINT | NOT NULL, FK → `users.id` |
 | `class_id` | BIGINT | NOT NULL, FK → `course_classes.id` |
-| `status` | TEXT | NOT NULL, DEFAULT `registered`; `registered`, `cancelled` |
 | `registered_at` | TIMESTAMPTZ | NOT NULL, DEFAULT `now()` |
 
-Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyển trạng thái thành `cancelled`; nếu đăng ký lại, bản ghi được chuyển về `registered` và cập nhật `registered_at`.
+Cặp (`student_id`, `class_id`) là duy nhất. Bảng chỉ lưu các đăng ký còn hiệu lực. Khi sinh viên hủy đăng ký, hệ thống xóa vật lý bản ghi và giảm sĩ số lớp trong cùng transaction. Đăng ký lại tạo bản ghi mới với `id` và `registered_at` mới. Khi quản trị viên hủy lớp, toàn bộ đăng ký của lớp được xóa vật lý, lớp chuyển sang `cancelled` và `enrolled = 0` trong cùng transaction; bản ghi lớp được giữ lại. Không lưu lịch sử đăng ký/hủy trong bảng này.
 
 ### 3.8. `auth_sessions` – Phiên đăng nhập
 

@@ -21,8 +21,7 @@ Có **12 endpoint nghiệp vụ**, tính theo cặp phương thức và đườn
 | 11 | Quản trị hệ thống | PUT | `/api/classes/{id}` | Chỉ quản trị viên |
 | 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
 
-Mọi endpoint trừ đăng nhập yêu cầu `Authorization: Bearer <access_token>` và phiên đăng nhập còn hiệu lực. Quản trị viên không được đăng ký/hủy học phần thay sinh viên hoặc truy cập các API đăng ký/thời khóa biểu dành riêng cho sinh viên.
-
+Tất cả API, ngoại trừ API đăng nhập, đều yêu cầu gửi access token trong header `Authorization: Bearer <access_token>`. Token phải hợp lệ và phiên đăng nhập tương ứng vẫn còn hiệu lực. Quản trị viên không được đăng ký hoặc hủy học phần thay sinh viên, đồng thời không được sử dụng các API dành riêng cho sinh viên để xem đăng ký và thời khóa biểu.
 ## Hợp đồng request/response
 
 Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được xác định tại bảng trên. Response lỗi trong bảng là ví dụ, các mã lỗi và ghi chú bên dưới mô tả thêm các trường hợp từ chối.
@@ -35,8 +34,8 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | Tra cứu lớp học phần | Lấy danh sách lớp học phần đang hoạt động của học kỳ hiện tại | /api/classes | GET | — | `200` `{ "status": "success", "data": { "semester": { "id": 2, "name": "Học kỳ 1 năm học 2026-2027", "max_credits": 24, "registration_opens_at": "2026-10-13T00:00:00+07:00", "registration_closes_at": "2026-11-19T00:00:00+07:00", "registration_open": true }, "classes": [ { "id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "lecturer_name": "Giảng viên A", "credits": 3, "enrolled": 42, "max_capacity": 50 } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Tra cứu lớp học phần | Chi tiết lớp học phần | /api/classes/{id} | GET | — | `200` `{ "status": "success", "data": { "id": 10, "course_id": 5, "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "faculty": "Công nghệ thông tin", "major": "Khoa học máy tính", "semester_id": 2, "semester_name": "Học kỳ 1 năm học 2026-2027", "class_code": "INT3401-01", "lecturer_name": "Giảng viên A", "max_capacity": 50, "enrolled": 42, "status": "active", "schedules": [ { "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ], "prerequisites": [ { "course_id": 4, "course_code": "INT2211", "course_name": "Cơ sở dữ liệu", "passed": true } ] } }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy dữ liệu" } }` | required |
 | Đăng ký học phần và thời khóa biểu | Đăng ký một hoặc nhiều lớp học phần cho tài khoản hiện tại; xử lý từng lớp, lớp hợp lệ được ghi nhận, lớp bị từ chối được báo lại | /api/registrations | POST | `{ "class_ids": [10, 11, 12, 13, 14] }` | `200` `{ "status": "success", "data": { "registered_count": 3, "failed_count": 2, "results": [ { "class_id": 10, "status": "registered", "id": 301, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 11, "status": "registered", "id": 302, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 12, "status": "registered", "id": 303, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 13, "status": "failed", "code": "CLASS_FULL", "message": "Lớp học phần đã đủ sĩ số" }, { "class_id": 14, "status": "failed", "code": "SCHEDULE_CONFLICT", "message": "Lớp bị trùng lịch với học phần đã đăng ký" } ] } }` | `400` `{ "status": "fail", "data": { "code": "VALIDATION_ERROR", "message": "Danh sách lớp bị trùng" } }` | required |
-| Đăng ký học phần và thời khóa biểu | Xem toàn bộ học phần đã đăng ký của mình | /api/registrations | GET | — | `200` `{ "status": "success", "data": { "registrations": [ { "id": 301, "class_id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "status": "registered", "registered_at": "2026-10-21T09:00:00+07:00" } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
-| Đăng ký học phần và thời khóa biểu | Hủy đăng ký của mình; `{id}` là `registrations.id` | /api/registrations/{id} | DELETE | — | `200` `{ "status": "success", "data": {} }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy đăng ký của bạn" } }` | required |
+| Đăng ký học phần và thời khóa biểu | Xem toàn bộ học phần đã đăng ký của mình | /api/registrations | GET | — | `200` `{ "status": "success", "data": { "registrations": [ { "id": 301, "class_id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "registered_at": "2026-10-21T09:00:00+07:00" } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
+| Đăng ký học phần và thời khóa biểu | Xóa vật lý đăng ký của mình; `{id}` là `registrations.id` | /api/registrations/{id} | DELETE | — | `200` `{ "status": "success", "data": {} }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy đăng ký của bạn" } }` | required |
 | Đăng ký học phần và thời khóa biểu | Thời khóa biểu của mình | /api/schedules | GET | — | `200` `{ "status": "success", "data": { "schedules": [ { "class_id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Quản trị hệ thống | Tạo lớp học phần kèm lịch học | /api/classes | POST | `{ "course_id": 5, "semester_id": 2, "class_code": "INT3401-01", "lecturer_name": "Giảng viên A", "max_capacity": 50, "schedules": [ { "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ] }` | `201` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "status": "active", "enrolled": 0 } }` | `409` `{ "status": "fail", "data": { "code": "CONFLICT", "message": "class_code đã tồn tại trong học kỳ" } }` | required |
 | Quản trị hệ thống | Cập nhật các trường được phép sửa của lớp | /api/classes/{id} | PUT | `{ "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60, "schedules": [ { "day_of_week": 3, "start_period": 4, "end_period": 6, "room": "A2-302" } ] }` | `200` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60 } }` | `409` `{ "status": "fail", "data": { "code": "SCHEDULE_LOCKED", "message": "Không thể sửa lịch học khi lớp đã có sinh viên đăng ký" } }` | required |
@@ -53,8 +52,8 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | `role` | string | `student` hoặc `admin` |
 | `full_name` | string | Họ và tên |
 | `student_code` | string hoặc null | Mã sinh viên; `null` với quản trị viên |
-| `faculty` | string hoặc null | Khoa của người dùng, nếu có |
-| `major` | string hoặc null | Ngành của người dùng, nếu có |
+| `faculty` | string hoặc null | Khoa của người dùng|
+| `major` | string hoặc null | Ngành học của người dùng |
 
 Endpoint trả tài khoản gắn với JWT. Frontend dùng `faculty`, `major` để hiển thị tổng quan và lọc lớp theo ngành.
 
@@ -72,13 +71,16 @@ JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. M�
 | `iat` | number | Bắt buộc, không nằm trong tương lai; khớp `auth_sessions.created_at` ở độ chính xác giây |
 | `exp` | number | Bắt buộc, sau `iat` và thời gian hiện tại chưa đến `exp`; khớp `auth_sessions.expires_at` ở độ chính xác giây |
 
-Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và điều kiện SQL của phiên, kể cả khi PostgreSQL chạy trên máy khác. Phiên chỉ hoạt động khi `logged_out_at IS NULL AND now < expires_at`. Không cần tác vụ nền để đánh dấu hết hạn.
+Backend sử dụng cùng một mốc thời gian khi kiểm tra JWT và trạng thái phiên trong cơ sở dữ liệu, kể cả khi PostgreSQL chạy trên một máy khác. Một phiên được xem là còn hoạt động khi `logged_out_at IS NULL AND now < expires_at`; khi đã đến hoặc vượt quá thời điểm hết hạn, phiên không còn hoạt động. Hệ thống không cần tác vụ chạy nền để cập nhật trạng thái hết hạn của phiên.
 
-`JWT_TTL` và `SESSION_TTL` mặc định cùng `20m` và bắt buộc bằng nhau; bỏ trống `SESSION_TTL` để theo `JWT_TTL`. Quản trị viên dùng `ADMIN_JWT_TTL` (mặc định `8h`). Mỗi phiên mới có `expires_at = created_at + JWT_TTL` (hoặc `ADMIN_JWT_TTL` với quản trị viên). Khi đổi TTL, các phiên đã lưu giữ nguyên thời hạn; không tính lại hạn của chúng theo cấu hình mới. `LOGIN_COOLDOWN` mặc định `20m` và được áp dụng theo cấu hình hiện hành khi kiểm tra đăng nhập.
+Đối với sinh viên, `JWT_TTL` và `SESSION_TTL` mặc định là 20m và phải có cùng giá trị. Nếu không cấu hình `SESSION_TTL`, hệ thống sẽ sử dụng giá trị của`JWT_TTL`. Đối với quản trị viên, thời hạn JWT được cấu hình bằng `ADMIN_JWT_TTL`, mặc định là 8h.
 
+Khi tạo phiên mới, hệ thống xác định thời điểm hết hạn (`expires_at`) dựa trên thời điểm tạo phiên (`created_at`) và thời hạn tương ứng với vai trò của người dùng. Nếu cấu hình thời hạn được thay đổi, các phiên đã tạo trước đó vẫn giữ nguyên thời điểm hết hạn ban đầu.
+
+Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `LOGIN_COOLDOWN`, mặc định là 20m. Hệ thống sử dụng giá trị cấu hình hiện tại để kiểm tra thời gian chờ khi người dùng đăng nhập.
 ### Login: kiểm tra mật khẩu → phiên hoạt động → cooldown
 
-1. Xác thực username/password. Sai username hay password đều trả cùng response, trước khi kiểm tra trạng thái phiên:
+1. Xác thực username/password. Khi 1 trong 2 thông tin không chính xác, hệ thống đều trả cùng response, trước khi kiểm tra trạng thái phiên:
 
    ```json
    { "status": "fail", "data": { "code": "INVALID_CREDENTIALS", "message": "Sai tên đăng nhập hoặc mật khẩu" } }
@@ -96,13 +98,13 @@ Backend dùng cùng một mốc thời gian ứng dụng cho kiểm tra JWT và 
    { "status": "fail", "data": { "code": "LOGIN_COOLDOWN", "message": "Tài khoản đang trong thời gian chờ đăng nhập lại", "retry_after": 720, "login_allowed_at": "2026-10-26T03:25:00Z" } }
    ```
 
-   `Retry-After: 720` và `data.retry_after` cùng là số giây còn chờ, làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Với cooldown mặc định, logout lúc 10:05 UTC+7, thử login lúc 10:13 thì còn 12 phút và được login lại từ 10:25 UTC+7. Nếu để phiên hết hạn lúc 10:20 thì mốc là 10:40.
+   `Retry-After: 720` và `data.retry_after` đều cho biết số giây còn chờ trước khi được đăng nhập lại, giá trị này được làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Ví dụ, nếu sinh viên đăng xuất lúc 10:05 và thử đăng nhập lúc 10:13, với thời gian chờ mặc định 20 phút, sinh viên còn phải chờ 12 phút và có thể đăng nhập lại từ 10:25. Nếu phiên tự hết hạn lúc 10:20, sinh viên có thể đăng nhập lại từ 10:40.
 
-4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Quản trị viên bỏ qua việc kiểm tra phiên ở bước 2 và 3: không bị giới hạn số phiên, không có cooldown, mỗi lần đăng nhập tạo phiên với `sid` riêng; logout chỉ kết thúc phiên của JWT đang dùng.
+4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Đối với quản trị viên, hệ thống không giới hạn số phiên đăng nhập và không áp dụng thời gian chờ đăng nhập lại. Mỗi lần đăng nhập sẽ tạo một phiên mới. Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng.
 
 ### Logout và hết hạn
 
-- `POST /api/auth/logout` lấy `sid` từ JWT đã xác thực, ghi `logged_out_at` **một lần** bằng thời điểm backend xử lý logout nếu phiên còn hoạt động. Không xóa bản ghi, không đổi `expires_at`; JWT cũ bị từ chối ngay. Thành công trả `200` với `data: {}`.
+- `POST /api/auth/logout` lấy `sid` từ JWT đã xác thực. Nếu phiên vẫn còn hoạt động, hệ thống ghi nhận thời điểm đăng xuất vào `logged_out_at`. Giá trị này chỉ được ghi một lần. Bản ghi phiên không bị xóa và `expires_at` không thay đổi. Sau khi đăng xuất thành công, JWT cũ không còn được chấp nhận. API trả về `200` với `data: {}`.
 - JWT hết hạn trả `401 UNAUTHORIZED`; JWT còn hạn nhưng phiên đã logout hoặc hết hạn trong database trả `401 SESSION_REVOKED`. Gọi lại logout không ghi lại thời điểm kết thúc và không kéo dài cooldown.
 - Phiên tự hết hạn giữ `logged_out_at = NULL`. Đóng tab không phải logout: phiên tiếp tục tới `expires_at`.
 - Bảng `auth_sessions` có đúng năm cột: `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`, kèm chỉ mục (`user_id`, `created_at`).
@@ -146,7 +148,6 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 | `SCHEDULE_CONFLICT` | 409 | Trùng lịch với lớp đã đăng ký trong cùng học kỳ |
 | `PREREQUISITE_NOT_MET` | 409 | Chưa đạt học phần tiên quyết |
 | `CREDIT_LIMIT_EXCEEDED` | 409 | Vượt số tín chỉ tối đa của học kỳ |
-| `REGISTRATION_NOT_ACTIVE` | 409 | Hủy đăng ký không ở trạng thái đã đăng ký |
 | `INTERNAL_ERROR` | 500 | Lỗi không lường trước, không trả chi tiết nội bộ |
 
 ## Ghi chú
@@ -157,7 +158,7 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp hợp lệ có `status: "registered"` kèm `id`, `registered_at`; lớp bị từ chối có `status: "failed"` kèm `code`, `message` và không ảnh hưởng lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa ghi nhận trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
 - Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Kết quả từng lớp nằm trong `results[].status`, không suy ra từ HTTP status.
 - `results[].code` có thể là: `NOT_FOUND`, `CLASS_CANCELLED`, `CLASS_FULL`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `INTERNAL_ERROR`. Ý nghĩa như bảng trên, nhưng nằm trong `results` và không kèm HTTP 4xx.
-- `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `REGISTRATION_NOT_ACTIVE`, `REGISTRATION_CLOSED`.
+- `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `REGISTRATION_CLOSED`. ID đã bị xóa hoặc không thuộc sinh viên hiện tại trả `404 NOT_FOUND`.
 - `PUT /api/classes/{id}` có thể trả: `CLASS_CANCELLED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED`, `CONFLICT`, `VALIDATION_ERROR`.
 - `GET /api/classes`: luôn trả lớp `active` của học kỳ hiện tại (học kỳ có `registration_opens_at` mới nhất không sau thời điểm hiện tại). Query `faculty`, `major` là tùy chọn.
 - Mỗi phần tử `classes[]` có `lecturer_name` để hiển thị cột Giảng viên trên trang Đăng ký học phần, không cần tải chi tiết từng lớp.
@@ -168,7 +169,7 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 - Form tạo lớp lấy `data.semester.id` làm `semester_id` và chỉ hiển thị tên học kỳ ở trường chỉ đọc; chưa cho gửi khi đang tải, tải lỗi hoặc `semester` là `null`. Form sửa lớp hiển thị học kỳ của chính lớp.
 - `POST /api/classes`: `class_code` duy nhất trong học kỳ. `course_id`, `semester_id` phải tồn tại.
 - `PUT /api/classes/{id}`: không đổi `course_id`, `semester_id`. `max_capacity` không nhỏ hơn `enrolled`. Khi `enrolled > 0` không sửa được `schedules`.
-- `DELETE /api/classes/{id}`: hủy mềm. Các đăng ký `registered` của lớp chuyển sang `cancelled`, `enrolled = 0`.
-- `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình.
+- `DELETE /api/classes/{id}`: giữ bản ghi lớp với `status = cancelled`, xóa vật lý toàn bộ đăng ký của lớp và đặt `enrolled = 0` trong cùng transaction.
+- `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình trong thời gian đăng ký; xóa vật lý bản ghi và giảm `enrolled` của lớp trong cùng transaction. Đăng ký lại tạo bản ghi với `id` và `registered_at` mới.
 - Hai endpoint DELETE trên trả `200` với `data: {}` khi hủy thành công.
-- `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ. Client tự lọc theo học kỳ nếu cần.
+- `GET /api/registrations` và `GET /api/schedules` trả đăng ký còn tồn tại và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ. Mỗi phần tử `registrations[]` gồm `id`, `class_id`, thông tin lớp/học phần và `registered_at`. `results[].status` trong response POST là `registered` hoặc `failed`, chỉ biểu thị kết quả xử lý từng lớp. Client tự lọc theo học kỳ nếu cần.
