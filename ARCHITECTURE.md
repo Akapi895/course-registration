@@ -44,7 +44,12 @@ course-registration/
 │   ├── SRS.md
 │   ├── api-design.md
 │   ├── database-design.md
-│   ├── database.dbml
+│   ├── diagrams/
+│   │   ├── deployment/
+│   │   ├── erd/
+│   │   ├── sequence/
+│   │   ├── system-architecture/
+│   │   └── use-case/
 │   └── adr/
 ├── docker-compose.yml
 ├── render.yaml

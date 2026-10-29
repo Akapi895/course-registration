@@ -1,6 +1,6 @@
 # Thiết kế API
 
-Tài liệu này mô tả chi tiết các API theo yêu cầu trong mục 5.2 của SRS. Nếu có điểm chưa thống nhất, ưu tiên nội dung trong SRS. Cấu trúc dữ liệu được xác định trong file database.dbml và giải thích chi tiết trong database-design.md.
+Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `diagrams/erd/database.dbml` và được mô tả trong `database-design.md`.
 
 ## Phạm vi và phân quyền
 
