@@ -114,7 +114,6 @@ course-registration/
 │   └── adr/
 ├── docker-compose.yml
 ├── render.yaml
-├── GLOSSARY.md
 ├── ARCHITECTURE.md
 └── README.md
 ```
@@ -182,7 +181,6 @@ docker compose up -d --force-recreate backend # sau khi đổi .env
 | Schema, ràng buộc, ERD | [docs/database-design.md](docs/database-design.md), [docs/diagrams/](docs/diagrams/) |
 | Kiến trúc, luồng xử lý, quy ước code | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Quyết định kỹ thuật (ngôn ngữ, PostgreSQL, JWT, phiên) | [docs/adr/](docs/adr/) |
-| Thuật ngữ dùng chung | [GLOSSARY.md](GLOSSARY.md) |
 | Dữ liệu mẫu và tình huống kiểm thử | [database/docs/](database/docs/) |
 
 ## 8. Gợi ý cho Phase 2

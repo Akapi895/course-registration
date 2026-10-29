@@ -53,7 +53,6 @@ course-registration/
 │   └── adr/
 ├── docker-compose.yml
 ├── render.yaml
-├── GLOSSARY.md
 ├── ARCHITECTURE.md
 ├── .gitignore
 └── README.md
