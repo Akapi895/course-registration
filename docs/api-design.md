@@ -1,6 +1,6 @@
 # Thiết kế API
 
-Tài liệu này cụ thể hóa SRS §5.2. Nếu có mâu thuẫn, SRS là căn cứ. Schema lấy từ `diagrams/erd/database.dbml` và được mô tả trong `database-design.md`.
+Tài liệu này cụ thể hóa SRS §5.2. Schema lấy từ `diagrams/erd/database.dbml` và được mô tả trong `database-design.md`.
 
 ## Phạm vi và phân quyền
 
@@ -22,11 +22,12 @@ Có **12 endpoint nghiệp vụ**, tính theo cặp phương thức và đườn
 | 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
 
 Tất cả API, ngoại trừ API đăng nhập, đều yêu cầu gửi access token trong header `Authorization: Bearer <access_token>`. Token phải hợp lệ và phiên đăng nhập tương ứng vẫn còn hiệu lực. Quản trị viên không được đăng ký hoặc hủy học phần thay sinh viên, đồng thời không được sử dụng các API dành riêng cho sinh viên để xem đăng ký và thời khóa biểu.
-## Hợp đồng request/response
+
+## Đặc tả Request và Response
 
 Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được xác định tại bảng trên. Response lỗi trong bảng là ví dụ, các mã lỗi và ghi chú bên dưới mô tả thêm các trường hợp từ chối.
 
-| Feature | Mô tả | Endpoint | Method | Request Body | Response Body | Response Fail | Auth |
+| Feature | Mô tả | Endpoint | Method | Request Body | Response Success | Response Fail | Auth |
 |---|---|---|---|---|---|---|---|
 | Xác thực và người dùng | Đăng nhập | /api/auth/login | POST | `{ "username": "student001", "password": "<password>" }` | `200` `{ "status": "success", "data": { "access_token": "<jwt>" } }` | `401 INVALID_CREDENTIALS`; `409 ALREADY_LOGGED_IN`; `429 LOGIN_COOLDOWN` — payload chi tiết tại mục Vòng đời xác thực bên dưới | none |
 | Xác thực và người dùng | Đăng xuất và kết thúc phiên hiện tại | /api/auth/logout | POST | — | `200` `{ "status": "success", "data": {} }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
@@ -137,7 +138,7 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 | `LOGIN_COOLDOWN` | 429 | Đúng thông tin đăng nhập nhưng chưa qua `LOGIN_COOLDOWN` (mặc định 20 phút) kể từ lúc phiên gần nhất kết thúc; có `Retry-After`, `data.retry_after` và `data.login_allowed_at` |
 | `SESSION_REVOKED` | 401 | Token còn đúng chữ ký nhưng phiên tương ứng đã chủ động đăng xuất hoặc không còn hoạt động (hết hạn trong database) |
 | `FORBIDDEN` | 403 | Đã đăng nhập nhưng không đủ quyền |
-| `NOT_FOUND` | 404 | Tài nguyên không tồn tại hoặc không thuộc người dùng hiện tại |
+| `NOT_FOUND` | 404 | Tài nguyên không tồn tại, không thuộc người dùng hiện tại hoặc `{id}` trong đường dẫn không phải số |
 | `CONFLICT` | 409 | Trùng dữ liệu duy nhất, ví dụ `class_code` đã có trong học kỳ |
 | `CLASS_CANCELLED` | 409 | Lớp học phần đã bị hủy |
 | `CLASS_FULL` | 409 | Lớp học phần đã đủ sĩ số |
@@ -154,12 +155,17 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 
 - Frontend xử lý lỗi theo `data.code`. `data.message` chỉ là câu mô tả để hiển thị.
 - Mọi endpoint nghiệp vụ trừ login cần `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR`.
-- `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
+- `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`, nhưng chỉ khi body hợp lệ.
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp hợp lệ có `status: "registered"` kèm `id`, `registered_at`; lớp bị từ chối có `status: "failed"` kèm `code`, `message` và không ảnh hưởng lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa ghi nhận trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
 - Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Kết quả từng lớp nằm trong `results[].status`, không suy ra từ HTTP status.
 - `results[].code` có thể là: `NOT_FOUND`, `CLASS_CANCELLED`, `CLASS_FULL`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `INTERNAL_ERROR`. Ý nghĩa như bảng trên, nhưng nằm trong `results` và không kèm HTTP 4xx.
-- `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `REGISTRATION_CLOSED`. ID đã bị xóa hoặc không thuộc sinh viên hiện tại trả `404 NOT_FOUND`.
-- `PUT /api/classes/{id}` có thể trả: `CLASS_CANCELLED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED`, `CONFLICT`, `VALIDATION_ERROR`.
+- Thứ tự kiểm tra: token và phiên (`UNAUTHORIZED`, `SESSION_REVOKED`), rồi `{id}` trong đường dẫn, rồi body (`VALIDATION_ERROR`), rồi vai trò (`FORBIDDEN`), rồi nghiệp vụ. Vì vậy request có body sai nhận `400` dù vai trò không phù hợp, và chỉ request có body hợp lệ mới nhận `403`. Endpoint không có body (`DELETE`, `GET`) kiểm tra `{id}` rồi vai trò.
+- `{id}` trong đường dẫn phải là số nguyên. Giá trị không phải số (ví dụ `/api/classes/abc`) trả `404 NOT_FOUND`, không phải `400`.
+- `GET /api/classes/{id}` có thể trả: `NOT_FOUND`.
+- `POST /api/classes` có thể trả: `VALIDATION_ERROR` (gồm `course_id` hoặc `semester_id` không tồn tại), `FORBIDDEN`, `CONFLICT`.
+- `PUT /api/classes/{id}` có thể trả: `NOT_FOUND`, `VALIDATION_ERROR`, `FORBIDDEN`, `CLASS_CANCELLED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED`, `CONFLICT`.
+- `DELETE /api/classes/{id}` có thể trả: `NOT_FOUND`, `FORBIDDEN`, `CLASS_CANCELLED`.
+- `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `FORBIDDEN`, `REGISTRATION_CLOSED`. ID đã bị xóa hoặc không thuộc sinh viên hiện tại trả `404 NOT_FOUND`.
 - `GET /api/classes`: luôn trả lớp `active` của học kỳ hiện tại (học kỳ có `registration_opens_at` mới nhất không sau thời điểm hiện tại). Query `faculty`, `major` là tùy chọn.
 - Mỗi phần tử `classes[]` có `lecturer_name` để hiển thị cột Giảng viên trên trang Đăng ký học phần, không cần tải chi tiết từng lớp.
 - `data.semester.registration_open` của `GET /api/classes` là `true` khi thời điểm xử lý request nằm trong `[registration_opens_at, registration_closes_at]` (gồm hai đầu); không có ở `classes[]` hay chi tiết lớp. Frontend dùng để khóa/mở thao tác, backend vẫn kiểm tra lại khi đăng ký/hủy. Khi `false`, danh sách lớp vẫn được trả để tra cứu.

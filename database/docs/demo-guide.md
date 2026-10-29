@@ -170,6 +170,6 @@ docker compose run --rm verify
 
 Nếu seed báo database chứa dữ liệu khác, đây là cơ chế tránh ghi đè thay đổi của bạn. Chỉ reset nếu muốn bỏ những thay đổi đó. Muốn chuyển ngày demo, đặt `REFERENCE_DATE` trong `.env` trước khi seed database sạch; dữ liệu thời gian không tự chạy theo ngày hiện tại. Giới hạn 12 tín chỉ là cấu hình demo.
 
-`registrations` chỉ gồm `id`, `student_id`, `class_id`, `registered_at`: hủy đăng ký xóa vật lý bản ghi, đăng ký lại tạo ID mới. Database có schema khác phải được dựng lại; `reset` ở trên chỉ xóa dữ liệu, không đổi schema. Với database demo local có thể bỏ toàn bộ dữ liệu: chạy `docker compose down -v`, sau đó thực hiện lại quy trình database mới tại [README gốc §2](../../README.md#2-khởi-chạy-lần-đầu-với-database-mới). Build lại image không đổi schema trong volume cũ.
+`registrations` chỉ gồm `id`, `student_id`, `class_id`, `registered_at`: hủy đăng ký xóa vật lý bản ghi, đăng ký lại tạo ID mới. Database có schema khác phải được dựng lại; `reset` ở trên chỉ xóa dữ liệu, không đổi schema. Với database demo local có thể bỏ toàn bộ dữ liệu: chạy `docker compose down -v`, sau đó thực hiện lại quy trình database mới tại [README gốc §5](../../README.md#5-chạy-bằng-docker-local). Build lại image không đổi schema trong volume cũ.
 
 Compose chỉ mở PostgreSQL trên loopback. Nếu tự cấu hình mật khẩu có ký tự đặc biệt, cần percent-encode thành phần mật khẩu trong URI `DATABASE_URL`; cấu hình mặc định hiện tại không gặp vấn đề này.
