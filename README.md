@@ -197,7 +197,6 @@ Phase 1 dừng ở đúng nghiệp vụ, nhất quán dữ liệu và bảo mậ
 | Mã nguồn | Áp dụng thêm design pattern ở những chỗ quy tắc đăng ký phình to, ví dụ tách từng quy tắc thành đối tượng kiểm tra riêng |
 | Bảo vệ API | Rate limit và chống DoS/DDoS, đặc biệt với `POST /api/auth/login` và `POST /api/registrations` |
 | Bảo mật | Dùng HTTPS khi triển khai thực tế (SRS yêu cầu, Phase 1 đang dùng HTTP). Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS |
-| Quản lý tài khoản | Đổi mật khẩu, tạo và khóa tài khoản; hiện chỉ có tài khoản từ dữ liệu mẫu |
 | Phân trang | Phân trang và lọc phía server cho `GET /api/classes` khi số lớp tăng |
 | Migration | Thay cơ chế fingerprint bằng migration có phiên bản, để nâng cấp schema mà không phải xóa dữ liệu |
 | Hạ tầng | Sao lưu database, môi trường staging trước khi deploy production |
