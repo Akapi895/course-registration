@@ -169,41 +169,11 @@ docker compose up -d --build --wait backend   # sau khi sửa code backend (tư�
 docker compose up -d --force-recreate backend # sau khi đổi .env
 ```
 
-## 6. Phát triển và kiểm thử
-
-**Backend** (cần Go 1.26.0 và PostgreSQL đã migrate/seed; dừng backend Compose nếu trùng cổng). Backend nạp `.env` đầu tiên tìm thấy ở thư mục hiện tại hoặc thư mục cha; biến môi trường của shell được ưu tiên. Chạy từ `backend/`:
-
-```powershell
-go run ./cmd/api
-go test ./...; go vet ./...; gofmt -l .
-go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go -o docs   # sau khi sửa chú thích/DTO API
-```
-
-Test tích hợp (auth, đăng ký, hủy) cần PostgreSQL thật: đặt `TEST_DATABASE_URL` rồi chạy `go test ./internal/controller -v`. Mỗi test tạo và xóa schema riêng, không động vào dữ liệu ứng dụng; thiếu biến này các test bị bỏ qua (CI luôn cấp PostgreSQL 16). `backend/docs/` là mã sinh tự động, không sửa tay.
-
-**Frontend** (cần Node 22.12+ hoặc 24; dừng frontend Docker nếu trùng cổng 5173). Từ `frontend/`:
-
-```powershell
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-npm ci
-npm run typecheck   # npm run build không kiểm tra kiểu
-npm run dev
-```
-
-Vite chuyển `/api` tới `API_PROXY_TARGET` trong `frontend/.env` (mặc định `http://127.0.0.1:8080`); đổi giá trị này nếu API chạy cổng khác. Dự án dùng npm và `package-lock.json`. Chưa có script test frontend.
-
-**Smoke test như CI** (từ thư mục gốc, cần Python Playwright 1.56.0 và Chromium):
-
-```powershell
-docker build -f deployment/Dockerfile -t course-registration-render-test .
-python -u deployment/smoke_test.py --image course-registration-render-test --browser
-```
-
-## 7. Triển khai lên Render
+## 6. Triển khai lên Render
 
 `render.yaml` là Blueprint gồm một Web Service Docker (`deployment/Dockerfile`, healthcheck `/health`) và một PostgreSQL 16, cùng region; `DATABASE_URL` lấy từ database qua `fromDatabase`, `JWT_SECRET` được sinh tự động. Render tự deploy commit mới trên `main` khi CI thành công. Khi thay schema, tạo PostgreSQL mới (hoặc xóa dữ liệu cũ), cập nhật `DATABASE_URL` của service rồi redeploy để startup khởi tạo schema và dữ liệu mẫu. Hướng dẫn đầy đủ, liên kết CI/CD và cấu hình biến: [deployment/README.md](deployment/README.md).
 
-## 8. Tài liệu chi tiết
+## 7. Tài liệu chi tiết
 
 | Cần biết | Xem |
 |---|---|
@@ -215,7 +185,7 @@ python -u deployment/smoke_test.py --image course-registration-render-test --bro
 | Thuật ngữ dùng chung | [GLOSSARY.md](GLOSSARY.md) |
 | Dữ liệu mẫu và tình huống kiểm thử | [database/docs/](database/docs/) |
 
-## 9. Gợi ý cho Phase 2
+## 8. Gợi ý cho Phase 2
 
 Phase 1 dừng ở đúng nghiệp vụ, nhất quán dữ liệu và bảo mật cơ bản. Các hướng cho Phase 2:
 
@@ -226,4 +196,8 @@ Phase 1 dừng ở đúng nghiệp vụ, nhất quán dữ liệu và bảo mậ
 | Kiến trúc | Cân nhắc tách thành các dịch vụ riêng (microservices) như xác thực, lớp học phần, đăng ký, nếu số liệu tải cho thấy cần thiết |
 | Mã nguồn | Áp dụng thêm design pattern ở những chỗ quy tắc đăng ký phình to, ví dụ tách từng quy tắc thành đối tượng kiểm tra riêng |
 | Bảo vệ API | Rate limit và chống DoS/DDoS, đặc biệt với `POST /api/auth/login` và `POST /api/registrations` |
-| Nghiệp vụ | Thông báo cho sinh viên khi lớp bị hủy, lưu lịch sử đăng ký/hủy, API danh sách học phần để form tạo lớp không phải nhập tay `course_id` |
+| Bảo mật | Dùng HTTPS khi triển khai thực tế (SRS yêu cầu, Phase 1 đang dùng HTTP). Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS |
+| Quản lý tài khoản | Đổi mật khẩu, tạo và khóa tài khoản; hiện chỉ có tài khoản từ dữ liệu mẫu |
+| Phân trang | Phân trang và lọc phía server cho `GET /api/classes` khi số lớp tăng |
+| Migration | Thay cơ chế fingerprint bằng migration có phiên bản, để nâng cấp schema mà không phải xóa dữ liệu |
+| Hạ tầng | Sao lưu database, môi trường staging trước khi deploy production |
