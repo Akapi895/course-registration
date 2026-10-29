@@ -115,8 +115,7 @@ Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `
 - Bộ hẹn giờ được đặt ngay khi nhận token, kể cả khi `/api/auth/me` còn đang chờ, cho cả sinh viên và admin. Frontend kiểm tra lại khi cửa sổ nhận `focus`, trang được khôi phục (`pageshow`) hoặc tab chuyển sang hiển thị (`visibilitychange`). Hết hạn xóa token, tài khoản và trạng thái chỉ xem; yêu cầu login còn chờ được hủy, giao diện trở về login. Các quyết định cho phép truy cập vẫn do backend kiểm tra.
 - Trước request có token, frontend kiểm tra hạn; token hết hạn không được gửi tiếp. `401` của request dùng token hiện tại cũng xóa phiên. Phản hồi cũ, timer cũ hoặc yêu cầu bị thay thế không được ghi đè/xóa một phiên đăng nhập mới.
 - `409 ALREADY_LOGGED_IN` hiển thị thông báo tài khoản còn phiên hoạt động, không tạo countdown cooldown và không tác động phiên đang dùng ở thiết bị khác. `429 LOGIN_COOLDOWN` hiển thị countdown theo `retry_after`, lưu riêng theo username trong `sessionStorage`, giữ qua reload và cập nhật khi quay lại tab. Đổi username không bị khóa theo cooldown của tài khoản khác; countdown chỉ phục vụ hiển thị, backend luôn kiểm tra lại.
-- Lỗi mạng khi khôi phục một token còn hạn hiển thị thao tác thử lại; không tự coi là logout thành công hay xóa một phiên còn hạn. Timer hết hạn vẫn hoạt động trong lúc chờ hoặc khi trang báo lỗi mạng.
-
+- Nếu xảy ra lỗi mạng khi frontend xác thực lại token còn hạn, giao diện hiển thị tùy chọn thử lại. Frontend không tự coi đây là đăng xuất thành công hoặc xóa phiên chỉ vì lỗi mạng. Bộ hẹn giờ hết hạn vẫn hoạt động trong thời gian chờ thử lại hoặc khi trang hiển thị thông báo lỗi mạng.
 ## Route kỹ thuật
 
 | Phương thức | Đường dẫn | Xác thực | Kết quả |
@@ -124,7 +123,7 @@ Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `
 | GET | `/health` | Không yêu cầu | `200` `{ "status": "success", "data": {} }`; phục vụ healthcheck backend, không truy vấn kiểm tra cơ sở dữ liệu |
 | GET | `/swagger/*any` | Không yêu cầu | Swagger UI tại `/swagger/index.html`, tài liệu JSON tại `/swagger/doc.json` và các tài nguyên liên quan; không dùng envelope nghiệp vụ |
 
-Các đường dẫn này truy cập trên backend. Khi chạy Compose với nginx frontend, proxy chỉ chuyển tiếp `/api/`, nên truy cập Swagger trực tiếp qua cổng backend. Cấu hình Render trong `deployment/` phục vụ frontend và backend cùng một Web Service, nên Swagger truy cập trên cùng domain của giao diện.
+Các route này được cung cấp bởi backend. Khi chạy bằng Docker Compose với nginx frontend, nginx chỉ chuyển tiếp các yêu cầu có đường dẫn `/api/` đến backend. Vì vậy, để truy cập Swagger trong môi trường này, cần sử dụng cổng backend. Với cấu hình Render trong thư mục `deployment/`, frontend và backend được phục vụ qua cùng một Web Service nên Swagger có thể được truy cập trên cùng domain với giao diện.
 
 ## Mã lỗi
 
@@ -153,17 +152,17 @@ Các đường dẫn này truy cập trên backend. Khi chạy Compose với ngi
 
 ## Ghi chú
 
-- Frontend xử lý lỗi theo `data.code`. `data.message` chỉ là câu mô tả để hiển thị.
+- Frontend dựa vào `data.code` để xác định cách xử lý lỗi. `data.message `dùng để hiển thị thông báo cho người dùng.
 - Mọi endpoint nghiệp vụ trừ login cần `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR`.
 - `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp hợp lệ có `status: "registered"` kèm `id`, `registered_at`; lớp bị từ chối có `status: "failed"` kèm `code`, `message` và không ảnh hưởng lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa ghi nhận trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
-- Yêu cầu hợp lệ luôn trả `200`, kể cả khi mọi lớp bị từ chối (`registered_count = 0`). Kết quả từng lớp nằm trong `results[].status`, không suy ra từ HTTP status.
+- Nếu yêu cầu có định dạng hợp lệ, API vẫn trả về `200` ngay cả khi không có lớp nào đăng ký thành công (`registered_count = 0`). Trạng thái đăng ký của từng lớp được thể hiện trong `results[].status`, không chỉ dựa vào mã HTTP.
 - `results[].code` có thể là: `NOT_FOUND`, `CLASS_CANCELLED`, `CLASS_FULL`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `INTERNAL_ERROR`. Ý nghĩa như bảng trên, nhưng nằm trong `results` và không kèm HTTP 4xx.
 - `DELETE /api/registrations/{id}` có thể trả: `NOT_FOUND`, `REGISTRATION_NOT_ACTIVE`, `REGISTRATION_CLOSED`.
 - `PUT /api/classes/{id}` có thể trả: `CLASS_CANCELLED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED`, `CONFLICT`, `VALIDATION_ERROR`.
-- `GET /api/classes`: luôn trả lớp `active` của học kỳ hiện tại (học kỳ có `registration_opens_at` mới nhất không sau thời điểm hiện tại). Query `faculty`, `major` là tùy chọn.
+- `GET /api/classes` trả về các lớp có trạng thái `active` thuộc học kỳ hiện tại. Học kỳ hiện tại được xác định là học kỳ có `registration_opens_at` gần nhất nhưng không muộn hơn thời điểm xử lý request. Query `faculty` và `major` là tùy chọn.
 - Mỗi phần tử `classes[]` có `lecturer_name` để hiển thị cột Giảng viên trên trang Đăng ký học phần, không cần tải chi tiết từng lớp.
-- `data.semester.registration_open` của `GET /api/classes` là `true` khi thời điểm xử lý request nằm trong `[registration_opens_at, registration_closes_at]` (gồm hai đầu); không có ở `classes[]` hay chi tiết lớp. Frontend dùng để khóa/mở thao tác, backend vẫn kiểm tra lại khi đăng ký/hủy. Khi `false`, danh sách lớp vẫn được trả để tra cứu.
+- `data.semester.registration_open` của `GET /api/classes` là `true` khi thời điểm xử lý request nằm trong `[registration_opens_at, registration_closes_at]` (tính cả hai thời điểm đầu và cuối); không có ở `classes[]` hay chi tiết lớp. Frontend dùng để khóa/mở thao tác, backend vẫn kiểm tra lại khi đăng ký/hủy. Khi `false`, danh sách lớp vẫn được trả để tra cứu.
 - `GET /api/classes/{id}` trả thêm `faculty` (khoa của học phần), `major` (ngành của học phần; `null` với học phần chung của nhiều ngành), `semester_name` và `prerequisites` (các học phần tiên quyết, sắp theo `course_code`; mảng rỗng nếu không có). `passed` trong mỗi phần tử chỉ có khi người gọi là sinh viên: `true` nếu sinh viên đó đã đạt học phần (`course_results.passed`), `false` nếu chưa; quản trị viên không nhận `passed`. Đây chỉ là thông tin tham khảo; việc kiểm tra tiên quyết khi đăng ký vẫn do `POST /api/registrations` thực hiện.
 - `GET /api/classes` trả thêm `data.semester`: học kỳ hiện tại mà các lớp thuộc về (`id`, `name`, `max_credits`, `registration_opens_at`, `registration_closes_at`, `registration_open`). Client dùng để hiển thị đợt đăng ký và mức tín chỉ tối đa. `semester` là `null` và `classes` rỗng khi chưa có học kỳ nào mở đăng ký. `semester` không phụ thuộc bộ lọc `faculty`, `major`, nên vẫn có khi bộ lọc không khớp lớp nào.
 - `MAX_CREDITS` là cấu hình runtime tùy chọn, số nguyên dương tối đa 2147483647. Khi được đặt, API dùng giá trị này thay giới hạn lưu trong từng học kỳ cho cả `data.semester.max_credits` và kiểm tra `CREDIT_LIMIT_EXCEEDED`; bỏ trống thì dùng database. Không cập nhật cột `semesters.max_credits` hoặc yêu cầu seed lại khi đổi cấu hình.
