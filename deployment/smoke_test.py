@@ -238,7 +238,8 @@ def main():
 
                 duplicate = browser.new_page()
                 duplicate.goto(base + '/#/login')
-                duplicate.locator('#username').fill('admin1')
+                # Only students are limited to one active session; admins may hold several.
+                duplicate.locator('#username').fill('student002')
                 duplicate.locator('#password').fill('DemoUET@123')
                 duplicate.get_by_role('button', name='Đăng nhập', exact=True).click()
                 expect(duplicate.get_by_text('Tài khoản đang có phiên đăng nhập', exact=True)).to_be_visible()
