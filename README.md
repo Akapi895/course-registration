@@ -7,64 +7,65 @@
 **Bài toán (Phase 1).** Xây dựng hệ thống đăng ký học phần với các tính năng cơ bản, cung cấp qua RESTful API: đăng nhập, tra cứu lớp học phần, đăng ký và hủy đăng ký, xem thời khóa biểu, quản lý lớp học phần. Việc đăng ký phải tuân theo các quy tắc nghiệp vụ bên dưới.
 
 **Vai trò.**
+
 - *Sinh viên*: đăng nhập, tra cứu lớp, đăng ký và hủy đăng ký, xem thời khóa biểu của mình.
 - *Quản trị viên*: tạo, sửa và hủy lớp học phần; không đăng ký hay hủy thay sinh viên.
 
 **Quy tắc đăng ký** (kiểm tra riêng cho từng lớp):
 
-| Quy tắc | Nội dung |
-|---|---|
-| Sĩ số | Từ chối khi `enrolled` đạt `max_capacity` |
-| Thời gian | Đăng ký và hủy chỉ trong khoảng mở/đóng đăng ký của học kỳ |
-| Trùng lịch | Không trùng thứ/tiết với lớp đã đăng ký cùng học kỳ |
-| Tiên quyết | Phải đạt các học phần tiên quyết (`course_results`) |
-| Tín chỉ | Tổng tín chỉ trong học kỳ không vượt giới hạn (`MAX_CREDITS` nếu có, nếu không dùng giá trị của học kỳ) |
-| Không trùng | Mỗi sinh viên tối đa một đăng ký cho một lớp |
-| Nhiều lớp | Một request gồm 1–20 lớp khác nhau, xử lý lần lượt, mỗi lớp một transaction; lớp bị từ chối không ảnh hưởng lớp khác. Request hợp lệ luôn trả `200` kèm kết quả từng lớp |
+| Quy tắc      | Nội dung                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sĩ số       | Từ chối khi `enrolled` đạt `max_capacity`                                                                                                                                                          |
+| Thời gian    | Đăng ký và hủy chỉ trong khoảng mở/đóng đăng ký của học kỳ                                                                                                                                 |
+| Trùng lịch  | Không trùng thứ/tiết với lớp đã đăng ký cùng học kỳ                                                                                                                                          |
+| Tiên quyết  | Phải đạt các học phần tiên quyết (`course_results`)                                                                                                                                              |
+| Tín chỉ     | Tổng tín chỉ trong học kỳ không vượt giới hạn (`MAX_CREDITS` nếu có, nếu không dùng giá trị của học kỳ)                                                                              |
+| Không trùng | Mỗi sinh viên tối đa một đăng ký cho một lớp                                                                                                                                                     |
+| Nhiều lớp   | Một request gồm 1–20 lớp khác nhau, xử lý lần lượt, mỗi lớp một transaction; lớp bị từ chối không ảnh hưởng lớp khác. Request hợp lệ luôn trả `200` kèm kết quả từng lớp |
 
 **Xác thực và phiên.** Đăng nhập trả `access_token` (JWT HS256 gồm `sub`, `role`, `sid`, `iat`, `exp`). Mỗi request kiểm tra chữ ký, phiên trong bảng `auth_sessions` và so `role` với dòng `users` hiện tại. Mỗi sinh viên chỉ có **một phiên hoạt động** trên mọi thiết bị: đăng nhập khi còn phiên trả `409 ALREADY_LOGGED_IN`; sau khi phiên kết thúc (logout hoặc hết hạn) phải chờ `LOGIN_COOLDOWN` (mặc định 20 phút) mới đăng nhập lại, nếu chưa đến lúc trả `429 LOGIN_COOLDOWN` kèm `Retry-After`. Quản trị viên có thể có nhiều phiên, không có cooldown, token sống 8 giờ.
 
 **Dữ liệu khi hủy.**
+
 - Sinh viên hủy đăng ký: **xóa vật lý** bản ghi `registrations` và giảm `enrolled`. Đăng ký lại tạo ID mới; không lưu lịch sử hủy.
 - Quản trị viên hủy lớp: giữ bản ghi lớp với `status = cancelled`, **xóa vật lý** mọi đăng ký của lớp và đặt `enrolled = 0` trong cùng transaction.
 
 ## 2. API: 12 endpoint
 
-| STT | Nhóm | Phương thức | Endpoint | Quyền truy cập |
-|---|---|---|---|---|
-| 1 | Xác thực | POST | `/api/auth/login` | Công khai |
-| 2 | Xác thực | POST | `/api/auth/logout` | Sinh viên, admin |
-| 3 | Xác thực | GET | `/api/auth/me` | Sinh viên, admin |
-| 4 | Lớp học phần | GET | `/api/classes` | Sinh viên, admin |
-| 5 | Lớp học phần | GET | `/api/classes/{id}` | Sinh viên, admin |
-| 6 | Đăng ký | POST | `/api/registrations` | Sinh viên |
-| 7 | Đăng ký | GET | `/api/registrations` | Sinh viên |
-| 8 | Đăng ký | DELETE | `/api/registrations/{id}` | Sinh viên sở hữu |
-| 9 | Đăng ký | GET | `/api/schedules` | Sinh viên |
-| 10 | Quản trị | POST | `/api/classes` | Admin |
-| 11 | Quản trị | PUT | `/api/classes/{id}` | Admin |
-| 12 | Quản trị | DELETE | `/api/classes/{id}` | Admin |
-
+| STT | Nhóm           | Phương thức | Endpoint                    | Quyền truy cập    |
+| --- | --------------- | -------------- | --------------------------- | ------------------- |
+| 1   | Xác thực      | POST           | `/api/auth/login`         | Công khai          |
+| 2   | Xác thực      | POST           | `/api/auth/logout`        | Sinh viên, admin   |
+| 3   | Xác thực      | GET            | `/api/auth/me`            | Sinh viên, admin   |
+| 4   | Lớp học phần | GET            | `/api/classes`            | Sinh viên, admin   |
+| 5   | Lớp học phần | GET            | `/api/classes/{id}`       | Sinh viên, admin   |
+| 6   | Đăng ký      | POST           | `/api/registrations`      | Sinh viên          |
+| 7   | Đăng ký      | GET            | `/api/registrations`      | Sinh viên          |
+| 8   | Đăng ký      | DELETE         | `/api/registrations/{id}` | Sinh viên sở hữu |
+| 9   | Đăng ký      | GET            | `/api/schedules`          | Sinh viên          |
+| 10  | Quản trị      | POST           | `/api/classes`            | Admin               |
+| 11  | Quản trị      | PUT            | `/api/classes/{id}`       | Admin               |
+| 12  | Quản trị      | DELETE         | `/api/classes/{id}`       | Admin               |
 
 **Quy ước.** Thành công: `{ "status": "success", "data": ... }`. Lỗi: `{ "status": "fail", "data": { "code", "message" } }`; client xử lý theo `code`. API được bảo vệ nhận `Authorization: Bearer <access_token>`.
 
-| Nhóm lỗi | Mã (HTTP) |
-|---|---|
-| Xác thực | `INVALID_CREDENTIALS`, `UNAUTHORIZED`, `SESSION_REVOKED` (401); `ALREADY_LOGGED_IN` (409); `LOGIN_COOLDOWN` (429) |
-| Quyền và dữ liệu | `VALIDATION_ERROR` (400), `FORBIDDEN` (403), `NOT_FOUND` (404), `CONFLICT` (409), `INTERNAL_ERROR` (500) |
-| Nghiệp vụ (409) | `CLASS_FULL`, `CLASS_CANCELLED`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED` |
+| Nhóm lỗi           | Mã (HTTP)                                                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Xác thực           | `INVALID_CREDENTIALS`, `UNAUTHORIZED`, `SESSION_REVOKED` (401); `ALREADY_LOGGED_IN` (409); `LOGIN_COOLDOWN` (429)                                                                                        |
+| Quyền và dữ liệu | `VALIDATION_ERROR` (400), `FORBIDDEN` (403), `NOT_FOUND` (404), `CONFLICT` (409), `INTERNAL_ERROR` (500)                                                                                                 |
+| Nghiệp vụ (409)    | `CLASS_FULL`, `CLASS_CANCELLED`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `CAPACITY_BELOW_ENROLLED`, `SCHEDULE_LOCKED` |
 
 Với `POST /api/registrations`, các mã nghiệp vụ nằm trong `results[].code` của từng lớp, không phải HTTP 4xx. Đặc tả từng trường: [docs/api-design.md](docs/api-design.md); Swagger chạy cùng backend.
 
 ## 3. Công nghệ và kỹ thuật
 
-| Thành phần | Lựa chọn |
-|---|---|
-| Backend | Go 1.26, Gin, pgx v5, golang-jwt (HS256), bcrypt, swaggo (Swagger sinh từ chú thích) |
-| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, router theo hash; token trong `sessionStorage` |
-| Database | PostgreSQL 16, 9 bảng, ràng buộc `CHECK`/`UNIQUE`/FK; một file `database/migrations/001_initial.sql` |
-| Triển khai | Docker Compose (local): 3 container `db`, `backend`, `frontend`; frontend build bằng Node rồi phục vụ bằng nginx, nginx chuyển `/api/` tới backend. Render (demo Internet): một Web Service duy nhất, không dùng nginx, Go phục vụ cả React đã build qua `FRONTEND_DIR` |
-| CI | GitHub Actions: `go test`/`go vet`, `npm run typecheck`/`build`, build image Render và smoke test API + trình duyệt (Playwright) |
+| Thành phần | Lựa chọn                                                                                                                                                                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend      | Go 1.26, Gin, pgx v5, golang-jwt (HS256), bcrypt, swaggo (Swagger sinh từ chú thích)                                                                                                                                                                                                           |
+| Frontend     | React 19, TypeScript, Vite, Tailwind CSS 4, router theo hash; token trong `sessionStorage`                                                                                                                                                                                                      |
+| Database     | PostgreSQL 16, 9 bảng, ràng buộc `CHECK`/`UNIQUE`/FK; một file `database/migrations/001_initial.sql`                                                                                                                                                                                    |
+| Triển khai  | Docker Compose (local): 3 container `db`, `backend`, `frontend`; frontend build bằng Node rồi phục vụ bằng nginx, nginx chuyển `/api/` tới backend. Render (demo Internet): một Web Service duy nhất, không dùng nginx, Go phục vụ cả React đã build qua `FRONTEND_DIR` |
+| CI           | GitHub Actions: `go test`/`go vet`, `npm run typecheck`/`build`, build image Render và smoke test API + trình duyệt (Playwright)                                                                                                                                                       |
 
 **Kiến trúc backend.** Ba tầng một chiều `controller → service → repository`: controller giữ route, DTO, middleware, ánh xạ lỗi; service giữ quy tắc nghiệp vụ và lỗi nghiệp vụ; repository giữ SQL. Controller không chứa SQL, service không import `gin`.
 
@@ -136,20 +137,20 @@ docker compose up -d --wait
 
 Chỉ chạy lệnh tiếp theo khi lệnh trước thành công. `verify` phải chạy **trước khi đăng nhập hoặc gọi API**, vì sau đó dữ liệu không còn khớp dữ liệu mẫu (103 đăng ký, 0 phiên). Kết quả cuối: `db`, `backend`, `frontend` đều `healthy`.
 
-| Nội dung | Local (Docker) | Render (demo Internet) |
-|---|---|---|
-| Giao diện | <http://localhost:5173> | <https://course-registration-demo.onrender.com/> |
-| Swagger UI (`/swagger/doc.json`: đặc tả JSON) | <http://localhost:8080/swagger/index.html> | <https://course-registration-demo.onrender.com/swagger/index.html> |
-| Kiểm tra tiến trình API | <http://localhost:8080/health> | <https://course-registration-demo.onrender.com/health> |
+| Nội dung                                          | Local (Docker)                                                                      | Render (demo Internet)                                                                                                              |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Giao diện                                         | [http://localhost:5173](http://localhost:5173)                                       | [https://course-registration-demo.onrender.com/](https://course-registration-demo.onrender.com/)                                     |
+| Swagger UI (`/swagger/doc.json`: đặc tả JSON) | [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html) | [https://course-registration-demo.onrender.com/swagger/index.html](https://course-registration-demo.onrender.com/swagger/index.html) |
+| Kiểm tra tiến trình API                         | [http://localhost:8080/health](http://localhost:8080/health)                         | [https://course-registration-demo.onrender.com/health](https://course-registration-demo.onrender.com/health)                         |
 
 **Tài khoản demo** (dùng chung cho bản local và bản Render):
 
-| Vai trò | Username | Password | Ghi chú |
-|---|---|---|---|
-| Sinh viên | `student001` | `DemoUET@123` | Đã có sẵn một đăng ký (lớp 4), dùng để thử hủy và đăng ký lại |
-| Sinh viên | `student002`–`student100` | `DemoUET@123` | Dùng cho các tình huống trong `scenarios.json` |
-| Quản trị viên | `admin1` | `DemoUET@123` | Tạo, sửa, hủy lớp học phần |
-| Quản trị viên | `admin2` | `DemoUET@123` | Như `admin1` |
+| Vai trò         | Username                       | Password        | Ghi chú                                                                         |
+| ---------------- | ------------------------------ | --------------- | -------------------------------------------------------------------------------- |
+| Sinh viên       | `student001`                 | `DemoUET@123` | Đã có sẵn một đăng ký (lớp 4), dùng để thử hủy và đăng ký lại |
+| Sinh viên       | `student002`–`student100` | `DemoUET@123` | Dùng cho các tình huống trong `scenarios.json`                             |
+| Quản trị viên | `admin1`                     | `DemoUET@123` | Tạo, sửa, hủy lớp học phần                                                 |
+| Quản trị viên | `admin2`                     | `DemoUET@123` | Như `admin1`                                                                  |
 
 Sinh viên chỉ có một phiên hoạt động: sau khi đăng xuất hoặc hết hạn phải chờ `LOGIN_COOLDOWN` (mặc định 20 phút) mới đăng nhập lại. Quản trị viên không có cooldown.
 
@@ -174,27 +175,25 @@ docker compose up -d --force-recreate backend # sau khi đổi .env
 
 ## 7. Tài liệu chi tiết
 
-| Cần biết | Xem |
-|---|---|
-| Yêu cầu, quy tắc nghiệp vụ, tiêu chí nghiệm thu | [docs/SRS.md](docs/SRS.md) |
-| Request/response từng trường, mã lỗi, vòng đời phiên | [docs/api-design.md](docs/api-design.md) |
-| Schema, ràng buộc, ERD | [docs/database-design.md](docs/database-design.md), [docs/diagrams/](docs/diagrams/) |
-| Kiến trúc, luồng xử lý, quy ước code | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Quyết định kỹ thuật (ngôn ngữ, PostgreSQL, JWT, phiên) | [docs/adr/](docs/adr/) |
-| Dữ liệu mẫu và tình huống kiểm thử | [database/docs/](database/docs/) |
+| Cần biết                                                     | Xem                                                                                |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Yêu cầu, quy tắc nghiệp vụ, tiêu chí nghiệm thu        | [docs/SRS.md](docs/SRS.md)                                                          |
+| Request/response từng trường, mã lỗi, vòng đời phiên  | [docs/api-design.md](docs/api-design.md)                                            |
+| Schema, ràng buộc, ERD                                       | [docs/database-design.md](docs/database-design.md), [docs/diagrams/](docs/diagrams/) |
+| Kiến trúc, luồng xử lý, quy ước code                    | [ARCHITECTURE.md](ARCHITECTURE.md)                                                  |
+| Quyết định kỹ thuật (ngôn ngữ, PostgreSQL, JWT, phiên) | [docs/adr/](docs/adr/)                                                              |
+| Dữ liệu mẫu và tình huống kiểm thử                     | [database/docs/](database/docs/)                                                    |
 
 ## 8. Gợi ý cho Phase 2
 
 Phase 1 dừng ở đúng nghiệp vụ, nhất quán dữ liệu và bảo mật cơ bản. Các hướng cho Phase 2:
 
-| Hướng | Gợi ý |
-|---|---|
+| Hướng              | Gợi ý                                                                                                                                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Xử lý đồng thời | Kiểm chứng các tình huống tranh chấp (giành chỗ cuối, đăng ký/hủy đồng thời, sửa lớp khi đang đăng ký, đăng nhập song song) bằng kiểm thử tải; cân nhắc hàng đợi hoặc khóa phân tán khi chạy nhiều instance |
-| Tối ưu hiệu năng | Đo trước khi tối ưu: chỉ mục và truy vấn, kích thước connection pool, bộ nhớ đệm cho danh sách lớp |
-| Kiến trúc | Cân nhắc tách thành các dịch vụ riêng (microservices) như xác thực, lớp học phần, đăng ký, nếu số liệu tải cho thấy cần thiết |
-| Mã nguồn | Áp dụng thêm design pattern ở những chỗ quy tắc đăng ký phình to, ví dụ tách từng quy tắc thành đối tượng kiểm tra riêng |
-| Bảo vệ API | Rate limit và chống DoS/DDoS, đặc biệt với `POST /api/auth/login` và `POST /api/registrations` |
-| Bảo mật | Dùng HTTPS khi triển khai thực tế (SRS yêu cầu, Phase 1 đang dùng HTTP). Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS |
-| Phân trang | Phân trang và lọc phía server cho `GET /api/classes` khi số lớp tăng |
-| Migration | Thay cơ chế fingerprint bằng migration có phiên bản, để nâng cấp schema mà không phải xóa dữ liệu |
-| Hạ tầng | Sao lưu database, môi trường staging trước khi deploy production |
+| Tối ưu hiệu năng | Đo trước khi tối ưu: chỉ mục và truy vấn, kích thước connection pool, bộ nhớ đệm cho danh sách lớp                                                                                                                                |
+| Mã nguồn           | Tách rule đăng ký thành các policy/validator có thể kiểm thử độc lập, chỉ áp dụng nếu service thực sự phình to.                                                                                                                 |
+| Bảo vệ API         | Rate limit, request timeout, body-size limit và connection limit                                                                                                                                                                                   |
+| Bảo mật            | Dùng HTTPS khi triển khai thực tế. Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS                                                                         |
+| Phân trang          | Phân trang và lọc phía server cho `GET /api/classes` khi số lớp tăng                                                                                                                                                                       |
+| Vận hành           | Thay cơ chế fingerprint bằng migration có phiên bản, sao lưu database, môi trường staging trước khi deploy production                                                                                                                   |
