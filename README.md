@@ -121,7 +121,7 @@ course-registration/
 
 Quy ước backend: mỗi tài nguyên một file trong mỗi tầng (`class.go` ở cả ba tầng); struct request/response ở `controller/`, struct theo bảng ở `repository/`; lỗi nghiệp vụ ở `service/errors.go`, ánh xạ sang HTTP ở `controller/response.go`. Chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1.
 
-## 5. Chạy bằng Docker (local)
+## 5. Chạy bằng Docker
 
 Cần Docker Desktop (Linux containers) và Docker Compose v2. Chạy từ thư mục gốc bằng PowerShell; không cần cài Go hay Python.
 
@@ -137,11 +137,11 @@ docker compose up -d --wait
 
 Chỉ chạy lệnh tiếp theo khi lệnh trước thành công. `verify` phải chạy **trước khi đăng nhập hoặc gọi API**, vì sau đó dữ liệu không còn khớp dữ liệu mẫu (103 đăng ký, 0 phiên). Kết quả cuối: `db`, `backend`, `frontend` đều `healthy`.
 
-| Địa chỉ (cổng mặc định) | |
-|---|---|
-| <http://localhost:5173> | Giao diện |
-| <http://localhost:8080/swagger/index.html> | Swagger UI (`/swagger/doc.json`: đặc tả JSON) |
-| <http://localhost:8080/health> | Kiểm tra tiến trình API |
+| Nội dung | Local (Docker) | Render (demo Internet) |
+|---|---|---|
+| Giao diện | <http://localhost:5173> | <https://course-registration-demo.onrender.com/> |
+| Swagger UI (`/swagger/doc.json`: đặc tả JSON) | <http://localhost:8080/swagger/index.html> | <https://course-registration-demo.onrender.com/swagger/index.html> |
+| Kiểm tra tiến trình API | <http://localhost:8080/health> | <https://course-registration-demo.onrender.com/health> |
 
 **Tài khoản demo** (dùng chung cho bản local và bản Render):
 
