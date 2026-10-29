@@ -21,6 +21,6 @@ Mỗi request được bảo vệ cần thêm truy vấn, nên việc xác thự
 
 ## Tài liệu liên quan
 
-- [SRS](../SRS.md), §3.1 và §3.5.1.
+- [SRS](../SRS.md), §3.1, §3.5.1 và mục "Quy tắc một phiên và đăng nhập lại" (sau §3.1).
 - [Thiết kế cơ sở dữ liệu](../database-design.md), §3.8.
 - [Thiết kế API](../api-design.md), mục Vòng đời xác thực.

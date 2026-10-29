@@ -6,7 +6,7 @@ Dữ liệu tài khoản, học phần, lớp học phần và đăng ký có qu
 
 ## Quyết định
 
-Chọn **PostgreSQL** cho toàn bộ dữ liệu của hệ thống. PostgreSQL hỗ trợ transaction, khóa ngoại, `UNIQUE`, `CHECK` và có driver pgx cho Go. Cơ sở dữ liệu chạy cùng ứng dụng qua Docker Compose, dữ liệu được lưu trong volume.
+Chọn **PostgreSQL** cho toàn bộ dữ liệu của hệ thống. PostgreSQL hỗ trợ transaction, khóa ngoại, `UNIQUE`, `CHECK` và có driver pgx cho Go. Khi chạy local, cơ sở dữ liệu chạy qua Docker Compose và lưu trong volume; trên Render dùng PostgreSQL của nền tảng.
 
 MySQL/MariaDB cũng đáp ứng được bài toán. SQLite đơn giản hơn về triển khai nhưng chỉ cho phép một tác vụ ghi tại một thời điểm; MongoDB không thuận tiện bằng cơ sở dữ liệu quan hệ khi cần ràng buộc giữa các bảng. PostgreSQL phù hợp với mô hình dữ liệu và cách truy cập bằng SQL của dự án.
 

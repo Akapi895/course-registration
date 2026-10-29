@@ -65,7 +65,6 @@ entity "registrations" as registrations {
     --
     * student_id : bigint <<FK>>
     * class_id : bigint <<FK>>
-    * status : text
     * registered_at : timestamptz
 }
 

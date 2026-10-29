@@ -143,7 +143,18 @@ Chỉ chạy lệnh tiếp theo khi lệnh trước thành công. `verify` phả
 | <http://localhost:8080/swagger/index.html> | Swagger UI (`/swagger/doc.json`: đặc tả JSON) |
 | <http://localhost:8080/health> | Kiểm tra tiến trình API |
 
-Tài khoản demo: `student001`–`student100`, `admin1`, `admin2`; mật khẩu `DemoUET@123`. Trong Swagger, gọi `POST /api/auth/login`, bấm **Authorize** và nhập đầy đủ `Bearer <access_token>`. Kịch bản kiểm thử (thành công, trùng lịch, lớp đầy, vượt tín chỉ, đăng ký lại...) nằm ở [database/data/scenarios.json](database/data/scenarios.json). Đăng nhập lặp lại có thể gặp `429`; xem `login_allowed_at` hoặc đặt `LOGIN_COOLDOWN` ngắn khi thử.
+**Tài khoản demo** (dùng chung cho bản local và bản Render):
+
+| Vai trò | Username | Password | Ghi chú |
+|---|---|---|---|
+| Sinh viên | `student001` | `DemoUET@123` | Đã có sẵn một đăng ký (lớp 4), dùng để thử hủy và đăng ký lại |
+| Sinh viên | `student002`–`student100` | `DemoUET@123` | Dùng cho các tình huống trong `scenarios.json` |
+| Quản trị viên | `admin1` | `DemoUET@123` | Tạo, sửa, hủy lớp học phần |
+| Quản trị viên | `admin2` | `DemoUET@123` | Như `admin1` |
+
+Sinh viên chỉ có một phiên hoạt động: sau khi đăng xuất hoặc hết hạn phải chờ `LOGIN_COOLDOWN` (mặc định 20 phút) mới đăng nhập lại. Quản trị viên không có cooldown.
+
+Trong Swagger, gọi `POST /api/auth/login`, bấm **Authorize** và nhập đầy đủ `Bearer <access_token>`. Kịch bản kiểm thử (thành công, trùng lịch, lớp đầy, vượt tín chỉ, đăng ký lại...) nằm ở [database/data/scenarios.json](database/data/scenarios.json). Đăng nhập lặp lại có thể gặp `429`; xem `login_allowed_at` hoặc đặt `LOGIN_COOLDOWN` ngắn khi thử.
 
 **Cấu hình** nằm trong `.env` (sao chép từ `.env.example`): thông tin PostgreSQL, cổng, `JWT_SECRET`, thời hạn token/phiên (`JWT_TTL`, `SESSION_TTL`, `ADMIN_JWT_TTL`), `LOGIN_COOLDOWN`, `MAX_CREDITS` và ngày neo dữ liệu mẫu `REFERENCE_DATE`. Cần nhớ ba điều: `JWT_TTL` và `SESSION_TTL` phải bằng nhau; `REFERENCE_DATE` phải đặt trước khi seed; nếu Windows không cho bind cổng thì đổi `POSTGRES_PORT`, `PORT` hoặc `FRONTEND_PORT`. Fixture mặc định mở đăng ký từ ngày neo −7 đến +30 ngày.
 

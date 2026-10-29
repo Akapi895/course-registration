@@ -31,8 +31,8 @@ sequenceDiagram
         DB-->>Repo: Current class and student state
         Repo-->>Service: Validation data
         alt Registration allowed
-            Service->>Repo: Insert or reactivate registration
-            Repo->>DB: BEGIN; write registration and enrolled count; COMMIT
+            Service->>Repo: Insert registration
+            Repo->>DB: BEGIN, write registration and enrolled count, COMMIT
             DB-->>Repo: Transaction committed
             Repo-->>Service: Registered result
         else Registration rejected

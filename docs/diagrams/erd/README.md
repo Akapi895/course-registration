@@ -78,7 +78,6 @@ erDiagram
         bigserial id PK
         bigint student_id FK
         bigint class_id FK
-        text status
         timestamptz registered_at
     }
 

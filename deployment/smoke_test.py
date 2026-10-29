@@ -85,6 +85,7 @@ def main():
                '-p', '127.0.0.1::12345', '-e', 'PORT=12345', '-e', 'GIN_MODE=release',
                '-e', 'DATABASE_URL=postgresql://demo:demo_test_only@db:5432/demo',
                '-e', 'JWT_SECRET=render_smoke_test_only_secret', '-e', 'JWT_TTL=45m', '-e', 'SESSION_TTL=45m',
+               '-e', 'ADMIN_JWT_TTL=45m',
                '-e', f'MAX_CREDITS={args.max_credits or ""}', args.image)
         created.append(app)
         port = docker('port', app, '12345/tcp').rsplit(':', 1)[1]
