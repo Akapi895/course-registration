@@ -97,7 +97,6 @@ Table registrations {
   id bigserial [pk]
   student_id bigint [not null]
   class_id bigint [not null]
-  status text [not null, default: 'registered', check: `status IN ('registered', 'cancelled')`]
   registered_at timestamptz [not null, default: `now()`]
 
   indexes {

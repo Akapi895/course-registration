@@ -328,7 +328,7 @@ func (h *ClassController) Update(c *gin.Context) {
 
 // Cancel godoc
 // @Summary     Hủy lớp học phần (admin)
-// @Description Chuyển lớp sang trạng thái cancelled. Các đăng ký còn hiệu lực của lớp cũng được hủy. Không xóa vật lý.
+// @Description Chuyển lớp sang trạng thái cancelled, xóa vật lý toàn bộ đăng ký của lớp và đặt enrolled = 0 trong cùng transaction. Bản ghi lớp học phần được giữ lại.
 // @Tags        classes
 // @Produce     json
 // @Security    BearerAuth

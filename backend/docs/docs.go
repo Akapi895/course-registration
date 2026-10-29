@@ -414,7 +414,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Chuyển lớp sang trạng thái cancelled. Các đăng ký còn hiệu lực của lớp cũng được hủy. Không xóa vật lý.",
+                "description": "Chuyển lớp sang trạng thái cancelled, xóa vật lý toàn bộ đăng ký của lớp và đặt enrolled = 0 trong cùng transaction. Bản ghi lớp học phần được giữ lại.",
                 "produces": [
                     "application/json"
                 ],
@@ -478,7 +478,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Trả về toàn bộ đăng ký đang hiệu lực (status = registered) của sinh viên hiện tại.",
+                "description": "Trả về toàn bộ đăng ký hiện có của sinh viên hiện tại, trên mọi học kỳ.",
                 "produces": [
                     "application/json"
                 ],
@@ -582,7 +582,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Chỉ hủy được đăng ký của chính mình, trong thời gian đăng ký của học kỳ.",
+                "description": "Xóa vật lý đăng ký của chính mình trong thời gian đăng ký của học kỳ và giảm sĩ số trong cùng transaction. ID đã xóa trả 404 NOT_FOUND; đăng ký lại tạo bản ghi với ID mới.",
                 "produces": [
                     "application/json"
                 ],
@@ -625,7 +625,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "REGISTRATION_NOT_ACTIVE hoặc REGISTRATION_CLOSED",
+                        "description": "REGISTRATION_CLOSED",
                         "schema": {
                             "$ref": "#/definitions/controller.failResponse"
                         }
@@ -1232,10 +1232,6 @@ const docTemplate = `{
                 "registered_at": {
                     "type": "string",
                     "example": "2026-10-21T09:00:00+07:00"
-                },
-                "status": {
-                    "type": "string",
-                    "example": "registered"
                 }
             }
         },

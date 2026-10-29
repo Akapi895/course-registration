@@ -144,8 +144,8 @@ def validate_fixture(data):
     results = {(r['student_id'],r['course_id']):r['passed'] for r in data['course_results']}
     for result in data['course_results']:
         assert users[result['student_id']]['role']=='student'
-    active = [r for r in data['registrations'] if r['status']=='registered']
-    for registration in active:
+    registrations = data['registrations']
+    for registration in registrations:
         for prerequisite in graph.get(classes[registration['class_id']]['course_id'],[]):
             assert results.get((registration['student_id'],prerequisite)) is True, 'Registered class lacks a passed prerequisite'
     semesters = {s['id']:s for s in data['semesters']}
@@ -154,17 +154,16 @@ def validate_fixture(data):
         semester = semesters[cls['semester_id']]
         assert users[registration['student_id']]['role']=='student'
         assert semester['registration_opens_at']<=registration['registered_at']<=semester['registration_closes_at']
-        if registration['status']=='registered':
-            assert cls['status']=='active'
+        assert cls['status']=='active'
     schedules = {}
     for s in data['class_schedules']:
         schedules.setdefault(s['class_id'],[]).append(s)
     for cls in classes.values():
-        assert cls['enrolled']==sum(r['class_id']==cls['id'] for r in active)
+        assert cls['enrolled']==sum(r['class_id']==cls['id'] for r in registrations)
         assert cls['enrolled']<=cls['max_capacity']
     for student in users:
         for semester in data['semesters']:
-            selected = [classes[r['class_id']] for r in active if r['student_id']==student and classes[r['class_id']]['semester_id']==semester['id']]
+            selected = [classes[r['class_id']] for r in registrations if r['student_id']==student and classes[r['class_id']]['semester_id']==semester['id']]
             assert not selected or users[student]['role']=='student'
             assert len({c['course_id'] for c in selected})==len(selected), 'Duplicate course for student'
             assert sum(courses[c['course_id']]['credits'] for c in selected)<=semester['max_credits']
@@ -196,7 +195,6 @@ def verify(conn, expected):
         ("UPDATE course_classes SET status='invalid' WHERE id=1", '23514'),
         ("UPDATE class_schedules SET day_of_week=1 WHERE id=1", '23514'),
         ("UPDATE class_schedules SET end_period=0 WHERE id=1", '23514'),
-        ("UPDATE registrations SET status='invalid' WHERE id=1", '23514'),
         ("INSERT INTO registrations(student_id,class_id) VALUES (1,4)", '23505'),
         ("INSERT INTO auth_sessions(user_id,expires_at) VALUES (-1,now())", '23503'),
         ("INSERT INTO course_results(student_id,course_id,passed) SELECT student_id,course_id,true FROM course_results ORDER BY student_id,course_id LIMIT 1", '23505'),

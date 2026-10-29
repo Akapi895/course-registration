@@ -180,8 +180,8 @@ func (s *ClassService) Update(ctx context.Context, p *Principal, classID int64, 
 	return mapClassWriteError(err)
 }
 
-// Cancel cancels a class instead of deleting it, so registrations keep a valid
-// reference. Registrations of the class are cancelled in the same transaction.
+// Cancel keeps the class row but deletes its registrations and resets its
+// enrolled count in the same transaction.
 func (s *ClassService) Cancel(ctx context.Context, p *Principal, classID int64) error {
 	if err := requireAdmin(p); err != nil {
 		return err

@@ -102,7 +102,7 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 | 3 | Ghi nhận thông tin đăng ký của sinh viên theo từng lớp học phần và cập nhật sĩ số lớp tương ứng, đảm bảo dữ liệu đăng ký và sĩ số luôn nhất quán. |
 | 4 | Sinh viên xem được danh sách học phần đã đăng ký thành công của mình. |
 | 5 | Sinh viên có thể hủy đăng ký lớp học phần đã đăng ký. |
-| 6 | Hệ thống cập nhật trạng thái đăng ký và sĩ số lớp học phần khi hủy đăng ký thành công. |
+| 6 | Hệ thống xóa vật lý bản ghi đăng ký và giảm sĩ số lớp học phần trong cùng transaction khi hủy đăng ký thành công. |
 | 7 | Cung cấp thời khóa biểu tổng hợp từ các lớp học phần đã đăng ký. |
 | 8 | Trả về kết quả đăng ký/hủy. |
 | 9 | Khi đăng ký nhiều lớp, hệ thống xử lý lần lượt từng lớp theo thứ tự gửi: lớp đáp ứng điều kiện được ghi nhận, lớp không đáp ứng bị từ chối kèm lý do mà không ảnh hưởng các lớp khác. Yêu cầu vẫn hoàn tất khi chỉ một phần số lớp được ghi nhận. |
@@ -113,7 +113,7 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 |---|---|
 | 1 | Quản trị viên có thể tạo lớp học phần mới với dữ liệu hợp lệ. |
 | 2 | Quản trị viên có thể cập nhật thông tin lớp học phần. |
-| 3 | Quản trị viên có thể xóa hoặc hủy lớp học phần theo chính sách đã thống nhất. |
+| 3 | Quản trị viên có thể hủy lớp học phần: giữ bản ghi lớp với `status = cancelled`, xóa vật lý toàn bộ đăng ký của lớp và đặt sĩ số về 0 trong cùng transaction. |
 | 4 | Hệ thống kiểm tra dữ liệu đầu vào trước khi lưu. |
 | 5 | Các API quản trị từ chối request không đủ quyền. |
 
@@ -159,7 +159,7 @@ Form tạo lớp tự lấy `semester.id` từ API danh sách lớp, hiển th�
 | 1 | Giới hạn sĩ số | Từ chối đăng ký nếu sĩ số hiện tại của lớp đã đạt `max_capacity`. |
 | 2 | Thời gian đăng ký | Chỉ cho phép đăng ký hoặc hủy đăng ký trong khoảng thời gian đăng ký của học kỳ. |
 | 3 | Không trùng lịch | Từ chối đăng ký nếu lịch học của lớp bị trùng với lịch học của các lớp sinh viên đã đăng ký trong cùng học kỳ. |
-| 4 | Không đăng ký trùng | Sinh viên chỉ được đăng ký một lần đối với cùng một lớp học phần trong mỗi học kỳ. |
+| 4 | Không đăng ký trùng | Sinh viên chỉ có tối đa một đăng ký còn hiệu lực cho cùng một lớp học phần. Sau khi hủy, có thể đăng ký lại nếu đáp ứng các điều kiện nghiệp vụ. |
 | 5 | Điều kiện tiên quyết | Sinh viên phải đáp ứng các điều kiện về học phần tiên quyết trước khi đăng ký lớp học phần. |
 | 6 | Giới hạn tín chỉ tối đa | Tổng số tín chỉ sau khi đăng ký không được vượt quá giới hạn cho phép. Backend sử dụng `MAX_CREDITS` nếu được cấu hình; nếu không, sử dụng giới hạn tín chỉ được lưu trong database của học kỳ. Frontend hiển thị giới hạn do API cung cấp. |
 | 7 | Thời gian đăng ký hợp lệ | Thời điểm mở đăng ký phải sớm hơn thời điểm đóng đăng ký. Điều kiện này được đảm bảo bằng ràng buộc `CHECK` trong cơ sở dữ liệu. |
@@ -204,7 +204,7 @@ Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên �
 |---|---|---|---|
 | POST | `/api/registrations` | Đăng ký một hoặc nhiều lớp học phần | Sinh viên |
 | GET | `/api/registrations` | Lấy danh sách lớp học phần đã đăng ký của sinh viên hiện tại | Sinh viên |
-| DELETE | `/api/registrations/{id}` | Hủy đăng ký của chính mình; `{id}` là ID đăng ký | Sinh viên sở hữu đăng ký |
+| DELETE | `/api/registrations/{id}` | Xóa vật lý đăng ký của chính mình; `{id}` là ID đăng ký | Sinh viên sở hữu đăng ký |
 | GET | `/api/schedules` | Lấy thời khóa biểu từ các lớp học phần đã đăng ký | Sinh viên |
 
 #### 5.2.4. Quản trị hệ thống
@@ -213,7 +213,7 @@ Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên �
 |---|---|---|---|
 | POST | `/api/classes` | Tạo lớp học phần mới | Quản trị viên |
 | PUT | `/api/classes/{id}` | Cập nhật thông tin lớp học phần | Quản trị viên |
-| DELETE | `/api/classes/{id}` | Hủy mềm lớp học phần và các đăng ký còn hiệu lực của lớp | Quản trị viên |
+| DELETE | `/api/classes/{id}` | Hủy lớp học phần (giữ bản ghi lớp với `status = cancelled`, xóa vật lý các đăng ký của lớp) | Quản trị viên |
 
 ### 5.3. Yêu cầu dữ liệu request/response
 
@@ -289,8 +289,8 @@ Các route này không phải API nghiệp vụ. `/health` trả `200` với `{ 
 | 5 | Đăng ký học phần thành công tạo đúng bản ghi và cập nhật sĩ số tương ứng cho từng lớp được ghi nhận. |
 | 6 | Hệ thống từ chối đăng ký từng lớp khi lớp đầy, ngoài thời gian đăng ký, trùng lịch, không đạt điều kiện tiên quyết, đăng ký trùng hoặc vượt giới hạn tín chỉ, kèm mã lỗi tương ứng cho lớp đó. |
 | 7 | Sinh viên xem được danh sách lớp học phần đã đăng ký và thời khóa biểu của mình. |
-| 8 | Sinh viên chỉ có thể hủy đăng ký thuộc về mình khi đáp ứng điều kiện nghiệp vụ; hủy thành công cập nhật trạng thái đăng ký và sĩ số tương ứng. |
-| 9 | Quản trị viên có thể tạo, cập nhật và hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. |
+| 8 | Sinh viên chỉ có thể hủy đăng ký thuộc về mình khi đáp ứng điều kiện nghiệp vụ; hủy thành công xóa vật lý bản ghi và giảm sĩ số trong cùng transaction. ID đã xóa trả `404 NOT_FOUND`; đăng ký lại tạo ID mới. Danh sách đăng ký và thời khóa biểu không còn lớp đã hủy đăng ký. |
+| 9 | Quản trị viên có thể tạo, cập nhật và hủy lớp học phần; dữ liệu không hợp lệ bị từ chối. Hủy lớp giữ bản ghi lớp ở trạng thái `cancelled`, xóa vật lý toàn bộ đăng ký của lớp và đặt sĩ số về 0 trong cùng transaction. |
 | 10 | OpenAPI/Swagger hoạt động và mô tả đầy đủ các endpoint được triển khai. |
 | 11 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
 | 12 | Yêu cầu đăng ký nhiều lớp ghi nhận các lớp hợp lệ và trả lý do từ chối cho các lớp còn lại; một số lớp bị từ chối không làm mất các lớp đã được ghi nhận. Yêu cầu có danh sách rỗng, trùng lớp hoặc quá 20 lớp bị từ chối toàn bộ. |
