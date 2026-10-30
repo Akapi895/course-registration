@@ -4,7 +4,7 @@ Tài liệu này mô tả chi tiết các API theo yêu cầu trong mục 5.2 c�
 
 ## Phạm vi và phân quyền
 
-Có **12 endpoint nghiệp vụ**, tính theo cặp phương thức và đường dẫn, khớp với router và Swagger. `/health` và `/swagger/*any` là route kỹ thuật, không tính vào số này.
+Có 12 endpoint nghiệp vụ, tính theo cặp phương thức và đường dẫn, khớp với router và Swagger. `/health` và `/swagger/*any` là route kỹ thuật, không tính vào số này.
 
 | STT | Nhóm | Phương thức | Endpoint | Quyền truy cập |
 |---|---|---|---|---|
@@ -22,13 +22,14 @@ Có **12 endpoint nghiệp vụ**, tính theo cặp phương thức và đườn
 | 12 | Quản trị hệ thống | DELETE | `/api/classes/{id}` | Chỉ quản trị viên |
 
 Tất cả API, ngoại trừ API đăng nhập, đều yêu cầu gửi access token trong header `Authorization: Bearer <access_token>`. Token phải hợp lệ và phiên đăng nhập tương ứng vẫn còn hiệu lực. Quản trị viên không được đăng ký hoặc hủy học phần thay sinh viên, đồng thời không được sử dụng các API dành riêng cho sinh viên để xem đăng ký và thời khóa biểu.
-## Hợp đồng request/response
+
+## Đặc tả Request và Response
 
 Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được xác định tại bảng trên. Response lỗi trong bảng là ví dụ, các mã lỗi và ghi chú bên dưới mô tả thêm các trường hợp từ chối.
 
 | Feature | Mô tả | Endpoint | Method | Request Body | Response Body | Response Fail | Auth |
 |---|---|---|---|---|---|---|---|
-| Xác thực và người dùng | Đăng nhập | /api/auth/login | POST | `{ "username": "student001", "password": "<password>" }` | `200` `{ "status": "success", "data": { "access_token": "<jwt>" } }` | `401 INVALID_CREDENTIALS`; `409 ALREADY_LOGGED_IN`; `429 LOGIN_COOLDOWN` — payload chi tiết tại mục Vòng đời xác thực bên dưới | none |
+| Xác thực và người dùng | Đăng nhập | /api/auth/login | POST | `{ "username": "student001", "password": "<password>" }` | `200` `{ "status": "success", "data": { "access_token": "<jwt>" } }` | `401 INVALID_CREDENTIALS`; `409 ALREADY_LOGGED_IN`; `429 LOGIN_COOLDOWN`; payload chi tiết tại mục Vòng đời xác thực bên dưới | none |
 | Xác thực và người dùng | Đăng xuất và kết thúc phiên hiện tại | /api/auth/logout | POST | — | `200` `{ "status": "success", "data": {} }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Xác thực và người dùng | Lấy thông tin người dùng hiện tại | /api/auth/me | GET | — | `200` `{ "status": "success", "data": { "id": 7, "username": "sv001", "role": "student", "full_name": "Nguyễn Văn A", "student_code": "SV001", "faculty": "CNTT", "major": "Khoa học máy tính" } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Tra cứu lớp học phần | Lấy danh sách lớp học phần đang hoạt động của học kỳ hiện tại | /api/classes | GET | — | `200` `{ "status": "success", "data": { "semester": { "id": 2, "name": "Học kỳ 1 năm học 2026-2027", "max_credits": 24, "registration_opens_at": "2026-10-13T00:00:00+07:00", "registration_closes_at": "2026-11-19T00:00:00+07:00", "registration_open": true }, "classes": [ { "id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "lecturer_name": "Giảng viên A", "credits": 3, "enrolled": 42, "max_capacity": 50 } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
@@ -52,7 +53,7 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | `role` | string | `student` hoặc `admin` |
 | `full_name` | string | Họ và tên |
 | `student_code` | string hoặc null | Mã sinh viên; `null` với quản trị viên |
-| `faculty` | string hoặc null | Khoa của người dùng|
+| `faculty` | string hoặc null | Khoa của người dùng |
 | `major` | string hoặc null | Ngành học của người dùng |
 
 Endpoint trả tài khoản gắn với JWT. Frontend dùng `faculty`, `major` để hiển thị tổng quan và lọc lớp theo ngành.
@@ -61,7 +62,7 @@ Endpoint trả tài khoản gắn với JWT. Frontend dùng `faculty`, `major` �
 
 ### JWT và phiên phía backend
 
-JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. Mọi API nghiệp vụ trừ login kiểm tra chữ ký, thuật toán, claim và phiên trong database trước khi phân quyền:
+JWT sử dụng HS256, gửi qua `Authorization: Bearer <access_token>`. Mọi API nghiệp vụ trừ login kiểm tra chữ ký, thuật toán, claim và phiên trong database trước khi phân quyền:
 
 | Claim | Kiểu JSON | Kiểm tra |
 |---|---|---|
@@ -73,26 +74,27 @@ JWT sử dụng **HS256**, gửi qua `Authorization: Bearer <access_token>`. M�
 
 Backend sử dụng cùng một mốc thời gian khi kiểm tra JWT và trạng thái phiên trong cơ sở dữ liệu, kể cả khi PostgreSQL chạy trên một máy khác. Một phiên được xem là còn hoạt động khi `logged_out_at IS NULL AND now < expires_at`; khi đã đến hoặc vượt quá thời điểm hết hạn, phiên không còn hoạt động. Hệ thống không cần tác vụ chạy nền để cập nhật trạng thái hết hạn của phiên.
 
-Đối với sinh viên, `JWT_TTL` và `SESSION_TTL` mặc định là 20m và phải có cùng giá trị. Nếu không cấu hình `SESSION_TTL`, hệ thống sẽ sử dụng giá trị của`JWT_TTL`. Đối với quản trị viên, thời hạn JWT được cấu hình bằng `ADMIN_JWT_TTL`, mặc định là 8h.
+Đối với sinh viên, `JWT_TTL` và `SESSION_TTL` mặc định là 20m và phải có cùng giá trị. Nếu không cấu hình `SESSION_TTL`, hệ thống sẽ sử dụng giá trị của `JWT_TTL`. Đối với quản trị viên, thời hạn JWT được cấu hình bằng `ADMIN_JWT_TTL`, mặc định là 8h.
 
 Khi tạo phiên mới, hệ thống xác định thời điểm hết hạn (`expires_at`) dựa trên thời điểm tạo phiên (`created_at`) và thời hạn tương ứng với vai trò của người dùng. Nếu cấu hình thời hạn được thay đổi, các phiên đã tạo trước đó vẫn giữ nguyên thời điểm hết hạn ban đầu.
 
 Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `LOGIN_COOLDOWN`, mặc định là 20m. Hệ thống sử dụng giá trị cấu hình hiện tại để kiểm tra thời gian chờ khi người dùng đăng nhập.
+
 ### Login: kiểm tra mật khẩu → phiên hoạt động → cooldown
 
-1. Xác thực username/password. Khi 1 trong 2 thông tin không chính xác, hệ thống đều trả cùng response, trước khi kiểm tra trạng thái phiên:
+1. Kiểm tra username/password trước khi xét trạng thái phiên. Sai username hay sai password đều trả cùng một response:
 
    ```json
    { "status": "fail", "data": { "code": "INVALID_CREDENTIALS", "message": "Sai tên đăng nhập hoặc mật khẩu" } }
    ```
 
-2. Khi thông tin hợp lệ, backend khóa dòng `users`, đọc phiên gần nhất theo `created_at`, kiểm tra và tạo phiên trong **cùng transaction**. Mỗi sinh viên chỉ có **một phiên hoạt động** trên mọi thiết bị/trình duyệt/tab. Nếu còn phiên hoạt động, trả **409**, giữ nguyên phiên và `expires_at`, không cấp token mới:
+2. Khi thông tin hợp lệ, backend khóa dòng `users`, đọc phiên gần nhất theo `created_at`, kiểm tra và tạo phiên trong cùng transaction. Mỗi sinh viên chỉ có một phiên hoạt động trên mọi thiết bị/trình duyệt/tab. Nếu còn phiên hoạt động, trả `409`, giữ nguyên phiên và `expires_at`, không cấp token mới:
 
    ```json
    { "status": "fail", "data": { "code": "ALREADY_LOGGED_IN", "message": "Tài khoản đang đăng nhập trên một phiên khác" } }
    ```
 
-3. Nếu phiên đã kết thúc, mốc được login lại là `COALESCE(logged_out_at, expires_at) + LOGIN_COOLDOWN` của **phiên gần nhất**. Chưa đến mốc này thì trả **429**, header `Retry-After` và dữ liệu:
+3. Nếu phiên đã kết thúc, mốc được login lại là `COALESCE(logged_out_at, expires_at) + LOGIN_COOLDOWN` của phiên gần nhất. Chưa đến mốc này thì trả `429`, header `Retry-After` và dữ liệu:
 
    ```json
    { "status": "fail", "data": { "code": "LOGIN_COOLDOWN", "message": "Tài khoản đang trong thời gian chờ đăng nhập lại", "retry_after": 720, "login_allowed_at": "2026-10-26T03:25:00Z" } }
@@ -100,7 +102,7 @@ Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `
 
    `Retry-After: 720` và `data.retry_after` đều cho biết số giây còn chờ trước khi được đăng nhập lại, giá trị này được làm tròn lên. `data.login_allowed_at` là thời điểm RFC 3339 theo backend. Ví dụ, nếu sinh viên đăng xuất lúc 10:05 và thử đăng nhập lúc 10:13, với thời gian chờ mặc định 20 phút, sinh viên còn phải chờ 12 phút và có thể đăng nhập lại từ 10:25. Nếu phiên tự hết hạn lúc 10:20, sinh viên có thể đăng nhập lại từ 10:40.
 
-4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả **200**, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Đối với quản trị viên, hệ thống không giới hạn số phiên đăng nhập và không áp dụng thời gian chờ đăng nhập lại. Mỗi lần đăng nhập sẽ tạo một phiên mới. Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng.
+4. Không có phiên trước hoặc đã hết cooldown: tạo phiên với `sid` mới và trả `200`, `data` chỉ chứa `access_token`. Frontend gọi `GET /api/auth/me` để lấy tài khoản và điều hướng theo vai trò. Đối với quản trị viên, hệ thống không giới hạn số phiên đăng nhập và không áp dụng thời gian chờ đăng nhập lại. Mỗi lần đăng nhập sẽ tạo một phiên mới. Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng.
 
 ### Logout và hết hạn
 
@@ -116,6 +118,7 @@ Thời gian chờ trước khi đăng nhập lại được cấu hình bằng `
 - Trước request có token, frontend kiểm tra hạn; token hết hạn không được gửi tiếp. `401` của request dùng token hiện tại cũng xóa phiên. Phản hồi cũ, timer cũ hoặc yêu cầu bị thay thế không được ghi đè/xóa một phiên đăng nhập mới.
 - `409 ALREADY_LOGGED_IN` hiển thị thông báo tài khoản còn phiên hoạt động, không tạo countdown cooldown và không tác động phiên đang dùng ở thiết bị khác. `429 LOGIN_COOLDOWN` hiển thị countdown theo `retry_after`, lưu riêng theo username trong `sessionStorage`, giữ qua reload và cập nhật khi quay lại tab. Đổi username không bị khóa theo cooldown của tài khoản khác; countdown chỉ phục vụ hiển thị, backend luôn kiểm tra lại.
 - Nếu xảy ra lỗi mạng khi frontend xác thực lại token còn hạn, giao diện hiển thị tùy chọn thử lại. Frontend không tự coi đây là đăng xuất thành công hoặc xóa phiên chỉ vì lỗi mạng. Bộ hẹn giờ hết hạn vẫn hoạt động trong thời gian chờ thử lại hoặc khi trang hiển thị thông báo lỗi mạng.
+
 ## Route kỹ thuật
 
 | Phương thức | Đường dẫn | Xác thực | Kết quả |
@@ -152,7 +155,7 @@ Các route này được cung cấp bởi backend. Khi chạy bằng Docker Comp
 
 ## Ghi chú
 
-- Frontend dựa vào `data.code` để xác định cách xử lý lỗi. `data.message `dùng để hiển thị thông báo cho người dùng.
+- Frontend dựa vào `data.code` để xác định cách xử lý lỗi. `data.message` dùng để hiển thị thông báo cho người dùng.
 - Mọi endpoint nghiệp vụ trừ login cần `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR`.
 - `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp hợp lệ có `status: "registered"` kèm `id`, `registered_at`; lớp bị từ chối có `status: "failed"` kèm `code`, `message` và không ảnh hưởng lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa ghi nhận trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.

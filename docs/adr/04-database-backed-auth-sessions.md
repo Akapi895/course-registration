@@ -6,7 +6,7 @@ JWT còn hạn không tự mất hiệu lực khi người dùng đăng xuất. 
 
 ## Quyết định
 
-Lưu mỗi phiên trong bảng **`auth_sessions`**, liên kết với JWT qua claim `sid`. Dùng PostgreSQL sẵn có để phiên tồn tại qua các lần khởi động lại backend, thay vì lưu trong bộ nhớ hoặc bổ sung một dịch vụ lưu trữ riêng.
+Lưu mỗi phiên trong bảng `auth_sessions`, liên kết với JWT qua claim `sid`. Dùng PostgreSQL sẵn có để phiên tồn tại qua các lần khởi động lại backend, thay vì lưu trong bộ nhớ hoặc bổ sung một dịch vụ lưu trữ riêng.
 
 Bảng chỉ giữ `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Phiên hoạt động khi chưa đăng xuất và chưa đến `expires_at`; không cần cột trạng thái hay tác vụ nền đánh dấu hết hạn.
 

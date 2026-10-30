@@ -6,7 +6,7 @@ Frontend cần gửi thông tin xác thực khi gọi API; backend cần xác đ
 
 ## Quyết định
 
-Dùng **JWT ký bằng HS256** làm access token, gửi qua header `Authorization: Bearer <token>`. Token chứa `sub`, `role`, `sid`, `iat`, `exp`; hết hạn thì người dùng đăng nhập lại.
+Dùng JWT ký bằng HS256 làm access token, gửi qua header `Authorization: Bearer <token>`. Token chứa `sub`, `role`, `sid`, `iat`, `exp`; hết hạn thì người dùng đăng nhập lại.
 
 JWT có định dạng chuẩn và thư viện xác minh sẵn cho Go. HS256 phù hợp khi cùng một backend phát hành và xác minh token, không cần quản lý cặp khóa bất đối xứng. Khóa ký được nạp từ biến môi trường.
 

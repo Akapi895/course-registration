@@ -110,18 +110,18 @@ Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyể
 
 `id` là claim `sid` của JWT. Chỉ mục (`user_id`, `created_at`) phục vụ lấy phiên gần nhất.
 
-**Thời hạn và trạng thái phiên:**
+Thời hạn và trạng thái phiên:
 - `expires_at = created_at + JWT_TTL` (mặc định 20 phút), hoặc `created_at + ADMIN_JWT_TTL` (mặc định 8 giờ) với quản trị viên; `exp` của JWT khớp `expires_at` ở độ chính xác giây. `SESSION_TTL` phải bằng `JWT_TTL`.
-- Phiên hoạt động khi `logged_out_at IS NULL` và thời gian hiện tại **nhỏ hơn** `expires_at`. Hết hạn chỉ là phép so sánh thời gian, không cần cập nhật bảng hay tác vụ nền.
+- Phiên hoạt động khi `logged_out_at IS NULL` và thời gian hiện tại nhỏ hơn `expires_at`. Hết hạn chỉ là phép so sánh thời gian, không cần cập nhật bảng hay tác vụ nền.
 - Đăng xuất khi phiên còn hiệu lực đặt `logged_out_at` một lần, không đổi `expires_at`. Phiên đã hết hạn không bị ghi `logged_out_at`.
 
-**Quy tắc đăng nhập lại (sinh viên, mọi thiết bị):**
-- Mỗi sinh viên có tối đa **một phiên hoạt động**. Khi còn phiên hoạt động, đăng nhập mới bị từ chối, không tạo phiên và không gia hạn. Quản trị viên có thể có nhiều phiên hoạt động và không có cooldown.
+Quy tắc đăng nhập lại (sinh viên, mọi thiết bị):
+- Mỗi sinh viên có tối đa một phiên hoạt động. Khi còn phiên hoạt động, đăng nhập mới bị từ chối, không tạo phiên và không gia hạn. Quản trị viên có thể có nhiều phiên hoạt động và không có cooldown.
 - Phiên gần nhất kết thúc tại `COALESCE(logged_out_at, expires_at)`; sau đó phải đợi `LOGIN_COOLDOWN` (mặc định 20 phút).
-- Kiểm tra phiên gần nhất và tạo phiên mới nằm trong **một transaction khóa dòng `users`**, nên hai lần đăng nhập đồng thời không tạo hai phiên. Mỗi lần đăng nhập tạo `sid` mới.
+- Kiểm tra phiên gần nhất và tạo phiên mới nằm trong một transaction khóa dòng `users`, nên hai lần đăng nhập đồng thời không tạo hai phiên. Mỗi lần đăng nhập tạo `sid` mới.
 - JWT được chấp nhận khi chữ ký, claim hợp lệ, phiên `sid` đang hoạt động, `sub` khớp `user_id`, `exp` khớp `expires_at` và `role` khớp vai trò hiện tại của tài khoản.
 
-Ví dụ: đăng nhập 10:00 → tự đăng xuất 10:05 → được đăng nhập lại từ 10:25; nếu không tự đăng xuất thì hết hạn 10:20 → được đăng nhập lại từ 10:40.
+Ví dụ: đăng nhập lúc 10:00 rồi đăng xuất lúc 10:05 thì được đăng nhập lại từ 10:25. Nếu không đăng xuất, phiên hết hạn lúc 10:20 và được đăng nhập lại từ 10:40.
 
 ### 3.9. `course_results` – Kết quả học tập
 
@@ -135,7 +135,7 @@ Khóa chính ghép (`student_id`, `course_id`) bảo đảm mỗi sinh viên ch�
 
 ## 4. Ràng buộc và tính toàn vẹn dữ liệu
 
-- **Ràng buộc dữ liệu:** PostgreSQL sử dụng PK, FK, UNIQUE, NOT NULL và CHECK để kiểm soát tính hợp lệ, tính duy nhất và mối quan hệ giữa các bảng.
-- **Kiểm tra nghiệp vụ:** Backend kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết, giới hạn tín chỉ và quyền truy cập trước khi cập nhật dữ liệu.
-- **Phiên đăng nhập:** quy tắc ở §3.8.
-- **Tính nhất quán:** Đăng ký và hủy học phần sử dụng transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận.
+- Ràng buộc dữ liệu: PostgreSQL sử dụng PK, FK, UNIQUE, NOT NULL và CHECK để kiểm soát tính hợp lệ, tính duy nhất và mối quan hệ giữa các bảng.
+- Kiểm tra nghiệp vụ: Backend kiểm tra thời gian đăng ký, sĩ số, đăng ký trùng, trùng lịch, điều kiện tiên quyết, giới hạn tín chỉ và quyền truy cập trước khi cập nhật dữ liệu.
+- Phiên đăng nhập: quy tắc ở §3.8.
+- Tính nhất quán: Đăng ký và hủy học phần sử dụng transaction để cập nhật đồng bộ bản ghi đăng ký và sĩ số lớp học phần. Nếu có lỗi xảy ra, các thay đổi sẽ không được ghi nhận.
