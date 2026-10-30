@@ -40,6 +40,7 @@ course-registration/
 │   ├── migrations/
 │   └── tools/
 ├── deployment/                  # Dockerfile, start.py, smoke test cho Render
+├── loadtest/                    # kiểm thử tải/đồng thời/DoS, chạy trên Kaggle CPU (loadtest/README.md)
 ├── docs/
 │   ├── SRS.md
 │   ├── api-design.md

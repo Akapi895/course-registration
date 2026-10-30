@@ -106,6 +106,7 @@ course-registration/
 │   ├── data/                    # catalog học phần, kịch bản kiểm thử (scenarios.json)
 │   └── docs/                    # hướng dẫn dữ liệu mẫu
 ├── deployment/                  # Dockerfile, start.py, smoke test cho Render
+├── loadtest/                    # kiểm thử tải/đồng thời/DoS, chạy trên Kaggle CPU (loadtest/README.md)
 ├── docs/
 │   ├── SRS.md
 │   ├── api-design.md
@@ -184,6 +185,7 @@ docker compose up -d --force-recreate backend # sau khi đổi .env
 | Quyết định kỹ thuật (ngôn ngữ, PostgreSQL, JWT, phiên) | [docs/adr/](docs/adr/) |
 | Thuật ngữ dùng chung | [GLOSSARY.md](GLOSSARY.md) |
 | Dữ liệu mẫu và tình huống kiểm thử | [database/docs/](database/docs/) |
+| Kiểm thử tải, đồng thời và chống chịu DoS (chạy trên Kaggle CPU) | [loadtest/README.md](loadtest/README.md) |
 
 ## 8. Gợi ý cho Phase 2
 
