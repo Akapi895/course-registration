@@ -1,6 +1,6 @@
 """Build the Kaggle dataset bundle in loadtest/dist: a Linux API binary plus database tooling and loadtest scripts.
 
-    python loadtest/package_dataset.py [--skip-build]
+    python loadtest/scripts/package_dataset.py [--skip-build]
     cd loadtest/dist && kaggle datasets create -p . --dir-mode zip
     cd loadtest/dist && kaggle datasets version -p . -m "..." --dir-mode zip
 
@@ -14,8 +14,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-LOADTEST = Path(__file__).resolve().parent
+LOADTEST = Path(__file__).resolve().parents[1]
 REPO = LOADTEST.parent
+SCRIPTS = LOADTEST / "scripts"
 DEV_ONLY = {"package_dataset.py", "check_bundle.py"}
 SKIP_DATABASE = shutil.ignore_patterns("sources", "tests", "docs", "Dockerfile", "__pycache__")
 
@@ -53,13 +54,14 @@ def main() -> None:
     shutil.rmtree(dist / "database", ignore_errors=True)
     shutil.copytree(REPO / "database", dist / "database", ignore=SKIP_DATABASE)
     shutil.rmtree(dist / "loadtest", ignore_errors=True)
-    (dist / "loadtest").mkdir()
-    for script in [*LOADTEST.glob("*.py"), LOADTEST / "requirements.txt"]:
+    (dist / "loadtest" / "scripts").mkdir(parents=True)
+    for script in SCRIPTS.glob("*.py"):
         if script.name not in DEV_ONLY and not script.name.startswith("test_"):
-            shutil.copy2(script, dist / "loadtest" / script.name)
+            shutil.copy2(script, dist / "loadtest" / "scripts" / script.name)
+    shutil.copy2(LOADTEST / "requirements.txt", dist / "loadtest" / "requirements.txt")
 
     manifest = {"commit": output("git", "rev-parse", "HEAD"), "go": output("go", "version", cwd=REPO / "backend"),
-                "api_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(), "suite_version": 2,
+                "api_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(), "suite_version": 3,
                 "working_tree": output("git", "status", "--porcelain"),
                 "files": {str(path.relative_to(dist)).replace("\\", "/"): hashlib.sha256(path.read_bytes()).hexdigest()
                           for folder in (dist / "database", dist / "loadtest") for path in sorted(folder.rglob("*")) if path.is_file()}}

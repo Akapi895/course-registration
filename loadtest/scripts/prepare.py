@@ -20,7 +20,7 @@ from common import (
     RESULTS_DIR, auth_header, login, read_json, wait_until_healthy, write_json,
 )
 
-CATALOG = Path(os.environ.get("CATALOG_PATH", Path(__file__).resolve().parents[1] / "database/data/catalog.json"))
+CATALOG = Path(os.environ.get("CATALOG_PATH", Path(__file__).resolve().parents[2] / "database/data/catalog.json"))
 
 
 def slot(day: int, period: int) -> dict:

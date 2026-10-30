@@ -1,6 +1,6 @@
 """Bring up PostgreSQL 16 and the API inside the Kaggle notebook from the bundle made by package_dataset.py.
 
-    python kaggle_setup.py up | restart-api | reseed | status
+    python loadtest/scripts/kaggle_setup.py up | restart-api | reseed | status
 """
 import argparse
 import hashlib
@@ -19,7 +19,7 @@ from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-BUNDLE = Path(os.environ.get("BUNDLE_ROOT", Path(__file__).resolve().parent.parent))
+BUNDLE = Path(os.environ.get("BUNDLE_ROOT", Path(__file__).resolve().parents[2]))
 API_BINARY = BUNDLE / "api"
 MANAGE = BUNDLE / "database" / "tools" / "manage.py"
 RESULTS = Path(os.environ.get("LOADTEST_RESULTS_DIR", BUNDLE / "loadtest" / "results"))
@@ -221,7 +221,7 @@ def up() -> None:
     if (RESULTS / "environment.json").exists():
         raise RuntimeError("this result directory already has a run; create a new run directory")
     manifest = json.loads((BUNDLE / "MANIFEST.json").read_text())
-    if manifest.get("suite_version") != 2:
+    if manifest.get("suite_version") != 3:
         raise RuntimeError("dataset and notebook versions differ; attach the newly packaged dataset")
     expected = {"api": manifest["api_sha256"], **manifest["files"]}
     for name, digest in expected.items():

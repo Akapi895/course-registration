@@ -12,7 +12,7 @@ import httpx
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:8080")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "DemoUET@123")
-RESULTS_DIR = Path(os.environ.get("LOADTEST_RESULTS_DIR", Path(__file__).resolve().parent / "results"))
+RESULTS_DIR = Path(os.environ.get("LOADTEST_RESULTS_DIR", Path(__file__).resolve().parents[1] / "results"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 STUDENT_USERNAMES = [f"student{i:03d}" for i in range(1, 101)]
