@@ -2,26 +2,24 @@
 
 Ứng dụng web để sinh viên đăng ký học phần trong đợt đăng ký của học kỳ và để quản trị viên quản lý lớp học phần. Backend Go/Gin + PostgreSQL 16, frontend React, tài liệu API theo OpenAPI (Swagger).
 
-- **Demo trực tuyến (Render):** [https://course-registration-demo.onrender.com/](https://course-registration-demo.onrender.com/)
-- **Swagger UI:** [https://course-registration-demo.onrender.com/swagger/index.html](https://course-registration-demo.onrender.com/swagger/index.html)
-
----
+- Demo trực tuyến (Render): <https://course-registration-demo.onrender.com/>
+- Swagger UI: <https://course-registration-demo.onrender.com/swagger/index.html>
 
 ## 1. Bài toán và nghiệp vụ
 
-Hệ thống cung cấp giải pháp đăng ký học phần trực tuyến theo thời gian thực cho trường đại học, phân quyền theo 2 vai trò chính:
+Hệ thống có hai role:
 
-- **Sinh viên:** Tra cứu lớp học phần, thực hiện đăng ký / hủy môn học và theo dõi thời khóa biểu cá nhân.
-- **Quản trị viên:** Quản lý danh mục lớp học phần (tạo mới, điều chỉnh thông tin hoặc hủy lớp).
+- Sinh viên: tra cứu lớp học phần, đăng ký/hủy học phần và xem thời khóa biểu của mình.
+- Quản trị viên: tạo, sửa và hủy lớp học phần.
 
-**Tóm tắt quy tắc cốt lõi:**
-- **Điều kiện đăng ký:** Tự động kiểm tra sĩ số lớp, khung giờ mở cổng đăng ký, trùng lịch học, học phần tiên quyết và giới hạn tín chỉ tối đa trong học kỳ.
-- **Xử lý đăng ký:** Hỗ trợ đăng ký đồng thời 1–20 lớp trong một request, xử lý tuần tự theo từng transaction độc lập (lớp lỗi không ảnh hưởng các lớp thành công).
-- **Chính sách phiên & dữ liệu:** Mỗi sinh viên duy trì tối đa 1 phiên hoạt động (áp dụng `LOGIN_COOLDOWN` 20 phút); dữ liệu hủy đăng ký được xử lý xóa vật lý để giải phóng chỉ tiêu ngay lập tức.
+Các quy tắc chính:
 
-*Chi tiết đặc tả yêu cầu, toàn bộ quy tắc nghiệp vụ và tiêu chí nghiệm thu: xem tại [docs/SRS.md](docs/SRS.md).*
+- Mỗi lớp được kiểm tra sĩ số, thời gian đăng ký, trùng lịch, học phần tiên quyết và giới hạn tín chỉ của học kỳ.
+- Một request đăng ký được 1–20 lớp, xử lý lần lượt, mỗi lớp một transaction; lớp bị từ chối không ảnh hưởng các lớp đã thành công.
+- Hủy đăng ký xóa hẳn record trong database và giảm sĩ số lớp trong cùng transaction.
+- Mỗi sinh viên có tối đa một phiên hoạt động và phải chờ `LOGIN_COOLDOWN` (mặc định 20 phút) sau khi phiên kết thúc mới đăng nhập lại được.
 
----
+Đặc tả đầy đủ, quy tắc nghiệp vụ và tiêu chí nghiệm thu: [docs/SRS.md](docs/SRS.md).
 
 ## 2. API: 12 endpoint
 
@@ -40,18 +38,14 @@ Hệ thống cung cấp giải pháp đăng ký học phần trực tuyến theo
 | 11 | Quản trị | PUT | `/api/classes/{id}` | Admin |
 | 12 | Quản trị | DELETE | `/api/classes/{id}` | Admin |
 
-*Chi tiết request/response, payload và mã lỗi: xem tại Swagger UI hoặc [docs/api-design.md](docs/api-design.md).*
-
----
+Request, response và mã lỗi: Swagger UI hoặc [docs/api-design.md](docs/api-design.md).
 
 ## 3. Công nghệ và kỹ thuật
 
-- **Backend:** Go 1.26, Gin, pgx v5, JWT, Swagger.
-- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4.
-- **Database:** PostgreSQL 16.
-- **DevOps & CI:** Docker Compose, Render, GitHub Actions.
-
----
+- Backend: Go 1.26, Gin, pgx v5, JWT, Swagger.
+- Frontend: React 19, TypeScript, Vite, Tailwind CSS 4.
+- Database: PostgreSQL 16.
+- Triển khai và CI: Docker Compose, Render, GitHub Actions.
 
 ## 4. Tổ chức mã nguồn
 
@@ -102,9 +96,7 @@ course-registration/
 └── README.md
 ```
 
-*Quy ước: mỗi tài nguyên một file qua 3 tầng (controller / service / repository). Chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).*
-
----
+Mỗi tài nguyên có một file ở mỗi tầng (controller, service, repository); quy ước chi tiết ở [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 5. Hướng dẫn chạy (Docker)
 
@@ -122,20 +114,20 @@ docker compose --profile tools run --rm verify
 docker compose up -d --wait
 ```
 
-> *Lưu ý: Lệnh `verify` cần chạy trước khi gọi API hoặc đăng nhập để đảm bảo dữ liệu khớp đúng fixture ban đầu.*
+Lưu ý: Cần chạy `verify` trước khi gọi API hoặc đăng nhập để kiểm tra dữ liệu còn khớp fixture ban đầu.
 
-### 5.2. Truy cập & Tài khoản thử nghiệm
+### 5.2. Truy cập và tài khoản thử nghiệm
 
-- **Giao diện Web:** <http://localhost:5173>
-- **Swagger UI:** <http://localhost:8080/swagger/index.html> *(Health check: <http://localhost:8080/health>)*
+- Giao diện web: <http://localhost:5173>
+- Swagger UI: <http://localhost:8080/swagger/index.html>; health check: <http://localhost:8080/health>
 
 | Vai trò | Username | Password | Ghi chú |
 |---|---|---|---|
-| **Sinh viên** | `student001` | `DemoUET@123` | Đã có sẵn 1 đăng ký lớp 4 (dùng để thử hủy & đăng ký lại) |
-| **Sinh viên** | `student002` – `student100` | `DemoUET@123` | Dùng cho các kịch bản trong `database/data/scenarios.json` |
-| **Quản trị viên** | `admin1`, `admin2` | `DemoUET@123` | Quản trị danh sách lớp học phần |
+| Sinh viên | `student001` | `DemoUET@123` | Đã có sẵn 1 đăng ký lớp 4 (dùng để thử hủy & đăng ký lại) |
+| Sinh viên | `student002` – `student100` | `DemoUET@123` | Dùng cho các kịch bản trong `database/data/scenarios.json` |
+| Quản trị viên | `admin1`, `admin2` | `DemoUET@123` | Quản trị danh sách lớp học phần |
 
-> *Lưu ý : Sinh viên chỉ duy trì duy nhất 1 phiên hoạt động (cần chờ `LOGIN_COOLDOWN` sau khi kết thúc phiên để đăng nhập lại). Quản trị viên không áp dụng cooldown.*
+Sinh viên chỉ có một phiên hoạt động và phải chờ `LOGIN_COOLDOWN` sau khi phiên kết thúc mới đăng nhập. Không áp dụng giới hạn trên cho quản trị viên.
 
 ### 5.3. Thao tác vận hành thường dùng
 
@@ -151,22 +143,15 @@ docker compose up -d --build --wait frontend
 docker compose down -v
 ```
 
----
+## 6. Deploy lên Cloud
 
-## 6. Triển khai lên Cloud
+Bản demo chạy trên Render qua Blueprint (`render.yaml`):
 
-Hệ thống được đóng gói và triển khai tự động lên **Render** thông qua Blueprint (`render.yaml`):
+- Thành phần: một Docker Web Service (Go phục vụ cả API và bản build frontend) và một PostgreSQL 16 cùng vùng.
+- CI/CD: Render tự deploy khi `main` qua kiểm tra trên GitHub Actions; `deployment/start.py` kiểm tra schema và nạp dữ liệu mẫu khi container khởi động.
+- Health check: <https://course-registration-demo.onrender.com/health>
 
-- **Thành phần:** 1 Docker Web Service (Go đóng vai trò reverse proxy phục vụ cả API và frontend tĩnh) kết nối 1 cơ sở dữ liệu PostgreSQL 16 cùng vùng.
-- **Quy trình CI/CD:** Tự động kích hoạt khi push vào nhánh `main` sau khi vượt qua kiểm thử trên GitHub Actions; script `deployment/start.py` tự động xác thực schema và nạp dữ liệu mẫu khi khởi động container.
-- **Kết quả triển khai (Demo Live):**
-  - **Giao diện Web:** <https://course-registration-demo.onrender.com/>
-  - **Swagger UI:** <https://course-registration-demo.onrender.com/swagger/index.html>
-  - **Health Check:** <https://course-registration-demo.onrender.com/health>
-
-*Chi tiết quy trình triển khai và cấu hình biến môi trường: xem tại [deployment/README.md](deployment/README.md).*
-
----
+Quy trình triển khai và biến môi trường: [deployment/README.md](deployment/README.md).
 
 ## 7. Tài liệu chi tiết
 
@@ -178,7 +163,8 @@ Hệ thống được đóng gói và triển khai tự động lên **Render** 
 | Kiến trúc hệ thống, luồng dữ liệu, quy ước code | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Bản ghi các quyết định kỹ thuật | [docs/adr/](docs/adr/) |
 | Hướng dẫn dữ liệu mẫu và kịch bản kiểm thử | [database/docs/demo-guide.md](database/docs/demo-guide.md), [database/data/scenarios.json](database/data/scenarios.json) |
-| Hướng dẫn triển khai Render & CI/CD | [deployment/README.md](deployment/README.md) |
+| Hướng dẫn triển khai Render và CI/CD | [deployment/README.md](deployment/README.md) |
+| Kết quả kiểm thử tải và chống chịu | [loadtest/README.md](loadtest/README.md) |
 
 ## 8. Gợi ý cho Phase 2
 
@@ -186,12 +172,13 @@ Phase 1 tập trung bảo đảm tính đúng đắn nghiệp vụ, nhất quán
 
 | Hướng | Gợi ý |
 |---|---|
-| Xử lý đồng thời | Kiểm chứng các tình huống tranh chấp (giành chỗ cuối, đăng ký/hủy đồng thời, sửa lớp khi đang đăng ký, đăng nhập song song) bằng kiểm thử tải; cân nhắc hàng đợi hoặc khóa phân tán khi chạy nhiều instance |
-| Tối ưu hiệu năng | Đo trước khi tối ưu: chỉ mục và truy vấn, kích thước connection pool, bộ nhớ đệm cho danh sách lớp |
-| Kiến trúc | Cân nhắc tách thành các dịch vụ riêng (microservices) như xác thực, lớp học phần, đăng ký, nếu số liệu tải cho thấy cần thiết |
+| Xử lý đồng thời | Tranh chấp dữ liệu đã qua kiểm thử tải ([loadtest/README.md](loadtest/README.md)); cân nhắc hàng đợi hoặc khóa phân tán khi chạy nhiều instance |
+| Tối ưu hiệu năng | Giảm tải cho đăng nhập (điểm nghẽn chính), cache danh sách lớp, rà soát chỉ mục, truy vấn và connection pool |
+| Kiến trúc | Chỉ cân nhắc tách microservices nếu sau khi xử lý các điểm nghẽn trên, tải thực tế vẫn vượt khả năng |
 | Mã nguồn | Áp dụng thêm design pattern ở những chỗ quy tắc đăng ký phình to, ví dụ tách từng quy tắc thành đối tượng kiểm tra riêng |
-| Bảo vệ API | Rate limit và chống DoS/DDoS, đặc biệt với `POST /api/auth/login` và `POST /api/registrations` |
+| Bảo vệ API | Rate limit cho đăng nhập và đăng ký, giới hạn số lần thử sai mật khẩu theo tài khoản, timeout cho HTTP server, giới hạn kích thước body |
+| Kiểm soát quá tải | Giới hạn số lượt kiểm tra mật khẩu chạy đồng thời, từ chối sớm khi quá tải, bỏ qua yêu cầu client đã hủy và không tính chúng là lỗi 500 |
 | Bảo mật | Dùng HTTPS khi triển khai thực tế (SRS yêu cầu, Phase 1 đang dùng HTTP). Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS |
-| Phân trang | Phân trang và lọc phía server cho `GET /api/classes` khi số lớp tăng |
+| Phân trang | Phân trang và lọc phía server cho `GET /api/classes` |
 | Migration | Thay cơ chế fingerprint bằng migration có phiên bản, để nâng cấp schema mà không phải xóa dữ liệu |
 | Hạ tầng | Sao lưu database, môi trường staging trước khi deploy production |
