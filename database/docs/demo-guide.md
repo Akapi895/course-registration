@@ -21,7 +21,7 @@ docker compose ps
 
 Lần build đầu cần Internet để tải image/thư viện. Seed dùng catalog đã lưu, không cần crawl UET lại. Các service công cụ dùng chung image; khi sửa requirements hoặc Dockerfile, chạy lại `docker compose build seed`. Mã Python và dataset được bind mount nên lần chạy tiếp theo đọc trực tiếp thay đổi trong repo.
 
-Kết quả mong đợi: service `db` có trạng thái `healthy`; verify in `PASS` và các số lượng: 102 users, 3 semesters, 126 courses, 83 course_prerequisites, 80 course_classes, 82 class_schedules, 104 registrations, 0 auth_sessions, 98 course_results. Seed lần hai báo `Identical demo already exists; no changes`.
+Kết quả mong đợi: service `db` có trạng thái `healthy`; verify in `PASS` và các số lượng: 102 users, 3 semesters, 126 courses, 83 course_prerequisites, 80 course_classes, 82 class_schedules, 103 registrations, 0 auth_sessions, 100 course_results. Seed lần hai báo `Identical demo already exists; no changes`.
 
 `.env` local hiện đặt `POSTGRES_PORT=55432` vì Windows từ chối bind cổng 5432. File `.env.example` vẫn mặc định 5432; nếu tạo lại `.env` từ file mẫu trên máy này, đổi lại thành 55432 trước khi chạy `docker compose up -d db`. Cổng nội bộ giữa các container luôn là `db:5432`.
 
@@ -76,11 +76,11 @@ WHERE cc.semester_id = 2
 ORDER BY cc.id, cs.id LIMIT 20;
 ```
 
-Xem đăng ký của `student001`, gồm bản ghi đã hủy ở lớp 6:
+Xem đăng ký của `student001`. Bảng chỉ lưu đăng ký còn hiệu lực; không có bản ghi ở lớp 6:
 
 ```sql
 SELECT r.id, u.username, cc.id AS class_id, cc.class_code,
-       c.name, c.credits, r.status
+       c.name, c.credits, r.registered_at
 FROM registrations r
 JOIN users u ON u.id = r.student_id
 JOIN course_classes cc ON cc.id = r.class_id
@@ -126,10 +126,10 @@ WITH reserved AS (
 )
 INSERT INTO registrations (student_id, class_id)
 SELECT 1, id FROM reserved
-RETURNING id, student_id, class_id, status;
+RETURNING id, student_id, class_id, registered_at;
 
 SELECT id, enrolled, max_capacity FROM course_classes WHERE id = 7;
-SELECT student_id, class_id, status FROM registrations
+SELECT student_id, class_id, registered_at FROM registrations
 WHERE student_id = 1 AND class_id = 7;
 
 -- Hoàn tác để bộ demo giữ nguyên cho lần chạy tiếp theo.
@@ -169,5 +169,7 @@ docker compose run --rm verify
 ```
 
 Nếu seed báo database chứa dữ liệu khác, đây là cơ chế tránh ghi đè thay đổi của bạn. Chỉ reset nếu muốn bỏ những thay đổi đó. Muốn chuyển ngày demo, đặt `REFERENCE_DATE` trong `.env` trước khi seed database sạch; dữ liệu thời gian không tự chạy theo ngày hiện tại. Giới hạn 12 tín chỉ là cấu hình demo.
+
+`registrations` chỉ gồm `id`, `student_id`, `class_id`, `registered_at`: hủy đăng ký xóa vật lý bản ghi, đăng ký lại tạo ID mới. Database có schema khác phải được dựng lại; `reset` ở trên chỉ xóa dữ liệu, không đổi schema. Với database demo local có thể bỏ toàn bộ dữ liệu: chạy `docker compose down -v`, sau đó thực hiện lại quy trình database mới tại [README gốc §5](../../README.md#5-chạy-bằng-docker). Build lại image không đổi schema trong volume cũ.
 
 Compose chỉ mở PostgreSQL trên loopback. Nếu tự cấu hình mật khẩu có ký tự đặc biệt, cần percent-encode thành phần mật khẩu trong URI `DATABASE_URL`; cấu hình mặc định hiện tại không gặp vấn đề này.

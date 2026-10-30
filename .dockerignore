@@ -8,3 +8,5 @@ database/tests/__pycache__
 frontend/dist
 frontend/.env
 .env
+loadtest/dist
+loadtest/results

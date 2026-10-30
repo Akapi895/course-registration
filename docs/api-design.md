@@ -1,6 +1,6 @@
 # Thiết kế API
 
-Tài liệu này mô tả chi tiết các API theo yêu cầu trong mục 5.2 của SRS. Nếu có điểm chưa thống nhất, ưu tiên nội dung trong SRS. Cấu trúc dữ liệu được xác định trong file database.dbml và giải thích chi tiết trong database-design.md.
+Tài liệu này cụ thể hóa SRS §5.2. Schema lấy từ `diagrams/erd/database.dbml` và được mô tả trong `database-design.md`.
 
 ## Phạm vi và phân quyền
 
@@ -27,7 +27,7 @@ Tất cả API, ngoại trừ API đăng nhập, đều yêu cầu gửi access 
 
 Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được xác định tại bảng trên. Response lỗi trong bảng là ví dụ, các mã lỗi và ghi chú bên dưới mô tả thêm các trường hợp từ chối.
 
-| Feature | Mô tả | Endpoint | Method | Request Body | Response Body | Response Fail | Auth |
+| Feature | Mô tả | Endpoint | Method | Request Body | Response Success | Response Fail | Auth |
 |---|---|---|---|---|---|---|---|
 | Xác thực và người dùng | Đăng nhập | /api/auth/login | POST | `{ "username": "student001", "password": "<password>" }` | `200` `{ "status": "success", "data": { "access_token": "<jwt>" } }` | `401 INVALID_CREDENTIALS`; `409 ALREADY_LOGGED_IN`; `429 LOGIN_COOLDOWN`; payload chi tiết tại mục Vòng đời xác thực bên dưới | none |
 | Xác thực và người dùng | Đăng xuất và kết thúc phiên hiện tại | /api/auth/logout | POST | — | `200` `{ "status": "success", "data": {} }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
@@ -35,8 +35,8 @@ Cột `Auth` cho biết yêu cầu gửi token; quyền theo vai trò được x
 | Tra cứu lớp học phần | Lấy danh sách lớp học phần đang hoạt động của học kỳ hiện tại | /api/classes | GET | — | `200` `{ "status": "success", "data": { "semester": { "id": 2, "name": "Học kỳ 1 năm học 2026-2027", "max_credits": 24, "registration_opens_at": "2026-10-13T00:00:00+07:00", "registration_closes_at": "2026-11-19T00:00:00+07:00", "registration_open": true }, "classes": [ { "id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "lecturer_name": "Giảng viên A", "credits": 3, "enrolled": 42, "max_capacity": 50 } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Tra cứu lớp học phần | Chi tiết lớp học phần | /api/classes/{id} | GET | — | `200` `{ "status": "success", "data": { "id": 10, "course_id": 5, "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "faculty": "Công nghệ thông tin", "major": "Khoa học máy tính", "semester_id": 2, "semester_name": "Học kỳ 1 năm học 2026-2027", "class_code": "INT3401-01", "lecturer_name": "Giảng viên A", "max_capacity": 50, "enrolled": 42, "status": "active", "schedules": [ { "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ], "prerequisites": [ { "course_id": 4, "course_code": "INT2211", "course_name": "Cơ sở dữ liệu", "passed": true } ] } }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy dữ liệu" } }` | required |
 | Đăng ký học phần và thời khóa biểu | Đăng ký một hoặc nhiều lớp học phần cho tài khoản hiện tại; xử lý từng lớp, lớp hợp lệ được ghi nhận, lớp bị từ chối được báo lại | /api/registrations | POST | `{ "class_ids": [10, 11, 12, 13, 14] }` | `200` `{ "status": "success", "data": { "registered_count": 3, "failed_count": 2, "results": [ { "class_id": 10, "status": "registered", "id": 301, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 11, "status": "registered", "id": 302, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 12, "status": "registered", "id": 303, "registered_at": "2026-10-21T09:00:00+07:00" }, { "class_id": 13, "status": "failed", "code": "CLASS_FULL", "message": "Lớp học phần đã đủ sĩ số" }, { "class_id": 14, "status": "failed", "code": "SCHEDULE_CONFLICT", "message": "Lớp bị trùng lịch với học phần đã đăng ký" } ] } }` | `400` `{ "status": "fail", "data": { "code": "VALIDATION_ERROR", "message": "Danh sách lớp bị trùng" } }` | required |
-| Đăng ký học phần và thời khóa biểu | Xem toàn bộ học phần đã đăng ký của mình | /api/registrations | GET | — | `200` `{ "status": "success", "data": { "registrations": [ { "id": 301, "class_id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "status": "registered", "registered_at": "2026-10-21T09:00:00+07:00" } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
-| Đăng ký học phần và thời khóa biểu | Hủy đăng ký của mình; `{id}` là `registrations.id` | /api/registrations/{id} | DELETE | — | `200` `{ "status": "success", "data": {} }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy đăng ký của bạn" } }` | required |
+| Đăng ký học phần và thời khóa biểu | Xem toàn bộ học phần đã đăng ký của mình | /api/registrations | GET | — | `200` `{ "status": "success", "data": { "registrations": [ { "id": 301, "class_id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "credits": 3, "registered_at": "2026-10-21T09:00:00+07:00" } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
+| Đăng ký học phần và thời khóa biểu | Xóa vật lý đăng ký của mình; `{id}` là `registrations.id` | /api/registrations/{id} | DELETE | — | `200` `{ "status": "success", "data": {} }` | `404` `{ "status": "fail", "data": { "code": "NOT_FOUND", "message": "Không tìm thấy đăng ký của bạn" } }` | required |
 | Đăng ký học phần và thời khóa biểu | Thời khóa biểu của mình | /api/schedules | GET | — | `200` `{ "status": "success", "data": { "schedules": [ { "class_id": 10, "class_code": "INT3401-01", "course_code": "INT3401", "course_name": "Hệ điều hành", "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ] } }` | `401` `{ "status": "fail", "data": { "code": "UNAUTHORIZED", "message": "Chưa đăng nhập hoặc phiên không hợp lệ" } }` | required |
 | Quản trị hệ thống | Tạo lớp học phần kèm lịch học | /api/classes | POST | `{ "course_id": 5, "semester_id": 2, "class_code": "INT3401-01", "lecturer_name": "Giảng viên A", "max_capacity": 50, "schedules": [ { "day_of_week": 2, "start_period": 1, "end_period": 3, "room": "A2-301" } ] }` | `201` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "status": "active", "enrolled": 0 } }` | `409` `{ "status": "fail", "data": { "code": "CONFLICT", "message": "class_code đã tồn tại trong học kỳ" } }` | required |
 | Quản trị hệ thống | Cập nhật các trường được phép sửa của lớp | /api/classes/{id} | PUT | `{ "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60, "schedules": [ { "day_of_week": 3, "start_period": 4, "end_period": 6, "room": "A2-302" } ] }` | `200` `{ "status": "success", "data": { "id": 10, "class_code": "INT3401-01", "lecturer_name": "Giảng viên B", "max_capacity": 60 } }` | `409` `{ "status": "fail", "data": { "code": "SCHEDULE_LOCKED", "message": "Không thể sửa lịch học khi lớp đã có sinh viên đăng ký" } }` | required |
@@ -139,7 +139,7 @@ Các route này được cung cấp bởi backend. Khi chạy bằng Docker Comp
 | `LOGIN_COOLDOWN` | 429 | Đúng thông tin đăng nhập nhưng chưa qua `LOGIN_COOLDOWN` (mặc định 20 phút) kể từ lúc phiên gần nhất kết thúc; có `Retry-After`, `data.retry_after` và `data.login_allowed_at` |
 | `SESSION_REVOKED` | 401 | Token còn đúng chữ ký nhưng phiên tương ứng đã chủ động đăng xuất hoặc không còn hoạt động (hết hạn trong database) |
 | `FORBIDDEN` | 403 | Đã đăng nhập nhưng không đủ quyền |
-| `NOT_FOUND` | 404 | Tài nguyên không tồn tại hoặc không thuộc người dùng hiện tại |
+| `NOT_FOUND` | 404 | Tài nguyên không tồn tại, không thuộc người dùng hiện tại hoặc `{id}` trong đường dẫn không phải số |
 | `CONFLICT` | 409 | Trùng dữ liệu duy nhất, ví dụ `class_code` đã có trong học kỳ |
 | `CLASS_CANCELLED` | 409 | Lớp học phần đã bị hủy |
 | `CLASS_FULL` | 409 | Lớp học phần đã đủ sĩ số |
@@ -150,14 +150,13 @@ Các route này được cung cấp bởi backend. Khi chạy bằng Docker Comp
 | `SCHEDULE_CONFLICT` | 409 | Trùng lịch với lớp đã đăng ký trong cùng học kỳ |
 | `PREREQUISITE_NOT_MET` | 409 | Chưa đạt học phần tiên quyết |
 | `CREDIT_LIMIT_EXCEEDED` | 409 | Vượt số tín chỉ tối đa của học kỳ |
-| `REGISTRATION_NOT_ACTIVE` | 409 | Hủy đăng ký không ở trạng thái đã đăng ký |
 | `INTERNAL_ERROR` | 500 | Lỗi không lường trước, không trả chi tiết nội bộ |
 
 ## Ghi chú
 
 - Frontend dựa vào `data.code` để xác định cách xử lý lỗi. `data.message` dùng để hiển thị thông báo cho người dùng.
 - Mọi endpoint nghiệp vụ trừ login cần `Authorization: Bearer <access_token>` và có thể trả `UNAUTHORIZED`, `SESSION_REVOKED`, `FORBIDDEN`, `INTERNAL_ERROR`.
-- `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`.
+- `POST /api/registrations`: body chỉ nhận `class_ids`, gồm 1 đến 20 ID lớp dương và không trùng nhau. Sai định dạng, danh sách rỗng, quá 20 lớp hoặc có ID trùng thì cả yêu cầu bị từ chối với `400 VALIDATION_ERROR` và không lớp nào được xử lý. Người dùng không phải sinh viên nhận `403 FORBIDDEN`, nhưng chỉ khi body hợp lệ.
 - `POST /api/registrations` xử lý các lớp lần lượt theo thứ tự trong `class_ids`, mỗi lớp trong một transaction riêng. Lớp hợp lệ có `status: "registered"` kèm `id`, `registered_at`; lớp bị từ chối có `status: "failed"` kèm `code`, `message` và không ảnh hưởng lớp khác. Trùng lịch và giới hạn tín chỉ tính cả các lớp vừa ghi nhận trong cùng yêu cầu, nên thứ tự gửi quyết định lớp nào được ưu tiên.
 - Nếu yêu cầu có định dạng hợp lệ, API vẫn trả về `200` ngay cả khi không có lớp nào đăng ký thành công (`registered_count = 0`). Trạng thái đăng ký của từng lớp được thể hiện trong `results[].status`, không chỉ dựa vào mã HTTP.
 - `results[].code` có thể là: `NOT_FOUND`, `CLASS_CANCELLED`, `CLASS_FULL`, `REGISTRATION_CLOSED`, `ALREADY_REGISTERED`, `SCHEDULE_CONFLICT`, `PREREQUISITE_NOT_MET`, `CREDIT_LIMIT_EXCEEDED`, `INTERNAL_ERROR`. Ý nghĩa như bảng trên, nhưng nằm trong `results` và không kèm HTTP 4xx.
@@ -172,7 +171,7 @@ Các route này được cung cấp bởi backend. Khi chạy bằng Docker Comp
 - Form tạo lớp lấy `data.semester.id` làm `semester_id` và chỉ hiển thị tên học kỳ ở trường chỉ đọc; chưa cho gửi khi đang tải, tải lỗi hoặc `semester` là `null`. Form sửa lớp hiển thị học kỳ của chính lớp.
 - `POST /api/classes`: `class_code` duy nhất trong học kỳ. `course_id`, `semester_id` phải tồn tại.
 - `PUT /api/classes/{id}`: không đổi `course_id`, `semester_id`. `max_capacity` không nhỏ hơn `enrolled`. Khi `enrolled > 0` không sửa được `schedules`.
-- `DELETE /api/classes/{id}`: hủy mềm. Các đăng ký `registered` của lớp chuyển sang `cancelled`, `enrolled = 0`.
-- `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình.
+- `DELETE /api/classes/{id}`: giữ bản ghi lớp với `status = cancelled`, xóa vật lý toàn bộ đăng ký của lớp và đặt `enrolled = 0` trong cùng transaction.
+- `DELETE /api/registrations/{id}`: chỉ hủy đăng ký của chính mình trong thời gian đăng ký; xóa vật lý bản ghi và giảm `enrolled` của lớp trong cùng transaction. Đăng ký lại tạo bản ghi với `id` và `registered_at` mới.
 - Hai endpoint DELETE trên trả `200` với `data: {}` khi hủy thành công.
-- `GET /api/registrations` và `GET /api/schedules` trả đăng ký đang hiệu lực và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ. Client tự lọc theo học kỳ nếu cần.
+- `GET /api/registrations` và `GET /api/schedules` trả đăng ký còn tồn tại và lịch học tương ứng của chính sinh viên, trên tất cả học kỳ. Mỗi phần tử `registrations[]` gồm `id`, `class_id`, thông tin lớp/học phần và `registered_at`. `results[].status` trong response POST là `registered` hoặc `failed`, chỉ biểu thị kết quả xử lý từng lớp. Client tự lọc theo học kỳ nếu cần.

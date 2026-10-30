@@ -50,5 +50,9 @@ loadtest/results/
 __pycache__/
 *.py[cod]
 
+# loadtest: built Kaggle dataset bundle and per-run results, never committed
+loadtest/dist/
+loadtest/results/
+
 CLAUDE.md
 AGENTS.md

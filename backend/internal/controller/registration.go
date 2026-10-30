@@ -50,7 +50,6 @@ type registeredClassItem struct {
 	CourseCode   string    `json:"course_code" example:"INT3401"`
 	CourseName   string    `json:"course_name" example:"Hệ điều hành"`
 	Credits      int       `json:"credits" example:"3"`
-	Status       string    `json:"status" example:"registered"`
 	RegisteredAt time.Time `json:"registered_at" example:"2026-10-21T09:00:00+07:00"`
 }
 
@@ -105,7 +104,7 @@ func (h *RegistrationController) Register(c *gin.Context) {
 			item.Status = "failed"
 			data.FailedCount++
 		} else {
-			item.Status = r.Registration.Status
+			item.Status = "registered"
 			item.ID = &r.Registration.ID
 			item.RegisteredAt = &r.Registration.RegisteredAt
 			data.RegisteredCount++
@@ -117,7 +116,7 @@ func (h *RegistrationController) Register(c *gin.Context) {
 
 // List godoc
 // @Summary     Các học phần đã đăng ký của tôi
-// @Description Trả về toàn bộ đăng ký đang hiệu lực (status = registered) của sinh viên hiện tại.
+// @Description Trả về toàn bộ đăng ký hiện có của sinh viên hiện tại, trên mọi học kỳ.
 // @Tags        registrations
 // @Produce     json
 // @Security    BearerAuth
@@ -142,7 +141,6 @@ func (h *RegistrationController) List(c *gin.Context) {
 			CourseCode:   r.CourseCode,
 			CourseName:   r.CourseName,
 			Credits:      r.Credits,
-			Status:       r.Status,
 			RegisteredAt: r.RegisteredAt,
 		})
 	}
@@ -151,7 +149,7 @@ func (h *RegistrationController) List(c *gin.Context) {
 
 // Cancel godoc
 // @Summary     Hủy đăng ký học phần
-// @Description Chỉ hủy được đăng ký của chính mình, trong thời gian đăng ký của học kỳ.
+// @Description Xóa vật lý đăng ký của chính mình trong thời gian đăng ký của học kỳ và giảm sĩ số trong cùng transaction. ID đã xóa trả 404 NOT_FOUND; đăng ký lại tạo bản ghi với ID mới.
 // @Tags        registrations
 // @Produce     json
 // @Security    BearerAuth
@@ -160,7 +158,7 @@ func (h *RegistrationController) List(c *gin.Context) {
 // @Failure     401 {object} failResponse "UNAUTHORIZED hoặc SESSION_REVOKED"
 // @Failure     403 {object} failResponse "FORBIDDEN"
 // @Failure     404 {object} failResponse "NOT_FOUND"
-// @Failure     409 {object} failResponse "REGISTRATION_NOT_ACTIVE hoặc REGISTRATION_CLOSED"
+// @Failure     409 {object} failResponse "REGISTRATION_CLOSED"
 // @Failure     500 {object} failResponse "INTERNAL_ERROR"
 // @Router      /api/registrations/{id} [delete]
 func (h *RegistrationController) Cancel(c *gin.Context) {

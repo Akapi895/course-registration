@@ -28,7 +28,7 @@ async function loadTerm(signal: AbortSignal) {
   const inTerm = new Set(classes.map((c) => c.id))
   return {
     semester,
-    regs: regs.registrations.filter((r) => r.status === 'registered' && inTerm.has(r.class_id)),
+    regs: regs.registrations.filter((r) => inTerm.has(r.class_id)),
     week: timetable.schedules.filter((s) => inTerm.has(s.class_id)).sort(byTime),
   }
 }
@@ -142,7 +142,7 @@ export function StudentClasses() {
   const [running, setRunning] = useState(false)
   const resource = useRequest(useCallback(async (signal: AbortSignal) => {
     const [loaded, regs] = await Promise.all([loadClasses(scopeRef.current, major, signal), api.listRegistrations(signal)])
-    return { semester: loaded.semester, classes: loaded.classes, regs: regs.registrations.filter((r) => r.status === 'registered' && loaded.termIds.has(r.class_id)) }
+    return { semester: loaded.semester, classes: loaded.classes, regs: regs.registrations.filter((r) => loaded.termIds.has(r.class_id)) }
   }, [major]))
   useEffect(() => {
     if (resource.data?.classes) {

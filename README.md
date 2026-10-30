@@ -1,153 +1,197 @@
-# Hệ thống quản lý và đăng ký học phần — Phase 1
+# Hệ thống quản lý và đăng ký học phần
 
-Backend Go/Gin, PostgreSQL 16 và Swagger cho 12 endpoint trong [SRS](docs/SRS.md). Yêu cầu và hợp đồng API nằm tại [docs/SRS.md](docs/SRS.md) và [docs/api-design.md](docs/api-design.md).
+Ứng dụng web để sinh viên đăng ký học phần trong đợt đăng ký của học kỳ và để quản trị viên quản lý lớp học phần. Backend Go/Gin + PostgreSQL 16, frontend React, tài liệu API theo OpenAPI (Swagger).
 
-Demo Internet trên Render: dùng `render.yaml` và làm theo [deployment/README.md](deployment/README.md). Cấu hình này chạy giao diện và API cùng một Web Service, dùng Render PostgreSQL riêng và tự khởi tạo dữ liệu demo trên database trống.
+- **Demo trực tuyến (Render):** [https://course-registration-demo.onrender.com/](https://course-registration-demo.onrender.com/)
+- **Swagger UI:** [https://course-registration-demo.onrender.com/swagger/index.html](https://course-registration-demo.onrender.com/swagger/index.html)
 
-CI chạy trên push/PR vào `main`: kiểm tra Go, frontend và image triển khai. Render tự deploy commit mới trên `main` khi CI thành công; cấu hình và yêu cầu liên kết service được mô tả tại [CI/CD](deployment/README.md#cicd).
+---
 
-## 1. Chuẩn bị cấu hình
+## 1. Bài toán và nghiệp vụ
 
-Cài Docker Desktop, bật Linux containers và Docker Compose v2 có hỗ trợ `--wait`. Lần build đầu cần Internet để tải image và dependency. Chạy các lệnh dưới đây từ thư mục gốc repository bằng PowerShell; không cần cài Go/Python để chạy bằng Docker.
+Hệ thống cung cấp giải pháp đăng ký học phần trực tuyến theo thời gian thực cho trường đại học, phân quyền theo 2 vai trò chính:
+
+- **Sinh viên:** Tra cứu lớp học phần, thực hiện đăng ký / hủy môn học và theo dõi thời khóa biểu cá nhân.
+- **Quản trị viên:** Quản lý danh mục lớp học phần (tạo mới, điều chỉnh thông tin hoặc hủy lớp).
+
+**Tóm tắt quy tắc cốt lõi:**
+- **Điều kiện đăng ký:** Tự động kiểm tra sĩ số lớp, khung giờ mở cổng đăng ký, trùng lịch học, học phần tiên quyết và giới hạn tín chỉ tối đa trong học kỳ.
+- **Xử lý đăng ký:** Hỗ trợ đăng ký đồng thời 1–20 lớp trong một request, xử lý tuần tự theo từng transaction độc lập (lớp lỗi không ảnh hưởng các lớp thành công).
+- **Chính sách phiên & dữ liệu:** Mỗi sinh viên duy trì tối đa 1 phiên hoạt động (áp dụng `LOGIN_COOLDOWN` 20 phút); dữ liệu hủy đăng ký được xử lý xóa vật lý để giải phóng chỉ tiêu ngay lập tức.
+
+*Chi tiết đặc tả yêu cầu, toàn bộ quy tắc nghiệp vụ và tiêu chí nghiệm thu: xem tại [docs/SRS.md](docs/SRS.md).*
+
+---
+
+## 2. API: 12 endpoint
+
+| STT | Nhóm | Phương thức | Endpoint | Quyền truy cập |
+|---|---|---|---|---|
+| 1 | Xác thực | POST | `/api/auth/login` | Công khai |
+| 2 | Xác thực | POST | `/api/auth/logout` | Sinh viên, Admin |
+| 3 | Xác thực | GET | `/api/auth/me` | Sinh viên, Admin |
+| 4 | Lớp học phần | GET | `/api/classes` | Sinh viên, Admin |
+| 5 | Lớp học phần | GET | `/api/classes/{id}` | Sinh viên, Admin |
+| 6 | Đăng ký | POST | `/api/registrations` | Sinh viên |
+| 7 | Đăng ký | GET | `/api/registrations` | Sinh viên |
+| 8 | Đăng ký | DELETE | `/api/registrations/{id}` | Sinh viên sở hữu |
+| 9 | Đăng ký | GET | `/api/schedules` | Sinh viên |
+| 10 | Quản trị | POST | `/api/classes` | Admin |
+| 11 | Quản trị | PUT | `/api/classes/{id}` | Admin |
+| 12 | Quản trị | DELETE | `/api/classes/{id}` | Admin |
+
+*Chi tiết request/response, payload và mã lỗi: xem tại Swagger UI hoặc [docs/api-design.md](docs/api-design.md).*
+
+---
+
+## 3. Công nghệ và kỹ thuật
+
+- **Backend:** Go 1.26, Gin, pgx v5, JWT, Swagger.
+- **Frontend:** React 19, TypeScript, Vite, Tailwind CSS 4.
+- **Database:** PostgreSQL 16.
+- **DevOps & CI:** Docker Compose, Render, GitHub Actions.
+
+---
+
+## 4. Tổ chức mã nguồn
+
+```text
+course-registration/
+├── backend/
+│   ├── cmd/
+│   │   └── api/
+│   │       └── main.go          # nạp config, tạo DB pool, lắp ghép các tầng, chạy server
+│   ├── internal/
+│   │   ├── config/              # đọc biến môi trường vào struct Config
+│   │   ├── controller/          # HTTP: route, middleware xác thực/phân quyền, handler, DTO, ánh xạ lỗi
+│   │   ├── service/             # quy tắc nghiệp vụ, JWT, băm mật khẩu, lỗi nghiệp vụ
+│   │   └── repository/          # truy vấn PostgreSQL, tạo connection pool
+│   ├── docs/                    # Swagger sinh bởi swag, không sửa tay
+│   ├── Dockerfile
+│   ├── go.mod
+│   └── go.sum
+├── frontend/
+│   ├── src/
+│   │   ├── api/                 # client.ts (fetch, gắn token, xử lý 401), index.ts, types.ts
+│   │   ├── auth/                # AuthProvider (phiên, hẹn giờ hết hạn), sessionLock
+│   │   ├── components/          # Layout, ui, PeriodBanner, ClassDetailModal, RegistrationFlow, Schedule
+│   │   ├── hooks/               # useRequest
+│   │   ├── pages/               # auth, student, schedule, admin
+│   │   ├── App.tsx              # bảng route theo vai trò
+│   │   ├── router.tsx           # router theo hash (#/...)
+│   │   └── main.tsx
+│   ├── nginx.conf               # phục vụ bản build và proxy /api/ trong Docker Compose
+│   ├── Dockerfile
+│   └── package.json             # npm + package-lock.json
+├── database/
+│   ├── migrations/              # 001_initial.sql (schema 9 bảng)
+│   ├── tools/                   # migrate, seed, verify, reset
+│   ├── data/                    # catalog học phần, kịch bản kiểm thử (scenarios.json)
+│   └── docs/                    # tài liệu dữ liệu mẫu
+├── deployment/                  # Dockerfile, start.py, smoke test cho Render
+├── loadtest/                    # kiểm thử tải/đồng thời/DoS, chạy trên Kaggle CPU (loadtest/README.md)
+├── docs/
+│   ├── SRS.md
+│   ├── api-design.md
+│   ├── database-design.md
+│   ├── diagrams/                # deployment, erd, sequence, system-architecture, use-case
+│   └── adr/
+├── docker-compose.yml
+├── render.yaml
+├── ARCHITECTURE.md
+└── README.md
+```
+
+*Quy ước: mỗi tài nguyên một file qua 3 tầng (controller / service / repository). Chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).*
+
+---
+
+## 5. Hướng dẫn chạy (Docker)
+
+### 5.1. Khởi động hệ thống
+
+Yêu cầu Docker Desktop (Linux containers) và Docker Compose v2. Chạy từ thư mục gốc bằng PowerShell:
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-```
-
-Nếu đã có `.env`, bổ sung các biến còn thiếu từ `.env.example`, giữ lại cấu hình đang dùng. Các giá trị secret/password trong file mẫu chỉ phục vụ demo local; đặt giá trị riêng khi triển khai.
-
-| Biến | Ý nghĩa |
-|---|---|
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Database và tài khoản PostgreSQL; Compose dùng cùng thông tin cho API và các công cụ dữ liệu |
-| `POSTGRES_PORT` | Cổng PostgreSQL trên host, mặc định `5432`; kết nối giữa container luôn là `db:5432` |
-| `PORT` | Cổng API trên host, mặc định `8080`; API trong container luôn nghe cổng `8080` |
-| `FRONTEND_PORT` | Cổng giao diện trên host, mặc định `5173`; nginx trong container luôn nghe cổng `80` |
-| `DATABASE_URL` | URL khi chạy API trực tiếp trên host; Compose tự cấp URL dùng `db:5432`, không dùng giá trị host này |
-| `JWT_SECRET` | Khóa ký JWT; cần giữ nguyên để token hiện hành tiếp tục được xác thực sau khi khởi động lại |
-| `JWT_TTL`, `SESSION_TTL` | Thời hạn JWT và phiên của sinh viên, mặc định cùng `20m`; hai giá trị phải bằng nhau. Bỏ trống `SESSION_TTL` để theo `JWT_TTL` |
-| `ADMIN_JWT_TTL` | Thời hạn JWT và phiên của quản trị viên, mặc định `8h` |
-| `LOGIN_COOLDOWN` | Khoảng chờ sau khi phiên kết thúc do logout hoặc hết hạn, mặc định `20m`; áp dụng theo tài khoản cho cả sinh viên và admin |
-| `MAX_CREDITS` | Ghi đè giới hạn tín chỉ khi chạy API, ví dụ `26`; bỏ trống để dùng cấu hình từng học kỳ trong database |
-| `REFERENCE_DATE`, `RANDOM_SEED` | Ngày neo và seed của dữ liệu mẫu, mặc định `2026-10-20` và `20261020` |
-
-Nếu cổng bị chiếm hoặc Windows không cho phép bind, đổi `PORT` (ví dụ `8081`), `FRONTEND_PORT` hoặc `POSTGRES_PORT` (máy local hiện dùng `55432`). Khi chạy API trên host, cập nhật cả `DATABASE_URL` cho khớp cổng và thông tin `POSTGRES_*`; password trong URL phải được URL-encode nếu có ký tự đặc biệt. Không chạy frontend Docker và Vite dev cùng lúc nếu cả hai dùng cổng `5173`.
-
-## 2. Khởi chạy lần đầu với database mới
-
-```powershell
 docker compose build backend frontend seed
 docker compose up -d --wait db
 docker compose --profile tools run --rm migrate
 docker compose --profile tools run --rm seed
 docker compose --profile tools run --rm verify
 docker compose up -d --wait
-docker compose ps
 ```
 
-Chỉ chuyển sang lệnh tiếp theo khi lệnh trước thành công. Compose chờ PostgreSQL healthy trước khi bật API, và chờ API healthy trước khi bật giao diện. Migrate/seed được chạy tường minh theo thứ tự trên. Kết quả cuối: `db`, `backend` và `frontend` đều `healthy`. Các công cụ `migrate`, `seed`, `verify`, `crawl` vẫn nằm trong profile `tools`; chúng không chạy khi khởi động ứng dụng bình thường.
+> *Lưu ý: Lệnh `verify` cần chạy trước khi gọi API hoặc đăng nhập để đảm bảo dữ liệu khớp đúng fixture ban đầu.*
 
-Seed dùng catalog đã lưu, không cần crawl nguồn lại. Với fixture mặc định hiện tại, verify báo 102 tài khoản, 80 lớp, 104 đăng ký, 100 kết quả học phần và 0 phiên đăng nhập. Seed chỉ lặp lại được khi dữ liệu còn giống fixture. Sau login hoặc các thao tác API, seed/verify có thể từ chối vì dữ liệu đã đổi; verify fixture trước khi kiểm thử API.
+### 5.2. Truy cập & Tài khoản thử nghiệm
 
-**Database cũ:** dữ liệu được giữ trong volume `postgres_data`. Seed mới không tự ghi đè dữ liệu cũ hoặc dữ liệu đã bị API thay đổi; muốn nạp lại fixture, dùng database/project riêng hoặc quy trình reset tường minh trong [hướng dẫn dữ liệu](database/docs/demo-guide.md). Đổi `POSTGRES_*` trong `.env` không tự đổi tài khoản/database trong volume đã khởi tạo.
+- **Giao diện Web:** <http://localhost:5173>
+- **Swagger UI:** <http://localhost:8080/swagger/index.html> *(Health check: <http://localhost:8080/health>)*
 
-## 3. Sử dụng và kiểm thử Swagger
+| Vai trò | Username | Password | Ghi chú |
+|---|---|---|---|
+| **Sinh viên** | `student001` | `DemoUET@123` | Đã có sẵn 1 đăng ký lớp 4 (dùng để thử hủy & đăng ký lại) |
+| **Sinh viên** | `student002` – `student100` | `DemoUET@123` | Dùng cho các kịch bản trong `database/data/scenarios.json` |
+| **Quản trị viên** | `admin1`, `admin2` | `DemoUET@123` | Quản trị danh sách lớp học phần |
 
-Với `PORT=8080` và `FRONTEND_PORT=5173`:
+> *Lưu ý : Sinh viên chỉ duy trì duy nhất 1 phiên hoạt động (cần chờ `LOGIN_COOLDOWN` sau khi kết thúc phiên để đăng nhập lại). Quản trị viên không áp dụng cooldown.*
 
-- Giao diện: <http://localhost:5173>.
-- Kiểm tra tiến trình API: <http://localhost:8080/health>.
-- Swagger UI: <http://localhost:8080/swagger/index.html>.
-- Đặc tả JSON: <http://localhost:8080/swagger/doc.json>.
-
-Nếu đổi `PORT`, thay cổng tương ứng trong URL. `/health` kiểm tra tiến trình HTTP; dùng login hoặc API nghiệp vụ để kiểm tra cả schema và dữ liệu.
-
-1. Tại Swagger, gọi `POST /api/auth/login` bằng `student001` hoặc `admin1`, password demo `DemoUET@123`. Các tài khoản khác: `student002`–`student100`, `admin2`.
-2. Sao chép `data.access_token`, bấm **Authorize**, nhập đầy đủ `Bearer <access_token>` rồi thử các API được bảo vệ.
-3. Dùng [database/data/scenarios.json](database/data/scenarios.json) để chọn tài khoản/lớp cho các tình huống thành công và lỗi nghiệp vụ. Kiểm tra cả phân quyền, quyền sở hữu và token cũ sau logout theo SRS §8.
-
-Thời gian nghiệp vụ dùng đồng hồ thực, không dùng `REFERENCE_DATE`. Fixture mặc định mở đăng ký từ ngày neo −7 đến +30 ngày. Nếu demo ở thời điểm khác, chọn ngày neo phù hợp **trước khi seed database mới**, hoặc sửa trực tiếp `registration_opens_at`/`registration_closes_at` của bảng `semesters` (không còn API cấu hình). Giới hạn 12 tín chỉ là cấu hình demo.
-
-## 4. Dừng, khởi động lại và kiểm tra lỗi
+### 5.3. Thao tác vận hành thường dùng
 
 ```powershell
-docker compose logs backend frontend db
-docker compose stop
-docker compose up -d --wait
-```
+# Xem log các service
+docker compose logs -f backend frontend db
 
-`docker compose down` gỡ container/network nhưng giữ volume. `docker compose down -v` xóa dữ liệu PostgreSQL; chỉ dùng khi chủ động bỏ database đó. Sau khi thay code backend, chạy `docker compose up -d --build --wait backend`; sau khi thay code frontend, chạy `docker compose up -d --build --wait frontend`. Khi thay dependency hoặc Dockerfile của công cụ dữ liệu, chạy lại `docker compose build seed`.
-
-Có thể chỉ chạy database và công cụ như trước:
-
-```powershell
-docker compose up -d --wait db
-docker compose --profile tools run --rm migrate
-docker compose --profile tools run --rm verify
-```
-
-Nếu API không khởi động, kiểm tra log và `JWT_TTL`/`SESSION_TTL`. Nếu login lỗi do thiếu bảng/dữ liệu, hoàn tất migrate và seed trước. Nếu `REGISTRATION_CLOSED`, kiểm tra cửa sổ đăng ký của học kỳ thay vì chỉ kiểm tra trạng thái container.
-
-## 5. Phát triển backend trên host
-
-Cần Go 1.26.0 và PostgreSQL đã migrate/seed. Đặt `DATABASE_URL` trỏ tới `127.0.0.1:<POSTGRES_PORT>`, khai báo `JWT_SECRET` trong `.env`. Dừng service backend trong Compose để nhường cổng nếu cần: `docker compose stop backend`.
-
-Chạy trong thư mục `backend/`:
-
-```powershell
-go run ./cmd/api
-# Các lệnh kiểm tra chạy ở terminal khác hoặc sau khi dừng API:
-go test ./...
-go vet ./...
-gofmt -l .
-```
-
-Backend nạp `.env` đầu tiên tìm thấy trong thư mục hiện tại hoặc thư mục cha; biến môi trường của shell được ưu tiên. `go test` báo `[no test files]` không thay thế việc kiểm thử API qua Swagger.
-
-Khi sửa annotation/DTO API, tái sinh Swagger từ `backend/`:
-
-```powershell
-go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g cmd/api/main.go -o docs
-```
-
-`backend/docs/` là mã/tài liệu sinh tự động và đã được đóng gói trong binary. Kiến trúc và quy ước code: [ARCHITECTURE.md](ARCHITECTURE.md) §2.1; schema: [docs/database-design.md](docs/database-design.md) và [docs/database.dbml](docs/database.dbml). Một số mô tả cũ trong tài liệu database được viết trước khi có API; dùng hướng dẫn khởi chạy backend tại README này.
-
-Kiểm thử API auth với PostgreSQL thật (từ `backend/`): đặt `TEST_DATABASE_URL` trỏ tới database kiểm thử, rồi chạy `go test ./internal/controller -run '^TestAuth' -v`. Mỗi test tạo và xóa schema riêng; không nạp fixture vào schema ứng dụng. Khi thiếu biến này, các test tích hợp được đánh dấu bỏ qua; CI luôn cấp PostgreSQL để chạy chúng. Các trường hợp gồm login đồng thời, vai trò thay đổi, claim JWT sai, logout và hết hạn tự động cùng hai nhánh cooldown.
-
-Schema `auth_sessions` chỉ có `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Database dựng từ schema khác phải được dựng lại theo §2; đổi `001_initial.sql` hoặc build lại image không chuyển schema trong volume cũ. Công cụ dữ liệu từ chối fingerprint không khớp.
-
-## 6. Chạy frontend
-
-### Docker (khuyến nghị)
-
-Phần 2 đã build và khởi chạy cả frontend. Mở <http://localhost:5173> (hoặc `FRONTEND_PORT` trong `.env`). Container frontend dùng nginx phục vụ bản build tĩnh và chuyển `/api/*` tới `backend:8080`, nên không cần cài Node trên host và không cần `frontend/.env` khi chạy bằng Compose.
-
-```powershell
-docker compose ps
-docker compose logs frontend
-# Sau khi sửa code frontend:
+# Rebuild khi sửa code backend / frontend
+docker compose up -d --build --wait backend
 docker compose up -d --build --wait frontend
+
+# Reset toàn bộ database và dữ liệu
+docker compose down -v
 ```
 
-Đổi `FRONTEND_PORT` nếu cổng `5173` bị chiếm; cổng trong container luôn là `80`. Frontend chờ backend healthy rồi mới khởi động.
+---
 
-### Phát triển với Vite (hot reload)
+## 6. Triển khai lên Cloud
 
-Cần Node.js 22.12+ hoặc 24 và backend/database đang chạy. Dừng frontend Docker nếu dùng cùng cổng: `docker compose stop frontend`. Từ thư mục `frontend/`:
+Hệ thống được đóng gói và triển khai tự động lên **Render** thông qua Blueprint (`render.yaml`):
 
-```powershell
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-npm ci
-npm run typecheck
-npm run dev
-```
+- **Thành phần:** 1 Docker Web Service (Go đóng vai trò reverse proxy phục vụ cả API và frontend tĩnh) kết nối 1 cơ sở dữ liệu PostgreSQL 16 cùng vùng.
+- **Quy trình CI/CD:** Tự động kích hoạt khi push vào nhánh `main` sau khi vượt qua kiểm thử trên GitHub Actions; script `deployment/start.py` tự động xác thực schema và nạp dữ liệu mẫu khi khởi động container.
+- **Kết quả triển khai (Demo Live):**
+  - **Giao diện Web:** <https://course-registration-demo.onrender.com/>
+  - **Swagger UI:** <https://course-registration-demo.onrender.com/swagger/index.html>
+  - **Health Check:** <https://course-registration-demo.onrender.com/health>
 
-Mở <http://localhost:5173>. Vite chuyển các request `/api` sang `API_PROXY_TARGET` trong `frontend/.env`, mặc định `http://127.0.0.1:8080`. Nếu backend dùng `PORT=8081`, đặt `API_PROXY_TARGET=http://127.0.0.1:8081`, rồi khởi động lại Vite. Không đưa `JWT_SECRET` vào frontend; giao diện chỉ gửi access token do API cấp.
+*Chi tiết quy trình triển khai và cấu hình biến môi trường: xem tại [deployment/README.md](deployment/README.md).*
 
-- JWT lưu trong `sessionStorage` của tab; reload khôi phục thông tin người dùng bằng `/api/auth/me`. Logout, token hết hạn hoặc phản hồi `401` xóa token cục bộ. Nếu storage không khả dụng, token chỉ giữ trong bộ nhớ.
-- Mỗi lần xác nhận đăng ký gửi một danh sách lớp; backend trả kết quả riêng cho từng lớp. Khi tất cả thành công, phiên frontend chuyển sang chỉ xem; trạng thái này được giữ qua reload và xóa khi đăng xuất/đăng nhập lại. Hết hạn vẫn tự đăng xuất ở cả chế độ thông thường và chỉ xem.
-- Mỗi sinh viên chỉ có một phiên hoạt động trên mọi thiết bị/tab (quản trị viên đăng nhập được nhiều phiên và không có cooldown). Đăng nhập lại khi phiên còn hoạt động nhận `409 ALREADY_LOGGED_IN`, giữ nguyên phiên và thời hạn. Sau logout chủ động hoặc hết hạn tự động, sinh viên phải chờ `LOGIN_COOLDOWN` tính từ `COALESCE(logged_out_at, expires_at)` của phiên gần nhất. Backend trả `429 LOGIN_COOLDOWN`, header `Retry-After`, `data.retry_after` và `data.login_allowed_at`; trang đăng nhập hiển thị đếm ngược sau khi bị từ chối. Đóng tab không gọi logout và không kết thúc phiên backend.
-- `JWT_TTL` và `SESSION_TTL` phải bằng nhau, ví dụ cùng `20m` hoặc cùng `30m`. `MAX_CREDITS=26` áp dụng cùng giới hạn cho response học kỳ và kiểm tra đăng ký, không cần seed lại. Sau khi đổi `.env`, chạy `docker compose up -d --force-recreate backend`; TTL mới dùng khi tạo phiên mới, không đổi thời hạn phiên đã lưu. `LOGIN_COOLDOWN` được tính lại từ cấu hình backend hiện hành.
-- Một lớp có nhiều buổi học, thứ `2…7`. Admin được hủy mềm cả lớp có sinh viên. Form tạo lớp tự lấy học kỳ hiện tại từ `GET /api/classes`, hiển thị tên học kỳ ở trường chỉ đọc và gửi `semester.id`; chưa cho gửi khi không tải được hoặc chưa có học kỳ. ID học phần vẫn nhập tay vì chưa có API danh sách học phần.
-- Khoa/ngành của người dùng hiện tại lấy từ `GET /api/auth/me` để hiển thị tổng quan và lọc lớp theo ngành.
+---
 
-`npm run build` tạo `frontend/dist/`; `npm run preview` phục vụ bản build tại cổng 4173, dùng cùng proxy phát triển. Docker dùng `frontend/Dockerfile` và `frontend/nginx.conf`; khi triển khai máy chủ static khác, cần cấu hình tuyến `/api` tới backend và fallback SPA về `index.html`.
+## 7. Tài liệu chi tiết
+
+| Nội dung | Tài liệu |
+|---|---|
+| Yêu cầu, quy tắc nghiệp vụ, tiêu chí nghiệm thu | [docs/SRS.md](docs/SRS.md) |
+| Đặc tả API từng trường, mã lỗi, vòng đời phiên | [docs/api-design.md](docs/api-design.md) |
+| Thiết kế CSDL, ràng buộc toàn vẹn, sơ đồ ERD | [docs/database-design.md](docs/database-design.md), [docs/diagrams/](docs/diagrams/) |
+| Kiến trúc hệ thống, luồng dữ liệu, quy ước code | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Bản ghi các quyết định kỹ thuật | [docs/adr/](docs/adr/) |
+| Hướng dẫn dữ liệu mẫu và kịch bản kiểm thử | [database/docs/demo-guide.md](database/docs/demo-guide.md), [database/data/scenarios.json](database/data/scenarios.json) |
+| Hướng dẫn triển khai Render & CI/CD | [deployment/README.md](deployment/README.md) |
+
+## 8. Gợi ý cho Phase 2
+
+Phase 1 tập trung bảo đảm tính đúng đắn nghiệp vụ, nhất quán dữ liệu và bảo mật cơ bản. Các hướng mở rộng cho Phase 2:
+
+| Hướng | Gợi ý |
+|---|---|
+| Xử lý đồng thời | Kiểm chứng các tình huống tranh chấp (giành chỗ cuối, đăng ký/hủy đồng thời, sửa lớp khi đang đăng ký, đăng nhập song song) bằng kiểm thử tải; cân nhắc hàng đợi hoặc khóa phân tán khi chạy nhiều instance |
+| Tối ưu hiệu năng | Đo trước khi tối ưu: chỉ mục và truy vấn, kích thước connection pool, bộ nhớ đệm cho danh sách lớp |
+| Kiến trúc | Cân nhắc tách thành các dịch vụ riêng (microservices) như xác thực, lớp học phần, đăng ký, nếu số liệu tải cho thấy cần thiết |
+| Mã nguồn | Áp dụng thêm design pattern ở những chỗ quy tắc đăng ký phình to, ví dụ tách từng quy tắc thành đối tượng kiểm tra riêng |
+| Bảo vệ API | Rate limit và chống DoS/DDoS, đặc biệt với `POST /api/auth/login` và `POST /api/registrations` |
+| Bảo mật | Dùng HTTPS khi triển khai thực tế (SRS yêu cầu, Phase 1 đang dùng HTTP). Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS |
+| Phân trang | Phân trang và lọc phía server cho `GET /api/classes` khi số lớp tăng |
+| Migration | Thay cơ chế fingerprint bằng migration có phiên bản, để nâng cấp schema mà không phải xóa dữ liệu |
+| Hạ tầng | Sao lưu database, môi trường staging trước khi deploy production |

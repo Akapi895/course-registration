@@ -80,17 +80,15 @@ def generate(reference_date, random_seed):
         if i in (30, 60):
             data['class_schedules'].append(dict(id=len(data['class_schedules'])+1, class_id=i,
                 day_of_week=2+(day-1)%6, start_period=start, end_period=start+2, room=f'DEMO-LAB-{i}'))
-    def register(student, class_id, status='registered'):
+    def register(student, class_id):
         cls = data['course_classes'][class_id-1]
         semester = data['semesters'][cls['semester_id']-1]
         at = semester['registration_opens_at'] + timedelta(days=1)
         data['registrations'].append(dict(id=len(data['registrations'])+1, student_id=student,
-            class_id=class_id, status=status, registered_at=at))
-        if status == 'registered':
-            cls['enrolled'] += 1
+            class_id=class_id, registered_at=at))
+        cls['enrolled'] += 1
     for student, cls in [(1,4),(3,1),(4,1),(5,2),(2,10),(2,11),(2,12),(2,13)]:
         register(student, cls)
-    register(1,6,'cancelled')
     for student in range(6, 101):
         # One class/student, keeping room for all controlled edge cases.
         register(student, rng.choice(list(range(17,35)) if student <= 50 else list(range(36,69))))
@@ -103,7 +101,7 @@ def generate(reference_date, random_seed):
     for student in range(1, 101):
         passed = set()
         for r in data['registrations']:
-            if r['student_id'] == student and r['status'] == 'registered':
+            if r['student_id'] == student:
                 passed |= prerequisites_of.get(data['course_classes'][r['class_id']-1]['course_id'], set())
         if student in scenario_targets:
             cls = data['course_classes'][scenario_targets[student]-1]
@@ -119,13 +117,13 @@ def generate(reference_date, random_seed):
     scenarios = [dict(name=name, username=user, **target(cid), expected=expected) for name,user,cid,expected in [
         ('Đăng ký thành công','student001',7,'Đủ chỗ, không trùng lịch, tổng 6/12 tín chỉ'),
         ('Trùng lịch','student001',5,'Trùng buổi học lớp 4'),
-        ('Đăng ký trùng','student001',4,'Đã có bản ghi registered'),
+        ('Đăng ký trùng','student001',4,'Đã có bản ghi đăng ký'),
         ('Vượt tín chỉ','student002',14,'Từ 12 lên 15 tín chỉ'),
         ('Ngoài thời gian - đã đóng','student001',77,'Học kỳ đã đóng'),
         ('Ngoài thời gian - chưa mở','student001',79,'Học kỳ chưa mở'),
         ('Lớp đầy','student001',1,'Sĩ số 2/2'),
         ('Còn một chỗ','student001',2,'Sĩ số 1/2; kiểm tra thêm lịch trước khi đăng ký'),
-        ('Đăng ký lại sau hủy','student001',6,'Tái sử dụng bản ghi cancelled'),
+        ('Đăng ký lại sau hủy','student001',6,'Đăng ký lớp 6, hủy rồi đăng ký lại: tạo bản ghi với ID mới'),
         ('Lớp đã hủy','student001',3,'Lớp cancelled')]]
     return data, dict(reference_date=reference_date, random_seed=random_seed,
         password='DemoUET@123', max_credits_note='12 là cấu hình demo, không phải quy định UET',

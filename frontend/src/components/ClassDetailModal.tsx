@@ -16,7 +16,7 @@ export function ClassDetailModal({ classId, onClose, admin }: { classId: number;
     // Listing registrations is a student-only endpoint, so admins only load the class.
     if (admin) return { c: await api.getClass(classId, signal), registered: undefined }
     const [c, regs] = await Promise.all([api.getClass(classId, signal), api.listRegistrations(signal)])
-    return { c, registered: regs.registrations.some((r) => r.class_id === c.id && r.status === 'registered') }
+    return { c, registered: regs.registrations.some((r) => r.class_id === c.id) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, !!admin]))
   const notFound = resource.error instanceof ApiError && resource.error.status === 404

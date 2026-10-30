@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -139,7 +140,11 @@ func (s *RegistrationService) enroll(
 		return nil, err
 	}
 
-	return tx.Upsert(ctx, studentID, class.ID)
+	reg, err := tx.Insert(ctx, studentID, class.ID)
+	if errors.Is(err, repository.ErrDuplicate) {
+		return nil, ErrAlreadyRegistered
+	}
+	return reg, err
 }
 
 func (s *RegistrationService) Cancel(ctx context.Context, p *Principal, registrationID int64) error {
@@ -153,9 +158,6 @@ func (s *RegistrationService) Cancel(ctx context.Context, p *Principal, registra
 	}
 	if reg == nil {
 		return ErrRegistrationNotFound
-	}
-	if reg.Status != repository.StatusRegistered {
-		return ErrRegistrationNotActive
 	}
 
 	class, err := s.classes.FindByID(ctx, reg.ClassID)
@@ -186,7 +188,7 @@ func (s *RegistrationService) Cancel(ctx context.Context, p *Principal, registra
 			return err
 		}
 		if !cancelled {
-			return ErrRegistrationNotActive
+			return ErrRegistrationNotFound
 		}
 		return tx.ReleaseSeat(ctx, reg.ClassID)
 	})

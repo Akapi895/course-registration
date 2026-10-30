@@ -85,6 +85,7 @@ def main():
                '-p', '127.0.0.1::12345', '-e', 'PORT=12345', '-e', 'GIN_MODE=release',
                '-e', 'DATABASE_URL=postgresql://demo:demo_test_only@db:5432/demo',
                '-e', 'JWT_SECRET=render_smoke_test_only_secret', '-e', 'JWT_TTL=45m', '-e', 'SESSION_TTL=45m',
+               '-e', 'ADMIN_JWT_TTL=45m',
                '-e', f'MAX_CREDITS={args.max_credits or ""}', args.image)
         created.append(app)
         port = docker('port', app, '12345/tcp').rsplit(':', 1)[1]
@@ -237,7 +238,8 @@ def main():
 
                 duplicate = browser.new_page()
                 duplicate.goto(base + '/#/login')
-                duplicate.locator('#username').fill('admin1')
+                # Only students are limited to one active session; admins may hold several.
+                duplicate.locator('#username').fill('student002')
                 duplicate.locator('#password').fill('DemoUET@123')
                 duplicate.get_by_role('button', name='Đăng nhập', exact=True).click()
                 expect(duplicate.get_by_text('Tài khoản đang có phiên đăng nhập', exact=True)).to_be_visible()

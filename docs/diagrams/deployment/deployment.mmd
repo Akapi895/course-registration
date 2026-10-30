@@ -5,7 +5,7 @@ flowchart TB
         local_frontend[frontend container\nNginx + React build]
         local_backend[backend container\nGo/Gin API]
         local_db[(db container\nPostgreSQL 16)]
-        local_tools[tools profile\nmigrate / seed / verify]
+        local_tools[tools profile\nmigrate / seed / verify / crawl]
         volume[(postgres_data volume)]
 
         local_frontend -->|/api proxy| local_backend

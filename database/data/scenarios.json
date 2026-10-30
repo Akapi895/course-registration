@@ -23,7 +23,7 @@
       "username": "student001",
       "class_id": 4,
       "class_code": "INT2208-04",
-      "expected": "Đã có bản ghi registered"
+      "expected": "Đã có bản ghi đăng ký"
     },
     {
       "name": "Vượt tín chỉ",
@@ -65,7 +65,7 @@
       "username": "student001",
       "class_id": 6,
       "class_code": "INT3105-06",
-      "expected": "Tái sử dụng bản ghi cancelled"
+      "expected": "Đăng ký lớp 6, hủy rồi đăng ký lại: tạo bản ghi với ID mới"
     },
     {
       "name": "Lớp đã hủy",

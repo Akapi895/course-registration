@@ -83,7 +83,7 @@ Dữ liệu demo được chia sẻ giữa các phiên truy cập.
 
 ### Database mock và kết thúc phiên demo
 
-`auth_sessions` chỉ gồm `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. Database có schema khác phải được dựng lại: startup không nâng cấp schema và không tự xóa volume, build lại image không đổi database đã tồn tại.
+`auth_sessions` chỉ gồm `id`, `user_id`, `created_at`, `expires_at`, `logged_out_at`. `registrations` chỉ gồm `id`, `student_id`, `class_id`, `registered_at`; hủy đăng ký xóa vật lý bản ghi và đăng ký lại tạo ID mới. Admin hủy lớp giữ bản ghi lớp với `status = cancelled`, xóa vật lý các đăng ký của lớp và đặt sĩ số về 0. Database có schema khác phải được dựng lại: startup không nâng cấp schema và không tự xóa volume, build lại image không đổi database đã tồn tại. Trên Render, dùng PostgreSQL demo mới và cập nhật `DATABASE_URL` trước khi redeploy để startup khởi tạo schema/fixture mới.
 
 Khi cần chủ động kết thúc các phiên đang hoạt động trên database demo dùng schema mới:
 

@@ -6,7 +6,7 @@ PostgreSQL gồm 9 bảng: người dùng, học kỳ, học phần, điều ki�
 
 ## 2. Sơ đồ quan hệ thực thể (ERD)
 
-ERD nằm trong `database.dbml`.
+Sơ đồ ERD có thể được xem trực quan tại thư mục [`docs/diagrams/erd/`](diagrams/erd/) (hỗ trợ [`README.md`](diagrams/erd/README.md), [`erd.mmd`](diagrams/erd/erd.mmd), [`erd.puml`](diagrams/erd/erd.puml) hoặc chỉnh sửa trên dbdiagram.io qua [`database.dbml`](diagrams/erd/database.dbml)).
 
 ## 3. Thiết kế chi tiết các bảng
 
@@ -93,10 +93,9 @@ Mỗi bản ghi thể hiện một buổi học lặp theo tuần. Một lớp h
 | `id` | BIGSERIAL | PK |
 | `student_id` | BIGINT | NOT NULL, FK → `users.id` |
 | `class_id` | BIGINT | NOT NULL, FK → `course_classes.id` |
-| `status` | TEXT | NOT NULL, DEFAULT `registered`; `registered`, `cancelled` |
 | `registered_at` | TIMESTAMPTZ | NOT NULL, DEFAULT `now()` |
 
-Cặp (`student_id`, `class_id`) là duy nhất. Khi hủy, hệ thống chuyển trạng thái thành `cancelled`; nếu đăng ký lại, bản ghi được chuyển về `registered` và cập nhật `registered_at`.
+Cặp (`student_id`, `class_id`) là duy nhất. Bảng chỉ lưu các đăng ký còn hiệu lực. Khi sinh viên hủy đăng ký, hệ thống xóa vật lý bản ghi và giảm sĩ số lớp trong cùng transaction. Đăng ký lại tạo bản ghi mới với `id` và `registered_at` mới. Khi quản trị viên hủy lớp, toàn bộ đăng ký của lớp được xóa vật lý, lớp chuyển sang `cancelled` và `enrolled = 0` trong cùng transaction; bản ghi lớp được giữ lại. Không lưu lịch sử đăng ký/hủy trong bảng này.
 
 ### 3.8. `auth_sessions` – Phiên đăng nhập
 
