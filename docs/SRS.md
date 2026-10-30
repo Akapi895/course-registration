@@ -1,27 +1,11 @@
 # TÀI LIỆU ĐẶC TẢ YÊU CẦU PHẦN MỀM (SRS)
 ## Hệ thống quản lý và đăng ký học phần
 
-- **Dự án:** Hệ thống quản lý và đăng ký học phần
-- **Frontend:** React, TypeScript (Vite)
-- **Backend:** Go (Gin Framework)
-- **Kiến trúc API:** RESTful API
-
 ## 1. Giới thiệu
 
-### 1.1. Mục đích tài liệu
+Hệ thống cung cấp RESTful API kèm giao diện web, phục vụ xác thực, tra cứu lớp học phần, đăng ký/hủy học phần, xem thời khóa biểu và quản trị lớp học phần. Có hai nhóm người dùng: sinh viên và quản trị viên.
 
-Tài liệu xác định các yêu cầu chức năng, quy tắc nghiệp vụ, yêu cầu phi chức năng, đặc tả API và yêu cầu kỹ thuật của hệ thống, làm cơ sở cho quá trình thiết kế, phát triển, kiểm thử và nghiệm thu.
-
-### 1.2. Phạm vi hệ thống
-
-Hệ thống cung cấp RESTful API phục vụ xác thực người dùng, tra cứu lớp học phần, đăng ký/hủy học phần, xem thời khóa biểu và quản trị lớp học phần.
-
-Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua `GET /api/auth/me`. Thời gian đăng ký của học kỳ nằm trong dữ liệu seed.
-
-### 1.3. Đối tượng sử dụng
-
-- Sinh viên.
-- Quản trị viên.
+Tài liệu này là cơ sở để thiết kế, phát triển, kiểm thử và nghiệm thu: yêu cầu chức năng, quy tắc nghiệp vụ, yêu cầu phi chức năng, đặc tả API và yêu cầu kỹ thuật. Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua `GET /api/auth/me`. Thời gian đăng ký của học kỳ nằm trong dữ liệu seed.
 
 ## 2. Mô tả tổng quan
 
@@ -43,9 +27,8 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 
 ### 2.3. Giả định và phụ thuộc
 
-- Dữ liệu người dùng và vai trò phải được quản lý hợp lệ.
-- Dữ liệu học phần, lịch học, học phần tiên quyết và số tín chỉ phải có nguồn dữ liệu đáng tin cậy.
-- Các thông số chưa xác định cần được thống nhất trước khi triển khai và nghiệm thu.
+- Người dùng, học phần, học phần tiên quyết, kết quả học tập và học kỳ không có API quản lý. Chúng được nạp bằng dữ liệu seed và được coi là đúng.
+- Chỉ lớp học phần và lịch học của lớp được quản trị viên thay đổi qua API.
 
 ## 3. Yêu cầu chức năng
 
@@ -56,39 +39,37 @@ Thông tin tài khoản hiện tại, gồm khoa và ngành, được đọc qua
 | 1 | Hệ thống cho phép đăng nhập bằng username và password. |
 | 2 | Hệ thống kiểm tra thông tin đăng nhập và chỉ cấp JWT khi hợp lệ. |
 | 3 | JWT chứa `sub` (ID người dùng), `role` (vai trò), `sid` (ID phiên), `iat` (thời điểm phát hành) và `exp` (thời điểm hết hạn). |
-| 4 | Client gửi JWT trong header Authorization: `Bearer <token>` đối với các API yêu cầu xác thực. |
+| 4 | Client gửi JWT trong header `Authorization: Bearer <token>` với các API yêu cầu xác thực. |
 | 5 | Hệ thống cung cấp API đăng xuất cho phiên hiện tại; backend ghi `auth_sessions.logged_out_at` nếu phiên còn hoạt động và client xóa JWT đang lưu. |
 | 6 | Hệ thống cung cấp API lấy thông tin người dùng hiện tại, gồm `id`, `username`, `role`, `full_name`, `student_code`, `faculty`, `major`. Các trường thông tin sinh viên có thể là `null` khi không có dữ liệu. |
 | 7 | Hệ thống chỉ chấp nhận JWT khi phiên `sid` tương ứng chưa đăng xuất, chưa hết hạn, `sub` khớp người sở hữu phiên và `role` khớp vai trò hiện tại của người dùng. |
 
-`JWT_TTL` và `SESSION_TTL` của sinh viên mặc định là 20 phút và phải có cùng giá trị. Quản trị viên sử dụng `ADMIN_JWT_TTL`, mặc định là 8 giờ. Khi tạo phiên mới, `expires_at` được tính bằng `created_at + JWT_TTL` đối với sinh viên hoặc `created_at + ADMIN_JWT_TTL` đối với quản trị viên. Thời điểm hết hạn `exp` trong JWT phải khớp với `expires_at` đến độ chính xác giây. Các API được bảo vệ phải kiểm tra tính hợp lệ của JWT, đối chiếu với bản ghi tương ứng trong `auth_sessions` và đảm bảo `role` trong JWT khớp với vai trò hiện tại của tài khoản.
+`JWT_TTL` và `SESSION_TTL` của sinh viên mặc định là 20 phút và phải có cùng giá trị. Quản trị viên dùng `ADMIN_JWT_TTL`, mặc định 8 giờ. Khi tạo phiên, `expires_at` bằng `created_at + JWT_TTL` (sinh viên) hoặc `created_at + ADMIN_JWT_TTL` (quản trị viên), và `exp` trong JWT phải khớp `expires_at` đến độ chính xác giây. Các API được bảo vệ kiểm tra JWT, đối chiếu bản ghi trong `auth_sessions` và so `role` trong JWT với vai trò hiện tại của tài khoản.
 
-## Quy tắc một phiên và đăng nhập lại (áp dụng cho sinh viên)
+#### Quy tắc một phiên và đăng nhập lại (sinh viên)
 
 - Mỗi sinh viên chỉ được có một phiên đăng nhập đang hoạt động tại một thời điểm, không phân biệt thiết bị, trình duyệt hay tab. Nếu phiên trước vẫn còn hiệu lực (`logged_out_at IS NULL` và `NOW() < expires_at`), hệ thống từ chối đăng nhập mới, không cấp JWT mới và không gia hạn phiên hiện tại.
 - Khi sinh viên chủ động đăng xuất trước thời hạn, backend ghi nhận `logged_out_at` một lần và vô hiệu hóa JWT của phiên đó ngay lập tức. Nếu phiên hết hạn tại `expires_at`, phiên tự hết hiệu lực mà không cần cập nhật database; `logged_out_at` vẫn là `NULL`.
 - Thời điểm kết thúc phiên được xác định bằng `COALESCE(logged_out_at, expires_at)`. Sinh viên chỉ được đăng nhập lại sau khi thời điểm kết thúc phiên cộng thêm `LOGIN_COOLDOWN` (mặc định 20 phút). Ví dụ: nếu đăng nhập lúc 10:00 và đăng xuất lúc 10:05, sinh viên có thể đăng nhập lại từ 10:25. Nếu không đăng xuất và để phiên hết hạn lúc 10:20, sinh viên có thể đăng nhập lại từ 10:40.
-- Sau khi xác thực username/password, backend khóa bản ghi người dùng trong bảng `users`, sau đó kiểm tra phiên gần nhất và tạo phiên mới trong cùng một transaction. Điều này đảm bảo hai yêu cầu đăng nhập đồng thời không tạo ra hai phiên hoạt động. Nếu đăng nhập bị từ chối, phiên đang hoạt động không bị thay đổi.
-- Quản trị viên không bị giới hạn số phiên và không cần chờ cooldown. Mỗi lần đăng nhập thành công sẽ tạo một phiên mới với `sid` riêng, hết hạn theo `ADMIN_JWT_TTL`. Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng.
+- Sau khi xác thực username/password, backend khóa bản ghi người dùng trong bảng `users`, sau đó kiểm tra phiên gần nhất và tạo phiên mới trong cùng một transaction. Nhờ vậy hai yêu cầu đăng nhập đồng thời không tạo được hai phiên hoạt động. Đăng nhập bị từ chối thì phiên đang hoạt động không đổi.
 
-**Quy tắc phiên đăng nhập của quản trị viên**
+#### Quy tắc phiên của quản trị viên
 
-- Quản trị viên có thể đăng nhập trên nhiều thiết bị hoặc trình duyệt mà không bị giới hạn số phiên và không cần chờ cooldown. Mỗi lần đăng nhập thành công sẽ tạo một phiên mới với `sid` riêng và thời hạn theo `JWT_TTL`.
-- Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng, không ảnh hưởng đến các phiên khác của quản trị viên.
+- Quản trị viên có thể đăng nhập trên nhiều thiết bị hoặc trình duyệt, không bị giới hạn số phiên và không cần chờ cooldown. Mỗi lần đăng nhập thành công tạo một phiên mới với `sid` riêng, hết hạn theo `ADMIN_JWT_TTL`.
+- Khi đăng xuất, hệ thống chỉ kết thúc phiên tương ứng với JWT đang sử dụng, không ảnh hưởng các phiên khác của quản trị viên.
 
-**Xử lý phiên đăng nhập ở frontend**
+#### Xử lý phiên đăng nhập ở frontend
 
 - Frontend lưu token và trạng thái đăng nhập trong `sessionStorage`. Khi tải lại trang, frontend gọi `GET /api/auth/me` để kiểm tra và khôi phục trạng thái đăng nhập.
-- Frontend sử dụng bộ hẹn giờ dựa trên thời điểm hết hạn `exp` để xóa thông tin phiên cục bộ và chuyển người dùng về trang đăng nhập khi hết hạn. Ngoài ra, hệ thống kiểm tra lại thời hạn phiên khi tab được mở lại hoặc khi API trả về `401`.
-- Bộ hẹn giờ chỉ giúp frontend cập nhật giao diện kịp thời; backend vẫn là nơi quyết định phiên có còn hiệu lực hay không.
-- Đóng tab không đồng nghĩa với đăng xuất. Nếu người dùng không chủ động đăng xuất, phiên vẫn tồn tại cho đến khi hết hạn tại `expires_at`.
+- Frontend hẹn giờ theo `exp` để xóa thông tin phiên cục bộ và chuyển về trang đăng nhập khi hết hạn. Nó cũng kiểm tra lại thời hạn khi tab được mở lại hoặc khi API trả `401`. Bộ hẹn giờ chỉ để giao diện cập nhật kịp thời; backend quyết định phiên còn hiệu lực hay không.
+- Đóng tab không phải đăng xuất: phiên vẫn tồn tại đến `expires_at`.
 
 ### 3.2. Tra cứu lớp học phần
 
 | STT | Mô tả |
 |---|---|
 | 1 | Trả về danh sách lớp học phần đang hoạt động (`active`) của học kỳ hiện tại; ngoài thời gian đăng ký vẫn cho phép tra cứu, nhưng không cho đăng ký/hủy. |
-| 2 | Hỗ trợ lọc danh sách theo ngành/toàn trường |
+| 2 | Hỗ trợ lọc danh sách theo ngành/toàn trường. |
 | 3 | Cung cấp thông tin chi tiết lớp học phần, giảng viên, phòng học, lịch học và tình trạng sĩ số. |
 | 4 | Danh sách lớp kèm thông tin học kỳ hiện tại (tên, thời gian mở/đóng đăng ký, giới hạn tín chỉ tối đa) để client hiển thị đợt đăng ký. |
 | 5 | Chi tiết lớp học phần kèm khoa, ngành, tên học kỳ và các học phần tiên quyết; với sinh viên, mỗi học phần tiên quyết cho biết sinh viên đó đã học hay chưa. |
@@ -125,7 +106,7 @@ Form tạo lớp tự lấy `semester.id` từ API danh sách lớp, hiển th�
 
 1. Người dùng gửi username và password tới API đăng nhập.
 2. Hệ thống kiểm tra thông tin xác thực. Nếu sai, trả `401 INVALID_CREDENTIALS`.
-3. Với sinh viên, backend khóa bản ghi người dùng và kiểm tra phiên gần nhất trong cùng một transaction. Nếu phiên vẫn còn hoạt động (logged_out_at IS NULL và NOW() < expires_at), hệ thống trả về 409 ALREADY_LOGGED_IN. Nếu phiên đã kết thúc nhưng chưa hết thời gian chờ LOGIN_COOLDOWN (mặc định 20 phút), hệ thống trả về 429 LOGIN_COOLDOWN. Thời điểm kết thúc phiên được xác định bằng COALESCE(logged_out_at, expires_at). Quản trị viên không áp dụng các giới hạn này.
+3. Với sinh viên, backend khóa bản ghi người dùng và kiểm tra phiên gần nhất trong cùng một transaction. Nếu phiên vẫn còn hoạt động (`logged_out_at IS NULL` và `NOW() < expires_at`), hệ thống trả `409 ALREADY_LOGGED_IN`. Nếu phiên đã kết thúc nhưng chưa hết thời gian chờ `LOGIN_COOLDOWN` (mặc định 20 phút), hệ thống trả `429 LOGIN_COOLDOWN`. Thời điểm kết thúc phiên là `COALESCE(logged_out_at, expires_at)`. Quản trị viên không áp dụng các giới hạn này.
 4. Nếu được phép đăng nhập, backend tạo bản ghi phiên mới trong `auth_sessions` và cấp JWT chứa `sub`, `role`, `sid`, `iat`, `exp`. Thời hạn phiên là `JWT_TTL` đối với sinh viên (mặc định 20 phút) hoặc `ADMIN_JWT_TTL` đối với quản trị viên (mặc định 8 giờ). Giá trị `exp` phải khớp với `expires_at` đến độ chính xác giây. Hệ thống trả về `access_token`.
 5. Client gửi token trong header `Authorization` để gọi `GET /api/auth/me`, lấy thông tin tài khoản và điều hướng theo vai trò.
 6. Client tiếp tục gửi token trong header của các request cần xác thực. Khoa và ngành đã lấy từ `/api/auth/me` được dùng để hiển thị thông tin sinh viên và lọc lớp theo ngành.
@@ -179,7 +160,7 @@ Form tạo lớp tự lấy `semester.id` từ API danh sách lớp, hiển th�
 
 ### 5.2. Danh sách endpoint
 
-Hệ thống có **12 endpoint nghiệp vụ**, tính theo cặp phương thức HTTP và đường dẫn: 3 endpoint xác thực/người dùng, 2 endpoint tra cứu lớp, 4 endpoint đăng ký/thời khóa biểu và 3 endpoint quản trị. Tất cả nằm dưới `/api`; các route kỹ thuật tại §5.4 không tính vào số này.
+Hệ thống có 12 endpoint nghiệp vụ, tính theo cặp phương thức HTTP và đường dẫn: 3 endpoint xác thực/người dùng, 2 endpoint tra cứu lớp, 4 endpoint đăng ký/thời khóa biểu và 3 endpoint quản trị. Tất cả nằm dưới `/api`; các route kỹ thuật tại §5.4 không tính vào số này.
 
 Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên đăng nhập còn hiệu lực. Với endpoint chỉ dành cho sinh viên hoặc quản trị viên, tài khoản khác vai trò bị từ chối với `403 FORBIDDEN`.
 
@@ -217,11 +198,11 @@ Mọi endpoint trừ đăng nhập đều yêu cầu JWT hợp lệ và phiên �
 
 ### 5.3. Yêu cầu dữ liệu request/response
 
-- Request body và response body sử dụng JSON.
 - Mỗi endpoint phải xác định rõ các trường dữ liệu, kiểu dữ liệu, trường bắt buộc và quy tắc kiểm tra dữ liệu đầu vào.
 - Cấu trúc response, mã lỗi và ví dụ request/response phải được mô tả trong OpenAPI/Swagger.
 - `registration_open` chỉ trả ở thông tin học kỳ (`data.semester`) của danh sách lớp, không lặp trên từng lớp hoặc chi tiết lớp. Client dùng trạng thái này để hiển thị và khóa/mở thao tác theo thời gian; backend vẫn kiểm tra nghiệp vụ khi nhận yêu cầu đăng ký/hủy.
-- Hai endpoint `DELETE /api/classes/{id}` và `DELETE /api/registrations/{id} `trả về HTTP `200` với `response { "status": "success", "data": {} }` khi thao tác hủy thành công.
+- Hai endpoint `DELETE /api/classes/{id}` và `DELETE /api/registrations/{id}` trả HTTP `200` với `{ "status": "success", "data": {} }` khi hủy thành công.
+
 ### 5.4. Route kỹ thuật
 
 | Phương thức | Đường dẫn | Mục đích | Quyền truy cập |
@@ -255,11 +236,8 @@ Các route này không phải API nghiệp vụ. `/health` trả `200` với `{ 
 
 ### 7.2. Xác thực và phân quyền
 
-- Hệ thống sử dụng JWT để xác thực người dùng.
-- Các API yêu cầu xác thực phải kiểm tra tính hợp lệ của JWT và trạng thái phiên đăng nhập tương ứng trong cơ sở dữ liệu.
-- Hệ thống phân quyền truy cập dựa trên vai trò người dùng.
-- Người dùng chỉ được truy cập và thao tác trên dữ liệu thuộc phạm vi quyền hạn của mình.
-- Phiên đăng nhập được lưu trong cơ sở dữ liệu và được kiểm tra ở mỗi request được bảo vệ.
+- Xác thực bằng JWT. Phiên đăng nhập lưu trong cơ sở dữ liệu, và mỗi request được bảo vệ phải kiểm tra cả JWT lẫn trạng thái phiên.
+- Phân quyền theo vai trò. Người dùng chỉ truy cập và thao tác trên dữ liệu thuộc quyền của mình.
 
 ### 7.3. Công nghệ và đóng gói
 
@@ -276,7 +254,7 @@ Các route này không phải API nghiệp vụ. `/health` trả `200` với `{ 
 
 ### 7.4. Nguyên tắc phát triển
 
-Ưu tiên hoàn thiện các chức năng cốt lõi, bảo đảm tính đúng đắn của nghiệp vụ, tính nhất quán dữ liệu và kiểm soát truy cập. Các thao tác có thể xảy ra đồng thời phải sử dụng transaction hoặc cơ chế khóa phù hợp để đảm bảo dữ liệu nhất quán và không vi phạm các ràng buộc nghiệp vụ.
+Ưu tiên chức năng cốt lõi, tính đúng đắn của nghiệp vụ, nhất quán dữ liệu và kiểm soát truy cập. Thao tác có thể xảy ra đồng thời phải dùng transaction hoặc khóa để không vi phạm ràng buộc nghiệp vụ.
 
 ## 8. Tiêu chí nghiệm thu
 
@@ -295,5 +273,5 @@ Các route này không phải API nghiệp vụ. `/health` trả `200` với `{ 
 | 11 | Ứng dụng và cơ sở dữ liệu khởi chạy thành công theo hướng dẫn Docker Compose; README.md cung cấp hướng dẫn cài đặt, cấu hình và sử dụng. |
 | 12 | Yêu cầu đăng ký nhiều lớp ghi nhận các lớp hợp lệ và trả lý do từ chối cho các lớp còn lại; một số lớp bị từ chối không làm mất các lớp đã được ghi nhận. Yêu cầu có danh sách rỗng, trùng lớp hoặc quá 20 lớp bị từ chối toàn bộ. |
 | 13 | Một tài khoản sinh viên chỉ có một phiên hoạt động trên mọi thiết bị; đăng nhập lại khi phiên còn hoạt động nhận `409 ALREADY_LOGGED_IN` và không đổi thời hạn phiên. Quản trị viên đăng nhập được nhiều phiên cùng lúc. |
-| 14 | Với sinh viên, thời gian chờ `LOGIN_COOLDOWN` (mặc định 20 phút) được tính từ thời điểm kết thúc phiên: `logged_out_at` nếu sinh viên chủ động đăng xuất, hoặc `expires_at` nếu phiên hết hạn tự nhiên. Đăng nhập chỉ được chấp nhận khi thời gian chờ đã kết thúc. Quản trị viên không áp dụng cooldown.|
+| 14 | Với sinh viên, thời gian chờ `LOGIN_COOLDOWN` (mặc định 20 phút) được tính từ thời điểm kết thúc phiên: `logged_out_at` nếu sinh viên chủ động đăng xuất, hoặc `expires_at` nếu phiên hết hạn tự nhiên. Đăng nhập chỉ được chấp nhận khi thời gian chờ đã kết thúc. Quản trị viên không áp dụng cooldown. |
 | 15 | Frontend tự xóa trạng thái xác thực và chuyển tới màn hình đăng nhập khi JWT hết hạn, kể cả khi người dùng không thao tác; backend vẫn từ chối token hết hạn. |
