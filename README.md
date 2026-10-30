@@ -174,11 +174,9 @@ Phase 1 tập trung bảo đảm tính đúng đắn nghiệp vụ, nhất quán
 |---|---|
 | Xử lý đồng thời | Tranh chấp dữ liệu đã qua kiểm thử tải ([loadtest/README.md](loadtest/README.md)); cân nhắc hàng đợi hoặc khóa phân tán khi chạy nhiều instance |
 | Tối ưu hiệu năng | Giảm tải cho đăng nhập (điểm nghẽn chính), cache danh sách lớp, rà soát chỉ mục, truy vấn và connection pool |
-| Kiến trúc | Chỉ cân nhắc tách microservices nếu sau khi xử lý các điểm nghẽn trên, tải thực tế vẫn vượt khả năng |
 | Mã nguồn | Áp dụng thêm design pattern ở những chỗ quy tắc đăng ký phình to, ví dụ tách từng quy tắc thành đối tượng kiểm tra riêng |
 | Bảo vệ API | Rate limit cho đăng nhập và đăng ký, giới hạn số lần thử sai mật khẩu theo tài khoản, timeout cho HTTP server, giới hạn kích thước body |
 | Kiểm soát quá tải | Giới hạn số lượt kiểm tra mật khẩu chạy đồng thời, từ chối sớm khi quá tải, bỏ qua yêu cầu client đã hủy và không tính chúng là lỗi 500 |
-| Bảo mật | Dùng HTTPS khi triển khai thực tế (SRS yêu cầu, Phase 1 đang dùng HTTP). Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF, để giảm rủi ro nếu có lỗ hổng XSS |
+| Bảo mật | Dùng HTTPS khi triển khai thực tế. Cân nhắc chuyển token từ `sessionStorage` sang cookie `HttpOnly` kèm chống CSRF để giảm rủi ro nếu dính XSS |
 | Phân trang | Phân trang và lọc phía server cho `GET /api/classes` |
-| Migration | Thay cơ chế fingerprint bằng migration có phiên bản, để nâng cấp schema mà không phải xóa dữ liệu |
-| Hạ tầng | Sao lưu database, môi trường staging trước khi deploy production |
+| Vận hành | Thay cơ chế fingerprint bằng migration có phiên bản, sao lưu database, môi trường staging trước khi deploy production |
